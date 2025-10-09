@@ -75,7 +75,7 @@
             >
               {{ order.status === 'cancelled' ? 'Восстановить' : 'Отменить' }}
             </v-btn>
-           <v-btn color="error" variant="text" @click.stop="emit('delete', order.id)" :disabled="order.status === 'cancelled'">Удалить</v-btn>
+           <v-btn color="error" variant="text" @click.stop="emit('delete', order.id)">Удалить</v-btn>
            <v-btn color="primary" variant="tonal" @click.stop="emit('edit', order)" :disabled="order.status === 'cancelled'">Редактировать</v-btn>
         </v-card-actions>
       </div>
