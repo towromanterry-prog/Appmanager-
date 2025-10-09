@@ -1,5 +1,5 @@
 <template>
-  <v-card class="order-card" @click="expanded = !expanded" :disabled="order.status === 'cancelled'">
+  <v-card class="order-card" @click="expanded = !expanded">
     <!-- Основная видимая часть -->
     <v-card-text class="d-flex align-start pa-4">
       <!-- Аватар и инфо о клиенте -->
@@ -23,7 +23,6 @@
         <StatusIndicator
           :status="order.status"
           @click.stop="changeOrderStatus"
-          @long-press.stop="previousOrderStatus"
           class="mb-2"
         />
         <div class="text-h6 font-weight-bold text-primary">{{ totalAmount }}₽</div>
@@ -45,7 +44,6 @@
               <StatusIndicator
                 :status="service.status"
                 @click.stop="changeServiceStatus(index)"
-                @long-press.stop="previousServiceStatus(index)"
               />
             </div>
           </div>
@@ -127,29 +125,12 @@ const changeOrderStatus = () => {
   }
 };
 
-const previousOrderStatus = () => {
-  if (props.order.status === 'cancelled') return;
-  const prevStatus = orderStore.calculatePreviousStatus(props.order.status, false);
-  if (prevStatus !== props.order.status) {
-      orderStore.updateStatus(props.order.id, prevStatus, false, -1, true);
-  }
-};
-
 const changeServiceStatus = (serviceIndex) => {
     const service = props.order.services[serviceIndex];
     if (service.status === 'cancelled') return;
     const nextStatus = orderStore.calculateNextStatus(service.status, true);
     if (nextStatus !== service.status) {
         orderStore.updateStatus(props.order.id, nextStatus, true, serviceIndex);
-    }
-};
-
-const previousServiceStatus = (serviceIndex) => {
-    const service = props.order.services[serviceIndex];
-    if (service.status === 'cancelled') return;
-    const prevStatus = orderStore.calculatePreviousStatus(service.status, true);
-    if (prevStatus !== service.status) {
-        orderStore.updateStatus(props.order.id, prevStatus, true, serviceIndex, true);
     }
 };
 
