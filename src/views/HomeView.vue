@@ -179,13 +179,6 @@ const touchEndY = ref(0);
 const isSwipeHandled = ref(false);
 
 const handleTouchStart = (event) => {
-  const target = event.target;
-  // Игнорируем свайп, если он начинается на интерактивном элементе
-  if (target.closest('button, a, [role="button"], .calendar-day')) {
-    isSwipeHandled.value = true;
-    return;
-  }
-
   isSwipeHandled.value = false;
   touchStartX.value = event.touches[0].clientX;
   touchStartY.value = event.touches[0].clientY;
