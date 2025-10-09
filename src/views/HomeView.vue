@@ -1,5 +1,11 @@
 <template>
-  <div class="home-view-wrapper" :class="{ 'full-calendar-active': showFullCalendar }">
+  <div
+    class="home-view-wrapper"
+    :class="{ 'full-calendar-active': showFullCalendar }"
+    @touchstart="handleTouchStart"
+    @touchmove="handleTouchMove"
+    @touchend="handleTouchEnd"
+  >
     <div class="main-content-area">
       <div class="calendar-wrapper" :class="{ 'calendar-hidden': showFullCalendar }">
         <div class="calendar-container">
@@ -132,26 +138,6 @@
         @click="createOrder"
       ></v-btn>
 
-      <v-tooltip location="left">
-        <template v-slot:activator="{ props }">
-          <v-btn
-            :icon="sortBy === 'deadline' ? 'mdi-timer-sand' : 'mdi-history'"
-            size="large"
-            color="primary"
-            class="fab-calendar"
-            :class="{ 'fab-calendar-hidden': showFullCalendar }"
-            v-bind="props"
-            @click="toggleFullCalendar"
-            @touchstart="startLongPress"
-            @touchend="endLongPress"
-            @mousedown="startLongPress"
-            @mouseup="endLongPress"
-            @mouseleave="endLongPress"
-          ></v-btn>
-        </template>
-        <span>{{ sortBy === 'deadline' ? 'Сортировка: До дедлайна ⏳' : 'Сортировка: По времени создания 🕐' }}</span>
-        <br><small>Долгое нажатие - переключить</small>
-      </v-tooltip>
     </div>
 
     <v-dialog v-model="showOrderForm" fullscreen :persistent="false" transition="dialog-bottom-transition">
@@ -185,6 +171,51 @@ const settingsStore = useSettingsStore();
 const confirmationStore = useConfirmationStore();
 const { orders } = storeToRefs(orderStore);
 
+// -- Swipe to open Calendar --
+const touchStartX = ref(0);
+const touchStartY = ref(0);
+const touchEndX = ref(0);
+const touchEndY = ref(0);
+const isSwipeHandled = ref(false);
+
+const handleTouchStart = (event) => {
+  isSwipeHandled.value = false;
+  touchStartX.value = event.touches[0].clientX;
+  touchStartY.value = event.touches[0].clientY;
+  touchEndX.value = 0;
+  touchEndY.value = 0;
+};
+
+const handleTouchMove = (event) => {
+  if (isSwipeHandled.value) return;
+  touchEndX.value = event.touches[0].clientX;
+  touchEndY.value = event.touches[0].clientY;
+};
+
+const handleTouchEnd = () => {
+  if (isSwipeHandled.value) {
+    isSwipeHandled.value = false; // Сбрасываем флаг в любом случае
+    return;
+  }
+
+  const dx = touchEndX.value - touchStartX.value;
+  const dy = touchEndY.value - touchStartY.value;
+
+  // Свайп влево, если он достаточно длинный и более горизонтальный, чем вертикальный
+  if (touchEndX.value !== 0 && dx < -80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    if (!showFullCalendar.value) {
+      showFullCalendar.value = true;
+    }
+  }
+
+  // Сброс
+  touchStartX.value = 0;
+  touchStartY.value = 0;
+  touchEndX.value = 0;
+  touchEndY.value = 0;
+};
+// -- /Swipe to open Calendar --
+
 const calendarDaysContainer = ref(null);
 const showOrderForm = ref(false);
 const orderToEditId = ref(null);
@@ -192,28 +223,6 @@ const selectedDate = ref(null);
 const showFullCalendar = ref(false);
 const refreshing = ref(false);
 const initialOrderData = ref({});
-const sortBy = ref(localStorage.getItem('orderSortBy') || 'deadline');
-const setSortBy = (value) => {
-  sortBy.value = value;
-  localStorage.setItem('orderSortBy', value);
-};
-let longPressTimer = null;
-const longPressTriggered = ref(false);
-const startLongPress = (event) => {
-  longPressTriggered.value = false;
-  longPressTimer = setTimeout(() => {
-    longPressTriggered.value = true;
-    const newSort = sortBy.value === 'deadline' ? 'createDate' : 'deadline';
-    setSortBy(newSort);
-    if (settingsStore.appSettings?.enableHapticFeedback && 'vibrate' in navigator) {
-      navigator.vibrate(100);
-    }
-  }, 800);
-};
-
-const endLongPress = () => {
-  clearTimeout(longPressTimer);
-};
 const getLocalDateString = (date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -238,13 +247,7 @@ const weekDays = computed(() => {
     const d = new Date();
     d.setDate(today.getDate() + i - 14);
     const ds = getLocalDateString(d);
-    const dayOrders = orders.value.filter(o => {
-      if (sortBy.value === 'deadline') {
-        return o.deadline?.startsWith(ds);
-      } else {
-        return o.createDate?.startsWith(ds);
-      }
-    });
+    const dayOrders = orders.value.filter(o => o.deadline?.startsWith(ds));
     return {
       date: ds,
       initial: dayNames[d.getDay()],
@@ -274,13 +277,7 @@ const calendarWeeks = computed(() => {
             const dateStr = getLocalDateString(currentCalendarDate);
             const isCurrentMonth = currentCalendarDate.getMonth() === month;
 
-            const dayOrders = orders.value.filter(o => {
-              if (sortBy.value === 'deadline') {
-                return o.deadline?.startsWith(dateStr);
-              } else {
-                return o.createDate?.startsWith(dateStr);
-              }
-            });
+            const dayOrders = orders.value.filter(o => o.deadline?.startsWith(dateStr));
 
             week.days.push({
                 date: dateStr,
@@ -308,8 +305,7 @@ const filteredOrders = computed(() => {
   // 1. Фильтруем по дате, если она выбрана
   if (selectedDate.value) {
     ordersToDisplay = orders.value.filter(order => {
-      const dateToCheck = sortBy.value === 'deadline' ? order.deadline : order.createDate;
-      return dateToCheck?.startsWith(selectedDate.value);
+      return order.deadline?.startsWith(selectedDate.value);
     });
   }
 
@@ -320,8 +316,8 @@ const filteredOrders = computed(() => {
 
   // 3. Сортируем результат
   return [...ordersToDisplay].sort((a, b) => {
-    const dateA = sortBy.value === 'deadline' ? (a.deadline || a.createDate) : a.createDate;
-    const dateB = sortBy.value === 'deadline' ? (b.deadline || b.createDate) : b.createDate;
+    const dateA = a.deadline || a.createDate;
+    const dateB = b.deadline || b.createDate;
     return new Date(dateB) - new Date(dateA);
   });
 });
