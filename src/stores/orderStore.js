@@ -9,7 +9,6 @@ const SERVICE_STATUS_FLOW = ['accepted', 'additional', 'in_progress', 'completed
 
 export const useOrderStore = defineStore('orders', () => {
   const orders = ref([]);
-  const cancellationCache = new Map();
 
   function _save() {
     localStorage.setItem('orders', JSON.stringify(orders.value));
@@ -164,23 +163,34 @@ export const useOrderStore = defineStore('orders', () => {
       return;
     }
 
+    const newStatusIndex = SERVICE_STATUS_FLOW.indexOf(newStatus);
+
+    const servicesToUpdate = order.services.filter(s => {
+      const currentServiceIndex = SERVICE_STATUS_FLOW.indexOf(s.status);
+      return currentServiceIndex < newStatusIndex;
+    });
+
+    if (servicesToUpdate.length === 0) {
+      return;
+    }
+
     // Проверка 4: Нужно ли подтверждение
     let applyToServices = true;
     if (syncConfig.confirm) {
       applyToServices = await confirmationStore.open(
         'Синхронизация статусов',
-        `Изменить статус всех услуг на "${getStatusText(newStatus)}"?`
+        `Изменить статус ${servicesToUpdate.length} услуг(и) на "${getStatusText(newStatus)}"?`
       );
     }
 
     if (applyToServices) {
-      order.services.forEach(s => {
+      servicesToUpdate.forEach(s => {
         s.status = newStatus;
       });
     }
   }
 
-  async function updateStatus(orderId, newStatus, isService = false, serviceIndex = -1, isLongPress = false) {
+  async function updateStatus(orderId, newStatus, isService = false, serviceIndex = -1) {
     const order = orders.value.find(o => o.id === orderId);
     if (!order) return;
 
@@ -195,24 +205,22 @@ export const useOrderStore = defineStore('orders', () => {
     const activeFlow = flow.filter(s => activeStatuses[s]);
     const lastActiveStatusInFlow = activeFlow[activeFlow.length - 1];
     
-    // Case 1: Circular loop (and not a long press)
-    if (!isLongPress && oldStatus === lastActiveStatusInFlow && newStatus === flow[0]) {
+    // Case 1: Circular loop
+    if (oldStatus === lastActiveStatusInFlow && newStatus === flow[0]) {
       const confirmed = await confirmationStore.open(
         'Начать сначала?',
         `Вы уверены, что хотите вернуть статус с "${getStatusText(oldStatus)}" на начальный статус "${getStatusText(newStatus)}"?`
       );
       if (!confirmed) return;
     }
-    // ИЗМЕНЕНО: Добавлена проверка `!isLongPress`, чтобы убрать окно подтверждения при долгом нажатии.
-    // Case 2: Any other downgrade (but NOT on long press)
-    else if (!isLongPress && newIndex < oldIndex && oldStatus !== 'cancelled') {
+    // Case 2: Any other downgrade
+    else if (newIndex < oldIndex && oldStatus !== 'cancelled') {
       const confirmed = await confirmationStore.open(
         'Понижение статуса',
         `Вы уверены, что хотите изменить статус с "${getStatusText(oldStatus)}" на "${getStatusText(newStatus)}"?`
       );
       if (!confirmed) return;
     }
-    // КОНЕЦ ИЗМЕНЕНИЯ
 
     // Update the primary status (order or service)
     if (isService) {
@@ -281,10 +289,10 @@ export const useOrderStore = defineStore('orders', () => {
     const confirmed = await confirmationStore.open('Отмена заказа', 'Вы уверены, что хотите отменить этот заказ?');
     if (!confirmed) return;
     
-    cancellationCache.set(orderId, {
+    order.cachedState = {
       orderStatus: order.status,
       serviceStatuses: order.services.map(s => s.status)
-    });
+    };
     
     order.status = 'cancelled';
     order.services.forEach(s => s.status = 'cancelled');
@@ -295,7 +303,7 @@ export const useOrderStore = defineStore('orders', () => {
     const order = orders.value.find(o => o.id === orderId);
     if (!order || order.status !== 'cancelled') return;
 
-    const cachedState = cancellationCache.get(orderId);
+    const cachedState = order.cachedState;
     if (!cachedState) return;
 
     const confirmationStore = useConfirmationStore();
@@ -307,7 +315,7 @@ export const useOrderStore = defineStore('orders', () => {
       service.status = cachedState.serviceStatuses[index] || 'accepted';
     });
 
-    cancellationCache.delete(orderId);
+    delete order.cachedState;
     _save();
   }
 
