@@ -11,9 +11,9 @@
     @mouseup.stop="endPress"
     @mouseleave="cancelPress"
     @mousemove="handleMove"
-    @touchstart.prevent.stop="startPress"
-    @touchend.prevent.stop="endPress"
-    @touchcancel.prevent="cancelPress"
+    @touchstart="startPress"
+    @touchend="endPress"
+    @touchcancel="cancelPress"
     @touchmove="handleMove"
     @click.stop.prevent
   >
