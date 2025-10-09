@@ -1,5 +1,11 @@
 <template>
-  <div class="home-view-wrapper" :class="{ 'full-calendar-active': showFullCalendar }">
+  <div
+    class="home-view-wrapper"
+    :class="{ 'full-calendar-active': showFullCalendar }"
+    @touchstart="handleTouchStart"
+    @touchmove="handleTouchMove"
+    @touchend="handleTouchEnd"
+  >
     <div class="main-content-area">
       <div class="calendar-wrapper" :class="{ 'calendar-hidden': showFullCalendar }">
         <div class="calendar-container">
@@ -141,7 +147,6 @@
             class="fab-calendar"
             :class="{ 'fab-calendar-hidden': showFullCalendar }"
             v-bind="props"
-            @click="toggleFullCalendar"
             @touchstart="startLongPress"
             @touchend="endLongPress"
             @mousedown="startLongPress"
@@ -184,6 +189,58 @@ const clientsStore = useClientsStore();
 const settingsStore = useSettingsStore();
 const confirmationStore = useConfirmationStore();
 const { orders } = storeToRefs(orderStore);
+
+// -- Swipe to open Calendar --
+const touchStartX = ref(0);
+const touchStartY = ref(0);
+const touchEndX = ref(0);
+const touchEndY = ref(0);
+const isSwipeHandled = ref(false);
+
+const handleTouchStart = (event) => {
+  const target = event.target;
+  // Игнорируем свайп, если он начинается на интерактивном элементе
+  if (target.closest('button, a, [role="button"], .no-swipe, .calendar-day')) {
+    isSwipeHandled.value = true;
+    return;
+  }
+
+  isSwipeHandled.value = false;
+  touchStartX.value = event.touches[0].clientX;
+  touchStartY.value = event.touches[0].clientY;
+  touchEndX.value = 0;
+  touchEndY.value = 0;
+};
+
+const handleTouchMove = (event) => {
+  if (isSwipeHandled.value) return;
+  touchEndX.value = event.touches[0].clientX;
+  touchEndY.value = event.touches[0].clientY;
+};
+
+const handleTouchEnd = () => {
+  if (isSwipeHandled.value) {
+    isSwipeHandled.value = false; // Сбрасываем флаг в любом случае
+    return;
+  }
+
+  const dx = touchEndX.value - touchStartX.value;
+  const dy = touchEndY.value - touchStartY.value;
+
+  // Свайп влево, если он достаточно длинный и более горизонтальный, чем вертикальный
+  if (touchEndX.value !== 0 && dx < -80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    if (!showFullCalendar.value) {
+      showFullCalendar.value = true;
+    }
+  }
+
+  // Сброс
+  touchStartX.value = 0;
+  touchStartY.value = 0;
+  touchEndX.value = 0;
+  touchEndY.value = 0;
+};
+// -- /Swipe to open Calendar --
 
 const calendarDaysContainer = ref(null);
 const showOrderForm = ref(false);

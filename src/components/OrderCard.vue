@@ -23,7 +23,7 @@
         <StatusIndicator
           :status="order.status"
           @click.stop="changeOrderStatus"
-          class="mb-2"
+          class="mb-2 no-swipe"
         />
         <div class="text-h6 font-weight-bold text-primary">{{ totalAmount }}₽</div>
       </div>
@@ -44,6 +44,7 @@
               <StatusIndicator
                 :status="service.status"
                 @click.stop="changeServiceStatus(index)"
+                class="no-swipe"
               />
             </div>
           </div>
