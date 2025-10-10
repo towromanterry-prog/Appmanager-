@@ -75,7 +75,6 @@ const handleMove = (event) => {
     currentX = event.touches[0].clientX;
     currentY = event.touches[0].clientY;
   } else {
-    // Check if the primary mouse button is pressed
     if (event.buttons !== 1) return;
     currentX = event.clientX;
     currentY = event.clientY;
@@ -95,9 +94,9 @@ const handleMove = (event) => {
 
 const onClick = (event) => {
   if (isDragging.value || isLongPress.value) {
-    // This was a drag or a long press, not a simple tap.
-    // We do nothing, allowing the v-chip's ripple to complete
-    // without triggering our custom click event.
+    // This was a drag or a long press, so we do nothing.
+    // The v-chip's native click handler will still fire,
+    // completing the ripple animation, but we won't emit our custom event.
     return;
   }
   // This was a valid tap.
@@ -110,10 +109,12 @@ const endPress = (event) => {
   if (event.type === 'touchend') {
     event.preventDefault();
   }
+
   if (pressTimer.value) {
     clearTimeout(pressTimer.value);
     pressTimer.value = null;
   }
+
   // Use a timeout to reset flags after the click event has been processed.
   setTimeout(() => {
     isLongPress.value = false;
