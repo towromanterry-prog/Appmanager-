@@ -59,16 +59,25 @@
                 </v-btn>
               </div>
 
-              <v-chip-group v-if="form.services.length > 0" column class="mb-2">
-                <v-chip
-                  v-for="(service, index) in form.services"
-                  :key="index"
-                  closable
-                  @click:close="removeService(index)"
-                >
-                  {{ service.name }} - {{ service.price }}₽
-                </v-chip>
-              </v-chip-group>
+              <div v-if="form.services.length > 0" class="item-list">
+                <div v-for="(service, index) in form.services" :key="`service-${index}`" class="item-card">
+                  <div class="item-content">
+                    <div class="item-title">{{ service.name }} - {{ service.price }}₽</div>
+                    <div class="tags-container">
+                      <v-chip
+                        v-for="tag in getTags(service.tags)"
+                        :key="tag.id"
+                        :color="tag.color"
+                        size="small"
+                        class="mr-1"
+                      >
+                        {{ tag.name }}
+                      </v-chip>
+                    </div>
+                  </div>
+                  <v-btn icon="mdi-close" variant="text" size="small" @click="removeService(index)"></v-btn>
+                </div>
+              </div>
 
               <div v-else class="text-caption text-medium-emphasis">
                 {{ settingsStore.isFieldRequired('services') ? 'Услуги обязательны для выбора' : 'Услуги не выбраны' }}
@@ -89,16 +98,25 @@
                 </v-btn>
               </div>
 
-              <v-chip-group v-if="form.details.length > 0" column class="mb-2">
-                <v-chip
-                  v-for="(detail, index) in form.details"
-                  :key="index"
-                  closable
-                  @click:close="removeDetail(index)"
-                >
-                  {{ detail.name }} - {{ detail.price }}₽
-                </v-chip>
-              </v-chip-group>
+              <div v-if="form.details.length > 0" class="item-list">
+                <div v-for="(detail, index) in form.details" :key="`detail-${index}`" class="item-card">
+                  <div class="item-content">
+                    <div class="item-title">{{ detail.name }} - {{ detail.price }}₽</div>
+                     <div class="tags-container">
+                      <v-chip
+                        v-for="tag in getTags(detail.tags)"
+                        :key="tag.id"
+                        :color="tag.color"
+                        size="small"
+                        class="mr-1"
+                      >
+                        {{ tag.name }}
+                      </v-chip>
+                    </div>
+                  </div>
+                  <v-btn icon="mdi-close" variant="text" size="small" @click="removeDetail(index)"></v-btn>
+                </div>
+              </div>
 
               <div v-else class="text-caption text-medium-emphasis">
                 Детали не выбраны
@@ -161,6 +179,7 @@ import { reactive, computed, watch, ref } from 'vue';
 import { useOrderStore } from '@/stores/orderStore.js';
 import { useClientsStore } from '@/stores/clientsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useTagsStore } from '@/stores/tagsStore';
 import ServiceSelectionModal from './ServiceSelectionModal.vue';
 import DetailSelectionModal from './DetailSelectionModal.vue';
 
@@ -172,6 +191,7 @@ const emit = defineEmits(['close']);
 const orderStore = useOrderStore();
 const clientsStore = useClientsStore();
 const settingsStore = useSettingsStore();
+const tagsStore = useTagsStore();
 
 const isSaving = ref(false);
 const isServiceModalOpen = ref(false);
@@ -208,6 +228,11 @@ const isFormValid = computed(() => {
   if (requiredFields.notes && !form.notes.trim()) return false;
   return true;
 });
+
+const getTags = (tagIds) => {
+  if (!tagIds) return [];
+  return tagIds.map(id => tagsStore.tags.find(t => t.id === id)).filter(Boolean);
+};
 
 const resetForm = () => {
   Object.assign(form, { 
@@ -325,4 +350,44 @@ const handleDetailsSelected = (selectedDetails) => {
   form.details = selectedDetails;
   isDetailModalOpen.value = false;
 };
+
+if (tagsStore.tags.length === 0) {
+  tagsStore.loadTags();
+}
 </script>
+
+<style scoped>
+.item-list {
+  border: 1px solid rgba(var(--v-border-color), 0.2);
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.1);
+}
+
+.item-card:last-child {
+  border-bottom: none;
+}
+
+.item-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.item-title {
+  font-weight: 500;
+}
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+</style>

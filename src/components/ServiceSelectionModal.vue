@@ -43,7 +43,7 @@
               :value="service.id"
               @click="toggleService(service)"
             >
-              <template v-slot:prepend="{ isSelected }">
+              <template v-slot:prepend="{ isSelected: isSlotSelected }">
                 <v-list-item-action start>
                   <v-checkbox-btn :model-value="isSelected(service)"></v-checkbox-btn>
                 </v-list-item-action>
@@ -52,12 +52,13 @@
               <v-list-item-title>{{ service.name }}</v-list-item-title>
               <v-list-item-subtitle>
                 <v-chip
-                  v-for="tag in service.tags"
-                  :key="tag"
+                  v-for="tag in getTags(service.tags)"
+                  :key="tag.id"
+                  :color="tag.color"
                   size="x-small"
                   class="mr-1"
                 >
-                  {{ tag }}
+                  {{ tag.name }}
                 </v-chip>
               </v-list-item-subtitle>
 
@@ -81,6 +82,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useServiceStore } from '@/stores/serviceStore';
+import { useTagsStore } from '@/stores/tagsStore';
 import ServiceFormDialog from './ServiceFormDialog.vue';
 
 const props = defineProps({
@@ -90,6 +92,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'selection-confirmed']);
 
 const serviceStore = useServiceStore();
+const tagsStore = useTagsStore();
 const dialog = ref(props.modelValue);
 const searchQuery = ref('');
 const selected = ref([]);
@@ -104,12 +107,17 @@ const filteredServices = computed(() => {
   const lowerCaseQuery = searchQuery.value.toLowerCase();
   return availableServices.value.filter(service =>
     service.name.toLowerCase().includes(lowerCaseQuery) ||
-    (service.tags && service.tags.some(tag => tag.toLowerCase().includes(lowerCaseQuery)))
+    (service.tags && getTags(service.tags).some(tag => tag.name.toLowerCase().includes(lowerCaseQuery)))
   );
 });
 
 const isSelected = (service) => {
   return selected.value.some(s => s.id === service.id);
+};
+
+const getTags = (tagIds) => {
+  if (!tagIds) return [];
+  return tagIds.map(id => tagsStore.tags.find(t => t.id === id)).filter(Boolean);
 };
 
 const toggleService = (service) => {
@@ -122,7 +130,8 @@ const toggleService = (service) => {
       name: service.name,
       price: service.defaultPrice,
       status: 'accepted',
-      icon: service.icon || ''
+      icon: service.icon || '',
+      tags: service.tags || []
     });
   }
 };
@@ -150,9 +159,12 @@ watch(dialog, (newVal) => {
   }
 });
 
-// Load services if not already loaded
+// Load services and tags if not already loaded
 if (serviceStore.services.length === 0) {
   serviceStore.loadServices();
+}
+if (tagsStore.tags.length === 0) {
+  tagsStore.loadTags();
 }
 </script>
 

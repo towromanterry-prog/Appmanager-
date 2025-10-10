@@ -32,7 +32,7 @@
               :value="detail.id"
               @click="toggleDetail(detail)"
             >
-              <template v-slot:prepend="{ isSelected }">
+              <template v-slot:prepend="{ isSelected: isSlotSelected }">
                 <v-list-item-action start>
                   <v-checkbox-btn :model-value="isSelected(detail)"></v-checkbox-btn>
                 </v-list-item-action>
@@ -41,12 +41,13 @@
               <v-list-item-title>{{ detail.name }}</v-list-item-title>
               <v-list-item-subtitle>
                 <v-chip
-                  v-for="tag in detail.tags"
-                  :key="tag"
+                  v-for="tag in getTags(detail.tags)"
+                  :key="tag.id"
+                  :color="tag.color"
                   size="x-small"
                   class="mr-1"
                 >
-                  {{ tag }}
+                  {{ tag.name }}
                 </v-chip>
               </v-list-item-subtitle>
 
@@ -66,6 +67,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useDetailStore } from '@/stores/detailStore';
+import { useTagsStore } from '@/stores/tagsStore';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -74,6 +76,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'selection-confirmed']);
 
 const detailStore = useDetailStore();
+const tagsStore = useTagsStore();
 const dialog = ref(props.modelValue);
 const searchQuery = ref('');
 const selected = ref([]);
@@ -87,12 +90,17 @@ const filteredDetails = computed(() => {
   const lowerCaseQuery = searchQuery.value.toLowerCase();
   return availableDetails.value.filter(detail =>
     detail.name.toLowerCase().includes(lowerCaseQuery) ||
-    (detail.tags && detail.tags.some(tag => tag.toLowerCase().includes(lowerCaseQuery)))
+    (detail.tags && getTags(detail.tags).some(tag => tag.name.toLowerCase().includes(lowerCaseQuery)))
   );
 });
 
 const isSelected = (detail) => {
   return selected.value.some(s => s.id === detail.id);
+};
+
+const getTags = (tagIds) => {
+  if (!tagIds) return [];
+  return tagIds.map(id => tagsStore.tags.find(t => t.id === id)).filter(Boolean);
 };
 
 const toggleDetail = (detail) => {
@@ -105,6 +113,7 @@ const toggleDetail = (detail) => {
       name: detail.name,
       price: detail.defaultPrice,
       status: 'accepted',
+      tags: detail.tags || []
     });
   }
 };
@@ -133,6 +142,9 @@ watch(dialog, (newVal) => {
 
 if (detailStore.details.length === 0) {
   detailStore.loadDetails();
+}
+if (tagsStore.tags.length === 0) {
+  tagsStore.loadTags();
 }
 </script>
 
