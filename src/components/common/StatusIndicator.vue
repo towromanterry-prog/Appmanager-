@@ -7,7 +7,7 @@
     label
     class="status-indicator"
     style="cursor: pointer;"
-    @mousedown="startPress"
+    @mousedown.stop="startPress"
     @mouseup="endPress"
     @mouseleave="cancelPress"
     @mousemove="handleMove"
@@ -15,7 +15,7 @@
     @touchend="endPress"
     @touchcancel="cancelPress"
     @touchmove="handleMove"
-    @click="onClick"
+    @click.stop.prevent
   >
     {{ statusInfo.text }}
   </v-chip>
@@ -92,20 +92,8 @@ const handleMove = (event) => {
   }
 };
 
-const onClick = (event) => {
-  if (isDragging.value || isLongPress.value) {
-    // This was a drag or a long press, so we do nothing.
-    // The v-chip's native click handler will still fire,
-    // completing the ripple animation, but we won't emit our custom event.
-    return;
-  }
-  // This was a valid tap.
-  emit('click', event);
-};
-
 const endPress = (event) => {
-  // Prevent the browser from firing a "ghost" click on mobile
-  // after we've handled the touch event.
+  // Предотвращаем "фантомный" клик на мобильных устройствах
   if (event.type === 'touchend') {
     event.preventDefault();
   }
@@ -115,11 +103,14 @@ const endPress = (event) => {
     pressTimer.value = null;
   }
 
-  // Use a timeout to reset flags after the click event has been processed.
+  if (!isLongPress.value && !isDragging.value) {
+    emit('click', event);
+  }
+
   setTimeout(() => {
     isLongPress.value = false;
     isDragging.value = false;
-  }, 50);
+  }, 100);
 };
 
 const cancelPress = () => {
