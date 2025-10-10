@@ -7,15 +7,15 @@
     label
     class="status-indicator"
     style="cursor: pointer;"
-    @mousedown.stop="startPress"
-    @mouseup.stop="endPress"
+    @mousedown="startPress"
+    @mouseup="endPress"
     @mouseleave="cancelPress"
     @mousemove="handleMove"
     @touchstart="startPress"
     @touchend="endPress"
     @touchcancel="cancelPress"
     @touchmove="handleMove"
-    @click.stop.prevent
+    @click.capture="handleClick"
   >
     {{ statusInfo.text }}
   </v-chip>
@@ -103,14 +103,20 @@ const endPress = (event) => {
     pressTimer.value = null;
   }
   
-  if (!isLongPress.value && !isDragging.value) {
-    emit('click', event);
-  }
-  
   setTimeout(() => {
-    isLongPress.value = false;
-    isDragging.value = false;
+    if (!isDragging.value) {
+      isLongPress.value = false;
+    }
   }, 100);
+};
+
+const handleClick = (event) => {
+  if (isDragging.value || isLongPress.value) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  isDragging.value = false;
+  isLongPress.value = false;
 };
 
 const cancelPress = () => {
