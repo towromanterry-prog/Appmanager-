@@ -62,14 +62,25 @@
                       @change="updateRequiredFields"
                     ></v-checkbox>
                   </div>
-                  <v-text-field
-                    v-model="settingsStore.appSettings.orderFormLastNameLabel"
-                    label="Название дополнительного поля"
-                    variant="outlined"
-                    dense
-                    class="mt-4"
-                    @update:modelValue="updateAppSettings"
-                  ></v-text-field>
+                  <div class="d-flex align-center mt-4">
+                    <v-text-field
+                      v-model="settingsStore.appSettings.orderFormLastNameLabel"
+                      label="Название дополнительного поля"
+                      variant="outlined"
+                      dense
+                      hide-details
+                      class="flex-grow-1"
+                      @update:modelValue="updateAppSettings"
+                    ></v-text-field>
+                    <v-checkbox
+                      v-model="settingsStore.requiredFields.lastName"
+                      label="Обязательное"
+                      color="primary"
+                      hide-details
+                      class="ml-4"
+                      @change="updateRequiredFields"
+                    ></v-checkbox>
+                  </div>
                 </v-card-text>
               </v-card>
             </v-expansion-panel-text>

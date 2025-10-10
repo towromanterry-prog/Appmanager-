@@ -29,16 +29,18 @@
               <div class="text-overline mb-2">Клиент</div>
               <v-text-field
                 v-model="form.clientName"
-                label="Имя клиента *"
-                :rules="[rules.required]"
+                :label="`Имя клиента ${settingsStore.isFieldRequired('clientName') ? '*' : ''}`"
+                :rules="settingsStore.isFieldRequired('clientName') ? [rules.required] : []"
               ></v-text-field>
               <v-text-field
                 v-model="form.lastName"
-                :label="settingsStore.appSettings.orderFormLastNameLabel"
+                :label="`${settingsStore.appSettings.orderFormLastNameLabel} ${settingsStore.isFieldRequired('lastName') ? '*' : ''}`"
+                :rules="settingsStore.isFieldRequired('lastName') ? [rules.required] : []"
               ></v-text-field>
               <v-text-field
                 v-model="form.phone"
-                label="Телефон"
+                :label="`Телефон ${settingsStore.isFieldRequired('phone') ? '*' : ''}`"
+                :rules="settingsStore.isFieldRequired('phone') ? [rules.required] : []"
                 type="tel"
               ></v-text-field>
             </v-col>
@@ -46,7 +48,7 @@
             <!-- Секция услуг -->
             <v-col cols="12">
               <div class="d-flex justify-space-between align-center mb-2">
-                <div class="text-overline">Услуги *</div>
+                <div class="text-overline">Услуги {{ settingsStore.isFieldRequired('services') ? '*' : '' }}</div>
                 <v-btn
                   color="primary"
                   variant="outlined"
@@ -69,7 +71,7 @@
               </v-chip-group>
 
               <div v-else class="text-caption text-medium-emphasis">
-                Услуги не выбраны
+                {{ settingsStore.isFieldRequired('services') ? 'Услуги обязательны для выбора' : 'Услуги не выбраны' }}
               </div>
             </v-col>
             
@@ -88,7 +90,8 @@
                 <v-col cols="12" sm="6">
                   <v-text-field
                     v-model="form.deadline"
-                    label="Дедлайн"
+                    :label="`Дедлайн ${settingsStore.isFieldRequired('deadline') ? '*' : ''}`"
+                    :rules="settingsStore.isFieldRequired('deadline') ? [rules.required] : []"
                     type="date"
                   ></v-text-field>
                 </v-col>
@@ -100,7 +103,8 @@
               <div class="text-overline mb-2">Дополнительно</div>
               <v-textarea
                 v-model="form.notes"
-                label="Примечание"
+                :label="`Примечание ${settingsStore.isFieldRequired('notes') ? '*' : ''}`"
+                :rules="settingsStore.isFieldRequired('notes') ? [rules.required] : []"
                 rows="3"
                 auto-grow
               ></v-textarea>
@@ -151,7 +155,17 @@ const rules = {
 
 const isEditing = computed(() => props.orderId !== null);
 const totalAmount = computed(() => form.services.reduce((sum, s) => sum + Number(s.price || 0), 0));
-const isFormValid = computed(() => form.clientName.trim() !== '' && form.services.length > 0);
+
+const isFormValid = computed(() => {
+  const { requiredFields } = settingsStore;
+  if (requiredFields.clientName && !form.clientName.trim()) return false;
+  if (requiredFields.lastName && !form.lastName.trim()) return false;
+  if (requiredFields.phone && !form.phone.trim()) return false;
+  if (requiredFields.services && form.services.length === 0) return false;
+  if (requiredFields.deadline && !form.deadline) return false;
+  if (requiredFields.notes && !form.notes.trim()) return false;
+  return true;
+});
 
 const resetForm = () => {
   Object.assign(form, { 

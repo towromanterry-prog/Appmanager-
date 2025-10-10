@@ -14,14 +14,25 @@
         <v-container fluid>
           <v-row>
             <v-col cols="12">
-              <v-text-field
-                v-model="searchQuery"
-                label="Поиск по названию или тегу"
-                prepend-inner-icon="mdi-magnify"
-                variant="outlined"
-                clearable
-                hide-details
-              ></v-text-field>
+              <div class="d-flex mb-4">
+                <v-text-field
+                  v-model="searchQuery"
+                  label="Поиск по названию или тегу"
+                  prepend-inner-icon="mdi-magnify"
+                  variant="outlined"
+                  clearable
+                  hide-details
+                  class="flex-grow-1"
+                ></v-text-field>
+                <v-btn
+                  color="primary"
+                  class="ml-4"
+                  @click="isServiceFormVisible = true"
+                  height="56"
+                >
+                  <v-icon>mdi-plus</v-icon>
+                </v-btn>
+              </div>
             </v-col>
           </v-row>
 
@@ -34,7 +45,7 @@
             >
               <template v-slot:prepend="{ isSelected }">
                 <v-list-item-action start>
-                  <v-checkbox-btn :model-value="isSelected"></v-checkbox-btn>
+                  <v-checkbox-btn :model-value="isSelected(service)"></v-checkbox-btn>
                 </v-list-item-action>
               </template>
 
@@ -61,11 +72,16 @@
       </v-card-text>
     </v-card>
   </v-dialog>
+  <ServiceFormDialog
+    v-model="isServiceFormVisible"
+    @saved="serviceStore.loadServices()"
+  />
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useServiceStore } from '@/stores/serviceStore';
+import ServiceFormDialog from './ServiceFormDialog.vue';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -77,6 +93,7 @@ const serviceStore = useServiceStore();
 const dialog = ref(props.modelValue);
 const searchQuery = ref('');
 const selected = ref([]);
+const isServiceFormVisible = ref(false);
 
 const availableServices = computed(() => serviceStore.services);
 

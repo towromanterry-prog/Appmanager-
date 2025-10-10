@@ -8,7 +8,8 @@ export const useSettingsStore = defineStore('settings', () => {
     phone: true,
     services: true,
     deadline: false,
-    notes: false
+    notes: false,
+    lastName: false
   });
   
   const appSettings = ref({
@@ -116,7 +117,8 @@ export const useSettingsStore = defineStore('settings', () => {
       phone: true,
       services: true,
       deadline: false,
-      notes: false
+      notes: false,
+      lastName: false
     };
     
     appSettings.value = {
