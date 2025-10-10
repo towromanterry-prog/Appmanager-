@@ -15,7 +15,7 @@
     @touchend="endPress"
     @touchcancel="cancelPress"
     @touchmove="handleMove"
-    @click.capture="handleClick"
+    @click="onClick"
   >
     {{ statusInfo.text }}
   </v-chip>
@@ -75,6 +75,7 @@ const handleMove = (event) => {
     currentX = event.touches[0].clientX;
     currentY = event.touches[0].clientY;
   } else {
+    // Check if the primary mouse button is pressed
     if (event.buttons !== 1) return;
     currentX = event.clientX;
     currentY = event.clientY;
@@ -92,31 +93,32 @@ const handleMove = (event) => {
   }
 };
 
+const onClick = (event) => {
+  if (isDragging.value || isLongPress.value) {
+    // This was a drag or a long press, not a simple tap.
+    // We do nothing, allowing the v-chip's ripple to complete
+    // without triggering our custom click event.
+    return;
+  }
+  // This was a valid tap.
+  emit('click', event);
+};
+
 const endPress = (event) => {
-  // Предотвращаем "фантомный" клик на мобильных устройствах
+  // Prevent the browser from firing a "ghost" click on mobile
+  // after we've handled the touch event.
   if (event.type === 'touchend') {
     event.preventDefault();
   }
-
   if (pressTimer.value) {
     clearTimeout(pressTimer.value);
     pressTimer.value = null;
   }
-  
+  // Use a timeout to reset flags after the click event has been processed.
   setTimeout(() => {
-    if (!isDragging.value) {
-      isLongPress.value = false;
-    }
-  }, 100);
-};
-
-const handleClick = (event) => {
-  if (isDragging.value || isLongPress.value) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-  isDragging.value = false;
-  isLongPress.value = false;
+    isLongPress.value = false;
+    isDragging.value = false;
+  }, 50);
 };
 
 const cancelPress = () => {
