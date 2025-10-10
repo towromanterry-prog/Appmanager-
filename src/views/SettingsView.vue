@@ -61,6 +61,13 @@
                       hide-details
                       @change="updateRequiredFields"
                     ></v-checkbox>
+                    <v-checkbox
+                      v-model="settingsStore.requiredFields.details"
+                      :label="settingsStore.appSettings.detailsTabLabel"
+                      color="primary"
+                      hide-details
+                      @change="updateRequiredFields"
+                    ></v-checkbox>
                   </div>
                   <div class="d-flex align-center mt-4">
                     <v-text-field

@@ -87,7 +87,7 @@
             <!-- Секция Деталей -->
             <v-col cols="12">
               <div class="d-flex justify-space-between align-center mb-2">
-                <div class="text-overline">Детали</div>
+                <div class="text-overline">{{ settingsStore.appSettings.detailsTabLabel }} {{ settingsStore.isFieldRequired('details') ? '*' : '' }}</div>
                 <v-btn
                   color="primary"
                   variant="outlined"
@@ -119,7 +119,7 @@
               </div>
 
               <div v-else class="text-caption text-medium-emphasis">
-                Детали не выбраны
+                {{ settingsStore.isFieldRequired('details') ? 'Детали обязательны для выбора' : 'Детали не выбраны' }}
               </div>
             </v-col>
 
@@ -224,6 +224,7 @@ const isFormValid = computed(() => {
   if (requiredFields.lastName && !form.lastName.trim()) return false;
   if (requiredFields.phone && !form.phone.trim()) return false;
   if (requiredFields.services && form.services.length === 0) return false;
+  if (requiredFields.details && form.details.length === 0) return false;
   if (requiredFields.deadline && !form.deadline) return false;
   if (requiredFields.notes && !form.notes.trim()) return false;
   return true;

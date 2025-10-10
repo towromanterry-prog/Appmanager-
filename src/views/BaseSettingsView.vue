@@ -14,7 +14,7 @@
               :class="['custom-tab', { active: tab === 'details' }]"
               @click="tab = 'details'"
             >
-              Детали
+              {{ settingsStore.appSettings.detailsTabLabel }}
             </div>
             <div
               :class="['custom-tab', { active: tab === 'tags' }]"

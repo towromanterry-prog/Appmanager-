@@ -9,7 +9,8 @@ export const useSettingsStore = defineStore('settings', () => {
     services: true,
     deadline: false,
     notes: false,
-    lastName: false
+    lastName: false,
+    details: false
   });
   
   const appSettings = ref({
