@@ -93,15 +93,20 @@ const handleMove = (event) => {
 };
 
 const endPress = (event) => {
+  // Предотвращаем "фантомный" клик на мобильных устройствах
+  if (event.type === 'touchend') {
+    event.preventDefault();
+  }
+
   if (pressTimer.value) {
     clearTimeout(pressTimer.value);
     pressTimer.value = null;
   }
-  
+
   if (!isLongPress.value && !isDragging.value) {
     emit('click', event);
   }
-  
+
   setTimeout(() => {
     isLongPress.value = false;
     isDragging.value = false;
