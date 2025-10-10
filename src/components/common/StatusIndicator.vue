@@ -8,7 +8,7 @@
     class="status-indicator"
     style="cursor: pointer;"
     @mousedown.stop="startPress"
-    @mouseup="endPress"
+    @mouseup.stop="endPress"
     @mouseleave="cancelPress"
     @mousemove="handleMove"
     @touchstart="startPress"
