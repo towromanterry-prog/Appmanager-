@@ -75,6 +75,36 @@
               </div>
             </v-col>
             
+            <!-- Секция Деталей -->
+            <v-col cols="12">
+              <div class="d-flex justify-space-between align-center mb-2">
+                <div class="text-overline">Детали</div>
+                <v-btn
+                  color="primary"
+                  variant="outlined"
+                  @click="isDetailModalOpen = true"
+                >
+                  <v-icon start>mdi-plus</v-icon>
+                  Выбрать детали
+                </v-btn>
+              </div>
+
+              <v-chip-group v-if="form.details.length > 0" column class="mb-2">
+                <v-chip
+                  v-for="(detail, index) in form.details"
+                  :key="index"
+                  closable
+                  @click:close="removeDetail(index)"
+                >
+                  {{ detail.name }} - {{ detail.price }}₽
+                </v-chip>
+              </v-chip-group>
+
+              <div v-else class="text-caption text-medium-emphasis">
+                Детали не выбраны
+              </div>
+            </v-col>
+
             <!-- Секция оплаты и сроков -->
             <v-col cols="12">
               <div class="text-overline mb-2">Оплата и сроки</div>
@@ -119,6 +149,11 @@
     :previously-selected="form.services"
     @selection-confirmed="handleServicesSelected"
   />
+  <DetailSelectionModal
+    v-model="isDetailModalOpen"
+    :previously-selected="form.details"
+    @selection-confirmed="handleDetailsSelected"
+  />
 </template>
 
 <script setup>
@@ -127,6 +162,7 @@ import { useOrderStore } from '@/stores/orderStore.js';
 import { useClientsStore } from '@/stores/clientsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import ServiceSelectionModal from './ServiceSelectionModal.vue';
+import DetailSelectionModal from './DetailSelectionModal.vue';
 
 const props = defineProps({
   orderId: { type: [String, null], default: null }
@@ -139,12 +175,14 @@ const settingsStore = useSettingsStore();
 
 const isSaving = ref(false);
 const isServiceModalOpen = ref(false);
+const isDetailModalOpen = ref(false);
 
 const form = reactive({
   clientName: '',
   lastName: '',
   phone: '',
   services: [],
+  details: [],
   deadline: new Date().toISOString().split('T')[0],
   notes: ''
 });
@@ -154,7 +192,11 @@ const rules = {
 };
 
 const isEditing = computed(() => props.orderId !== null);
-const totalAmount = computed(() => form.services.reduce((sum, s) => sum + Number(s.price || 0), 0));
+const totalAmount = computed(() => {
+  const servicesTotal = form.services.reduce((sum, s) => sum + Number(s.price || 0), 0);
+  const detailsTotal = form.details.reduce((sum, d) => sum + Number(d.price || 0), 0);
+  return servicesTotal + detailsTotal;
+});
 
 const isFormValid = computed(() => {
   const { requiredFields } = settingsStore;
@@ -173,10 +215,40 @@ const resetForm = () => {
     lastName: '',
     phone: '', 
     services: [], 
+    details: [],
     deadline: new Date().toISOString().split('T')[0], 
     notes: '' 
   });
 };
+
+watch(() => form.phone, (newVal, oldVal) => {
+  const digits = newVal.replace(/\D/g, '');
+  if (digits.length > 11) {
+    form.phone = oldVal;
+    return;
+  }
+
+  let formatted = '';
+  if (digits.length > 0) {
+    formatted = '+' + digits.substring(0, 1);
+  }
+  if (digits.length > 1) {
+    formatted += ' (' + digits.substring(1, 4);
+  }
+  if (digits.length > 4) {
+    formatted += ') ' + digits.substring(4, 7);
+  }
+  if (digits.length > 7) {
+    formatted += '-' + digits.substring(7, 9);
+  }
+  if (digits.length > 9) {
+    formatted += '-' + digits.substring(9, 11);
+  }
+
+  if (newVal !== formatted) {
+    form.phone = formatted;
+  }
+});
 
 watch(() => props.orderId, (newId) => {
   if (newId) {
@@ -186,7 +258,8 @@ watch(() => props.orderId, (newId) => {
         clientName: order.clientName,
         lastName: order.lastName,
         phone: order.phone,
-        services: JSON.parse(JSON.stringify(order.services)), // Глубокое копирование
+        services: JSON.parse(JSON.stringify(order.services || [])),
+        details: JSON.parse(JSON.stringify(order.details || [])),
         deadline: order.deadline,
         notes: order.notes,
       });
@@ -206,6 +279,7 @@ const saveOrder = async () => {
     lastName: form.lastName,
     phone: form.phone,
     services: form.services,
+    details: form.details,
     totalAmount: totalAmount.value,
     deadline: form.deadline,
     notes: form.notes,
@@ -217,7 +291,6 @@ const saveOrder = async () => {
     } else {
       await orderStore.addOrder(orderData);
     }
-    // Также обновляем или добавляем клиента в базу
     clientsStore.addOrUpdateClient({
       name: form.clientName,
       phone: form.phone,
@@ -242,5 +315,14 @@ const removeService = (index) => {
 const handleServicesSelected = (selectedServices) => {
   form.services = selectedServices;
   isServiceModalOpen.value = false;
+};
+
+const removeDetail = (index) => {
+  form.details.splice(index, 1);
+};
+
+const handleDetailsSelected = (selectedDetails) => {
+  form.details = selectedDetails;
+  isDetailModalOpen.value = false;
 };
 </script>

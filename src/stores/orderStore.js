@@ -55,6 +55,7 @@ export const useOrderStore = defineStore('orders', () => {
         ...s,
         status: settingsStore.appSettings.defaultOrderStatus || 'accepted'
       })),
+      details: orderData.details || [],
       lastName: orderData.lastName || ''
     };
     orders.value.push(newOrder);
@@ -76,6 +77,7 @@ export const useOrderStore = defineStore('orders', () => {
           ...s,
           status: s.status || 'accepted'
         })),
+        details: orderData.details || originalOrder.details || [],
         lastName: orderData.lastName || ''
       };
       _save();

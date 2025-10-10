@@ -47,6 +47,8 @@ export const useSettingsStore = defineStore('settings', () => {
     },
     // Поле для фамилии
     orderFormLastNameLabel: 'Фамилия',
+    // Название вкладки "Детали"
+    detailsTabLabel: 'Детали',
   });
   
   function loadSettings() {
@@ -153,6 +155,7 @@ export const useSettingsStore = defineStore('settings', () => {
         completed: { enabled: true, confirm: false },
       },
       orderFormLastNameLabel: 'Фамилия',
+      detailsTabLabel: 'Детали',
     };
     
     localStorage.removeItem('requiredFields');
