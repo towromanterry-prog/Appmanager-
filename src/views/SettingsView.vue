@@ -62,6 +62,14 @@
                       @change="updateRequiredFields"
                     ></v-checkbox>
                   </div>
+                  <v-text-field
+                    v-model="settingsStore.appSettings.orderFormLastNameLabel"
+                    label="Название дополнительного поля"
+                    variant="outlined"
+                    dense
+                    class="mt-4"
+                    @update:modelValue="updateAppSettings"
+                  ></v-text-field>
                 </v-card-text>
               </v-card>
             </v-expansion-panel-text>

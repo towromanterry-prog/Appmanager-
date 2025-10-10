@@ -33,6 +33,10 @@
                 :rules="[rules.required]"
               ></v-text-field>
               <v-text-field
+                v-model="form.lastName"
+                :label="settingsStore.appSettings.orderFormLastNameLabel"
+              ></v-text-field>
+              <v-text-field
                 v-model="form.phone"
                 label="Телефон"
                 type="tel"
@@ -41,8 +45,32 @@
 
             <!-- Секция услуг -->
             <v-col cols="12">
-              <div class="text-overline mb-2">Услуги *</div>
-              <ServicesSelector v-model="form.services" />
+              <div class="d-flex justify-space-between align-center mb-2">
+                <div class="text-overline">Услуги *</div>
+                <v-btn
+                  color="primary"
+                  variant="outlined"
+                  @click="isServiceModalOpen = true"
+                >
+                  <v-icon start>mdi-plus</v-icon>
+                  Выбрать услуги
+                </v-btn>
+              </div>
+
+              <v-chip-group v-if="form.services.length > 0" column class="mb-2">
+                <v-chip
+                  v-for="(service, index) in form.services"
+                  :key="index"
+                  closable
+                  @click:close="removeService(index)"
+                >
+                  {{ service.name }} - {{ service.price }}₽
+                </v-chip>
+              </v-chip-group>
+
+              <div v-else class="text-caption text-medium-emphasis">
+                Услуги не выбраны
+              </div>
             </v-col>
             
             <!-- Секция оплаты и сроков -->
@@ -82,13 +110,19 @@
       </v-form>
     </v-card-text>
   </v-card>
+  <ServiceSelectionModal
+    v-model="isServiceModalOpen"
+    :previously-selected="form.services"
+    @selection-confirmed="handleServicesSelected"
+  />
 </template>
 
 <script setup>
 import { reactive, computed, watch, ref } from 'vue';
 import { useOrderStore } from '@/stores/orderStore.js';
 import { useClientsStore } from '@/stores/clientsStore';
-import ServicesSelector from './ServicesSelector.vue';
+import { useSettingsStore } from '@/stores/settingsStore';
+import ServiceSelectionModal from './ServiceSelectionModal.vue';
 
 const props = defineProps({
   orderId: { type: [String, null], default: null }
@@ -97,11 +131,14 @@ const emit = defineEmits(['close']);
 
 const orderStore = useOrderStore();
 const clientsStore = useClientsStore();
+const settingsStore = useSettingsStore();
 
 const isSaving = ref(false);
+const isServiceModalOpen = ref(false);
 
 const form = reactive({
   clientName: '',
+  lastName: '',
   phone: '',
   services: [],
   deadline: new Date().toISOString().split('T')[0],
@@ -119,6 +156,7 @@ const isFormValid = computed(() => form.clientName.trim() !== '' && form.service
 const resetForm = () => {
   Object.assign(form, { 
     clientName: '', 
+    lastName: '',
     phone: '', 
     services: [], 
     deadline: new Date().toISOString().split('T')[0], 
@@ -132,6 +170,7 @@ watch(() => props.orderId, (newId) => {
     if (order) {
       Object.assign(form, {
         clientName: order.clientName,
+        lastName: order.lastName,
         phone: order.phone,
         services: JSON.parse(JSON.stringify(order.services)), // Глубокое копирование
         deadline: order.deadline,
@@ -150,6 +189,7 @@ const saveOrder = async () => {
   
   const orderData = {
     clientName: form.clientName,
+    lastName: form.lastName,
     phone: form.phone,
     services: form.services,
     totalAmount: totalAmount.value,
@@ -179,5 +219,14 @@ const saveOrder = async () => {
 
 const close = () => {
   emit('close');
+};
+
+const removeService = (index) => {
+  form.services.splice(index, 1);
+};
+
+const handleServicesSelected = (selectedServices) => {
+  form.services = selectedServices;
+  isServiceModalOpen.value = false;
 };
 </script>

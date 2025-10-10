@@ -44,6 +44,8 @@ export const useSettingsStore = defineStore('settings', () => {
       in_progress: { enabled: true, confirm: true },
       completed: { enabled: true, confirm: false },
     },
+    // Поле для фамилии
+    orderFormLastNameLabel: 'Фамилия',
   });
   
   function loadSettings() {
@@ -148,6 +150,7 @@ export const useSettingsStore = defineStore('settings', () => {
         in_progress: { enabled: true, confirm: true },
         completed: { enabled: true, confirm: false },
       },
+      orderFormLastNameLabel: 'Фамилия',
     };
     
     localStorage.removeItem('requiredFields');
