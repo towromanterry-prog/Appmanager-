@@ -14,7 +14,7 @@
               :class="['custom-tab', { active: tab === 'details' }]"
               @click="tab = 'details'"
             >
-              Детали
+              {{ settingsStore.appSettings.detailsTabLabel }}
             </div>
             <div
               :class="['custom-tab', { active: tab === 'tags' }]"
@@ -22,16 +22,10 @@
             >
               Теги
             </div>
-            <div
-              :class="['custom-tab', { active: tab === 'models' }]"
-              @click="tab = 'models'"
-            >
-              Модель
-            </div>
           </div>
           <div
             class="custom-slider"
-            :style="{ transform: sliderTransform, width: '25%' }"
+            :style="{ transform: sliderTransform, width: '33.33%' }"
           ></div>
         </div>
       </v-card>
@@ -159,83 +153,15 @@
           </v-card>
         </v-window-item>
 
-        <!-- МОДЕЛИ -->
-        <v-window-item value="models" class="window-item-full-height">
-          <v-card flat class="mt-2" bg-color="surface">
-            <div class="d-flex align-center justify-space-between pa-2 bg-surface">
-              <h3 class="text-h6">Модель</h3>
-              <v-btn color="primary" @click="openModelDialog">
-                <v-icon class="mr-2">mdi-plus</v-icon>
-                 Добавить модель
-              </v-btn>
-            </div>
-            <v-divider class="my-0"></v-divider>
-
-            <v-list bg-color="surface" class="py-0">
-              <template v-for="(model, index) in modelStore.models" :key="model.id">
-                <v-list-item class="px-2 py-1 my-1" density="compact">
-                   <template v-slot:prepend>
-                     <v-chip
-                      :color="model.color || 'grey'"
-                      size="small"
-                    >
-                      {{ model.name }}
-                     </v-chip>
-                  </template>
-                  <template v-slot:append>
-                    <div class="d-flex align-center">
-                        <v-btn icon="mdi-pencil" variant="text" size="small" @click="editModel(model)"></v-btn>
-                        <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteModel(model.id)"></v-btn>
-                    </div>
-                  </template>
-                </v-list-item>
-                <v-divider v-if="index < modelStore.models.length - 1" class="mx-2"></v-divider>
-              </template>
-            </v-list>
-          </v-card>
-        </v-window-item>
       </v-window>
     </div>
 
     <!-- ДИАЛОГ УСЛУГИ -->
-    <v-dialog v-model="serviceDialog" max-width="500">
-      <v-card>
-        <v-card-title>{{ editingService ? 'Редактировать услугу' : 'Добавить услугу' }}</v-card-title>
-        <v-card-text>
-          <v-form ref="serviceFormRef">
-            <v-text-field v-model="serviceForm.name" label="Название услуги" :rules="[v => !!v || 'Название обязательно']" variant="outlined" class="mb-4"></v-text-field>
-            <v-text-field v-model.number="serviceForm.defaultPrice" label="Цена по умолчанию" type="number" prefix="₽" :rules="[v => v > 0 || 'Цена должна быть больше 0']" variant="outlined" class="mb-4"></v-text-field>
-            <v-select 
-              v-model="serviceForm.tags" 
-              :items="availableTags" 
-              item-title="name" 
-              item-value="id" 
-              label="Теги" 
-              multiple 
-              chips 
-              variant="outlined"
-              :menu-props="{ contentClass: 'custom-select-menu' }"
-            >
-              <template v-slot:selection="{ item }">
-                <v-chip :color="item.raw.color" size="small">{{ item.title }}</v-chip>
-              </template>
-              <template v-slot:item="{ props, item }">
-                <v-list-item v-bind="props" :title="null" class="my-1">
-                  <template v-slot:prepend>
-                    <v-chip :color="item.raw.color" size="small">{{ item.raw.name }}</v-chip>
-                  </template>
-                </v-list-item>
-              </template>
-            </v-select>
-          </v-form>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-           <v-btn @click="serviceDialog = false">Отмена</v-btn>
-          <v-btn color="primary" @click="saveService">{{ editingService ? 'Сохранить' : 'Добавить' }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <ServiceFormDialog
+      v-model="serviceDialog"
+      :service="editingService"
+      @saved="serviceStore.loadServices()"
+    />
 
     <!-- ДИАЛОГ ДЕТАЛИ -->
     <v-dialog v-model="detailDialog" max-width="500">
@@ -308,36 +234,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- ДИАЛОГ МОДЕЛИ -->
-    <v-dialog v-model="modelDialog" max-width="400">
-      <v-card>
-        <v-card-title>{{ editingModel ? 'Редактировать модель' : 'Добавить модель' }}</v-card-title>
-        <v-card-text>
-          <v-form ref="modelFormRef">
-            <v-text-field v-model="modelForm.name" label="Название модели" :rules="[v => !!v || 'Название обязательно']" variant="outlined" class="mb-4"></v-text-field>
-            <v-select 
-              v-model="modelForm.color" 
-              :items="tagColors" 
-              label="Цвет модели" 
-              variant="outlined"
-              :menu-props="{ contentClass: 'custom-select-menu' }"
-            >
-              <template v-slot:selection="{ item }"><v-chip :color="item.value" size="small">{{ item.title }}</v-chip></template>
-              <template v-slot:item="{ props, item }">
-                <v-list-item v-bind="props" class="my-1">
-                  <template v-slot:prepend><v-chip :color="item.value" size="small">{{ item.title }}</v-chip></template>
-                </v-list-item>
-              </template>
-            </v-select>
-          </v-form>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn @click="modelDialog = false">Отмена</v-btn>
-          <v-btn color="primary" @click="saveModel">{{ editingModel ? 'Сохранить' : 'Добавить' }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </div>
 </template>
 
@@ -346,33 +242,28 @@ import { ref, computed, onMounted } from 'vue';
 import { useServiceStore } from '@/stores/serviceStore';
 import { useDetailStore } from '@/stores/detailStore';
 import { useTagsStore } from '@/stores/tagsStore';
-import { useModelStore } from '@/stores/modelStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useConfirmationStore } from '@/stores/confirmationStore';
+import ServiceFormDialog from '@/components/ServiceFormDialog.vue';
 
 const serviceStore = useServiceStore();
 const detailStore = useDetailStore();
 const tagsStore = useTagsStore();
-const modelStore = useModelStore();
+const settingsStore = useSettingsStore();
 const confirmationStore = useConfirmationStore();
 
 const tab = ref('services');
 const serviceDialog = ref(false);
 const detailDialog = ref(false);
 const tagDialog = ref(false);
-const modelDialog = ref(false);
-const serviceFormRef = ref(null);
 const detailFormRef = ref(null);
 const tagFormRef = ref(null);
-const modelFormRef = ref(null);
-const serviceForm = ref({ name: '', defaultPrice: 0, tags: [] });
 const detailForm = ref({ name: '', defaultPrice: 0, tags: [] });
 const tagForm = ref({ name: '', color: 'blue' });
-const modelForm = ref({ name: '', color: 'grey' });
 
 const editingService = ref(null);
 const editingDetail = ref(null);
 const editingTag = ref(null);
-const editingModel = ref(null);
 
 const tagColors = [
   { title: 'Синий', value: 'blue' }, { title: 'Зеленый', value: 'green' }, { title: 'Красный', value: 'red' },
@@ -384,7 +275,6 @@ const availableTags = computed(() => tagsStore.tags);
 const sliderTransform = computed(() => {
   if (tab.value === 'details') return 'translateX(100%)';
   if (tab.value === 'tags') return 'translateX(200%)';
-  if (tab.value === 'models') return 'translateX(300%)';
   return 'translateX(0)';
 });
 
@@ -401,25 +291,12 @@ const getTagsForDetail = (tagIds) => {
 // ФУНКЦИИ УСЛУГ
 const openServiceDialog = () => {
   editingService.value = null;
-  serviceForm.value = { name: '', defaultPrice: 0, tags: [] };
   serviceDialog.value = true;
 };
 
 const editService = (service) => {
   editingService.value = service;
-  serviceForm.value = { name: service.name, defaultPrice: service.defaultPrice, tags: [...service.tags] };
   serviceDialog.value = true;
-};
-
-const saveService = async () => {
-  const { valid } = await serviceFormRef.value.validate();
-  if (!valid) return;
-  if (editingService.value) {
-    serviceStore.updateService(editingService.value.id, serviceForm.value);
-  } else {
-    serviceStore.addService(serviceForm.value);
-  }
-  serviceDialog.value = false;
 };
 
 const deleteService = async (serviceId) => {
@@ -491,42 +368,10 @@ const deleteTag = async (tagId) => {
   }
 };
 
-// ФУНКЦИИ МОДЕЛЕЙ
-const openModelDialog = () => {
-  editingModel.value = null;
-  modelForm.value = { name: '', color: 'grey' };
-  modelDialog.value = true;
-};
-
-const editModel = (model) => {
-  editingModel.value = model;
-  modelForm.value = { name: model.name, color: model.color };
-  modelDialog.value = true;
-};
-
-const saveModel = async () => {
-  const { valid } = await modelFormRef.value.validate();
-  if (!valid) return;
-  if (editingModel.value) {
-    modelStore.updateModel(editingModel.value.id, modelForm.value);
-  } else {
-    modelStore.addModel(modelForm.value);
-  }
-  modelDialog.value = false;
-};
-
-const deleteModel = async (modelId) => {
-  const confirmed = await confirmationStore.open('Удаление модели', 'Вы уверены, что хотите удалить эту модель?');
-  if (confirmed) {
-    modelStore.deleteModel(modelId);
-  }
-};
-
 onMounted(() => {
   serviceStore.loadServices();
   detailStore.loadDetails();
   tagsStore.loadTags();
-  modelStore.loadModels();
 });
 </script>
 
@@ -612,6 +457,9 @@ onMounted(() => {
 
 .tags-container {
   padding-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .custom-select-menu .v-list {

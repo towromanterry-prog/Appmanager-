@@ -8,7 +8,9 @@ export const useSettingsStore = defineStore('settings', () => {
     phone: true,
     services: true,
     deadline: false,
-    notes: false
+    notes: false,
+    lastName: false,
+    details: false
   });
   
   const appSettings = ref({
@@ -44,6 +46,10 @@ export const useSettingsStore = defineStore('settings', () => {
       in_progress: { enabled: true, confirm: true },
       completed: { enabled: true, confirm: false },
     },
+    // Поле для фамилии
+    orderFormLastNameLabel: 'Фамилия',
+    // Название вкладки "Детали"
+    detailsTabLabel: 'Детали',
   });
   
   function loadSettings() {
@@ -114,7 +120,8 @@ export const useSettingsStore = defineStore('settings', () => {
       phone: true,
       services: true,
       deadline: false,
-      notes: false
+      notes: false,
+      lastName: false
     };
     
     appSettings.value = {
@@ -148,6 +155,8 @@ export const useSettingsStore = defineStore('settings', () => {
         in_progress: { enabled: true, confirm: true },
         completed: { enabled: true, confirm: false },
       },
+      orderFormLastNameLabel: 'Фамилия',
+      detailsTabLabel: 'Детали',
     };
     
     localStorage.removeItem('requiredFields');

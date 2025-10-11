@@ -2,9 +2,6 @@
   <div
     class="home-view-wrapper"
     :class="{ 'full-calendar-active': showFullCalendar }"
-    @touchstart="handleTouchStart"
-    @touchmove="handleTouchMove"
-    @touchend="handleTouchEnd"
   >
     <div class="main-content-area">
       <div class="calendar-wrapper" :class="{ 'calendar-hidden': showFullCalendar }">
@@ -37,7 +34,13 @@
         </div>
       </div>
 
-      <div class="orders-list-container" ref="scrollContainer">
+      <div
+        class="orders-list-container"
+        ref="scrollContainer"
+        @touchstart="handleTouchStart"
+        @touchmove="handleTouchMove"
+        @touchend="handleTouchEnd"
+      >
         <div v-if="refreshing" class="pull-refresh-indicator">
           <v-progress-circular indeterminate color="primary" size="24"></v-progress-circular>
           <span class="ml-2 text-caption">Обновление...</span>

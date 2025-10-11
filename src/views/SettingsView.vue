@@ -61,6 +61,32 @@
                       hide-details
                       @change="updateRequiredFields"
                     ></v-checkbox>
+                    <v-checkbox
+                      v-model="settingsStore.requiredFields.details"
+                      :label="settingsStore.appSettings.detailsTabLabel"
+                      color="primary"
+                      hide-details
+                      @change="updateRequiredFields"
+                    ></v-checkbox>
+                  </div>
+                  <div class="d-flex align-center mt-4">
+                    <v-text-field
+                      v-model="settingsStore.appSettings.orderFormLastNameLabel"
+                      label="Название дополнительного поля"
+                      variant="outlined"
+                      dense
+                      hide-details
+                      class="flex-grow-1"
+                      @update:modelValue="updateAppSettings"
+                    ></v-text-field>
+                    <v-checkbox
+                      v-model="settingsStore.requiredFields.lastName"
+                      label="Обязательное"
+                      color="primary"
+                      hide-details
+                      class="ml-4"
+                      @change="updateRequiredFields"
+                    ></v-checkbox>
                   </div>
                 </v-card-text>
               </v-card>
@@ -312,6 +338,14 @@
                     inset
                     @change="updateAppSettings"
                   ></v-switch>
+                  <v-text-field
+                    v-model="settingsStore.appSettings.detailsTabLabel"
+                    label="Название вкладки 'Детали'"
+                    variant="outlined"
+                    dense
+                    class="mt-4"
+                    @update:modelValue="updateAppSettings"
+                  ></v-text-field>
                   
                   <v-switch
                     v-model="settingsStore.appSettings.enablePullToRefresh"
