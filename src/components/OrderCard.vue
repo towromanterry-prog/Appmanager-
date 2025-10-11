@@ -9,8 +9,10 @@
             <span class="text-on-primary-container font-weight-bold">{{ clientInitial }}</span>
           </v-avatar>
           <div class="client-info">
-            <div class="font-weight-bold text-body-1 text-on-surface text-truncate">{{ order.clientName }}</div>
-            <div class="font-weight-bold text-body-1 text-on-surface">{{ order.lastName }}</div>
+            <div>
+                <span class="font-weight-bold text-body-1 text-on-surface text-truncate">{{ order.clientName }}</span>
+                <span class="font-weight-bold text-body-1 text-on-surface">{{ order.lastName }}</span>
+            </div>
             <div class="text-caption text-on-surface-variant phone-number">{{ order.phone }}</div>
           </div>
         </div>
@@ -26,7 +28,7 @@
           <v-btn density="compact" icon="mdi-phone" variant="text" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop size="small"></v-btn>
           <v-btn density="compact" icon="mdi-message-text" variant="text" color="on-surface-variant" :href="`sms:${order.phone}`" @click.stop size="small"></v-btn>
           <v-btn density="compact" icon="mdi-whatsapp" variant="text" color="on-surface-variant" :href="`https://wa.me/${order.phone}`" target="_blank" @click.stop size="small"></v-btn>
-          <v-btn density="compact" icon="$telegram" variant="text" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop size="small"></v-btn>
+          <v-btn density="compact" icon="mdi-telegram" variant="text" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop size="small"></v-btn>
         </div>
       </div>
     </v-card-text>
@@ -187,9 +189,21 @@ const handleCancelClick = () => {
   border-radius: 8px;
 }
 .client-info {
-  display: flex;
-  flex-direction: column;
+  display: block; /* Changed to block for better wrapping control */
   overflow: hidden;
+  max-width: 100%;
+}
+.client-info > div {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.client-info .font-weight-bold.text-body-1.text-on-surface {
+    display: inline; /* Allow first and last name to be on the same line if space allows */
+    margin-right: 4px; /* Add space between first and last name */
+}
+.client-info .text-caption {
+    display: block; /* Ensure phone number is on its own line */
 }
 .phone-number {
   margin-top: 2px;

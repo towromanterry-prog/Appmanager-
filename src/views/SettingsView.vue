@@ -149,8 +149,8 @@
                   <v-divider class="my-4"></v-divider>
                   <p class="text-subtitle-1 mb-2">Синхронизация статусов</p>
 
-                  <!-- Синхронизация услуг → заказ -->
-                  <p class="text-body-2 mb-3">Автоматически менять статус заказа, если ВСЕ услуги перешли в статус:</p>
+                  <!-- Синхронизация услуг и деталей → заказ -->
+                  <p class="text-body-2 mb-3">Автоматически менять статус заказа, если ВСЕ услуги и детали перешли в статус:</p>
                   <div class="sync-settings mb-4">
                     <div 
                       v-for="(label, key) in syncableServiceStatuses" 
@@ -169,30 +169,10 @@
                     </div>
                   </div>
 
-                  <!-- Синхронизация деталей → заказ -->
-                  <p class="text-body-2 mb-3">Автоматически менять статус заказа, если ВСЕ {{ settingsStore.appSettings.detailsTabLabel.toLowerCase() }} перешли в статус:</p>
-                  <div class="sync-settings mb-4">
-                    <div
-                      v-for="(label, key) in syncableServiceStatuses"
-                      :key="key"
-                      class="sync-status-row"
-                      :class="{ 'disabled-row': !settingsStore.appSettings.orderStatuses[key] }"
-                    >
-                      <v-checkbox
-                        v-model="settingsStore.appSettings.syncDetailToOrderStatus[key]"
-                        :label="label"
-                        :disabled="!settingsStore.appSettings.orderStatuses[key]"
-                        color="primary"
-                        hide-details
-                        @change="updateAppSettings"
-                      ></v-checkbox>
-                    </div>
-                  </div>
-
-                  <!-- Синхронизация заказ → услуги -->
+                  <!-- Синхронизация заказ → услуги и детали -->
                   <v-divider class="my-4"></v-divider>
-                  <p class="text-body-2 mb-3">Синхронизировать услуги при смене статуса заказа:</p>
-                  <div class="sync-settings mb-4">
+                  <p class="text-body-2 mb-3">Синхронизировать услуги и детали при смене статуса заказа:</p>
+                  <div class="sync-settings">
                     <div 
                       v-for="(label, key) in syncableOrderStatuses" 
                       :key="key"
@@ -213,38 +193,6 @@
                         label="С подтверждением"
                         :disabled="!settingsStore.appSettings.serviceStatuses[key] || 
                                    !settingsStore.appSettings.syncOrderToServiceStatus[key].enabled"
-                        color="secondary"
-                        hide-details
-                        class="ml-8"
-                        @change="updateAppSettings"
-                      ></v-checkbox>
-                    </div>
-                  </div>
-
-                  <!-- Синхронизация заказ → детали -->
-                  <v-divider class="my-4"></v-divider>
-                  <p class="text-body-2 mb-3">Синхронизировать {{ settingsStore.appSettings.detailsTabLabel.toLowerCase() }} при смене статуса заказа:</p>
-                  <div class="sync-settings">
-                    <div
-                      v-for="(label, key) in syncableOrderStatuses"
-                      :key="key"
-                      class="sync-status-row"
-                      :class="{ 'disabled-row': !settingsStore.appSettings.detailStatuses[key] }"
-                    >
-                      <v-checkbox
-                        v-model="settingsStore.appSettings.syncOrderToDetailStatus[key].enabled"
-                        :label="label"
-                        :disabled="!settingsStore.appSettings.detailStatuses[key]"
-                        color="primary"
-                        hide-details
-                        @change="updateAppSettings"
-                      ></v-checkbox>
-
-                      <v-checkbox
-                        v-model="settingsStore.appSettings.syncOrderToDetailStatus[key].confirm"
-                        label="С подтверждением"
-                        :disabled="!settingsStore.appSettings.detailStatuses[key] ||
-                                   !settingsStore.appSettings.syncOrderToDetailStatus[key].enabled"
                         color="secondary"
                         hide-details
                         class="ml-8"

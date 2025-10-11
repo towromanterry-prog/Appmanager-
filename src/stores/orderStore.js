@@ -116,19 +116,17 @@ export const useOrderStore = defineStore('orders', () => {
     return statusMap[status] || status;
   }
 
-  function _syncOrderStatusFromItems(order, itemType) {
+  function _syncOrderStatusFromItems(order) {
     const settingsStore = useSettingsStore();
-    const items = order[itemType] || [];
-    if (items.length === 0) return;
+    const allItems = [...(order.services || []), ...(order.details || [])];
+    if (allItems.length === 0) return;
 
-    const itemFlow = itemType === 'services' ? SERVICE_STATUS_FLOW : DETAIL_STATUS_FLOW;
-    const syncSettings = itemType === 'services'
-      ? settingsStore.appSettings.syncServiceToOrderStatus
-      : settingsStore.appSettings.syncDetailToOrderStatus;
+    const itemFlow = SERVICE_STATUS_FLOW; // Assuming services and details share the same flow
+    const syncSettings = settingsStore.appSettings.syncServiceToOrderStatus;
 
     const orderStatusSettings = settingsStore.appSettings.orderStatuses;
     const orderStatusIndex = ORDER_STATUS_FLOW.indexOf(order.status);
-    const itemStatusIndices = items.map(item => itemFlow.indexOf(item.status));
+    const itemStatusIndices = allItems.map(item => itemFlow.indexOf(item.status));
 
     const allItemsAreAhead = itemStatusIndices.every(i => i > orderStatusIndex);
     if (!allItemsAreAhead) return;
@@ -148,11 +146,11 @@ export const useOrderStore = defineStore('orders', () => {
   }
 
   function _syncOrderStatusFromServices(order) {
-    _syncOrderStatusFromItems(order, 'services');
+    _syncOrderStatusFromItems(order);
   }
 
   function _syncOrderStatusFromDetails(order) {
-    _syncOrderStatusFromItems(order, 'details');
+    _syncOrderStatusFromItems(order);
   }
 
   async function _syncItemsStatusFromOrder(order, newStatus, itemType) {
@@ -164,9 +162,7 @@ export const useOrderStore = defineStore('orders', () => {
     const itemStatusesSettings = itemType === 'services'
       ? settingsStore.appSettings.serviceStatuses
       : settingsStore.appSettings.detailStatuses;
-    const syncConfigRoot = itemType === 'services'
-      ? settingsStore.appSettings.syncOrderToServiceStatus
-      : settingsStore.appSettings.syncOrderToDetailStatus;
+    const syncConfigRoot = settingsStore.appSettings.syncOrderToServiceStatus;
     const itemName = itemType === 'services' ? 'услуг(и)' : settingsStore.appSettings.detailsTabLabel.toLowerCase();
 
     if (newStatus === 'accepted' || !itemFlow.includes(newStatus) || !itemStatusesSettings[newStatus]) {
