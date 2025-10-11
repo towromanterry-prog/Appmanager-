@@ -8,9 +8,10 @@
           <v-avatar color="primary-container" size="40" class="mr-3">
             <span class="text-on-primary-container font-weight-bold">{{ clientInitial }}</span>
           </v-avatar>
-          <div>
-            <div class="font-weight-bold text-body-1 text-on-surface">{{ order.clientName }} {{ order.lastName }}</div>
-            <div class="text-caption text-on-surface-variant">{{ order.phone }}</div>
+          <div class="client-info">
+            <div class="font-weight-bold text-body-1 text-on-surface text-truncate">{{ order.clientName }}</div>
+            <div class="font-weight-bold text-body-1 text-on-surface">{{ order.lastName }}</div>
+            <div class="text-caption text-on-surface-variant phone-number">{{ order.phone }}</div>
           </div>
         </div>
       </div>
@@ -21,11 +22,11 @@
           @click.stop="changeOrderStatus"
           class="mb-2"
         />
-        <div class="d-flex ga-0">
+        <div class="d-flex ga-1">
           <v-btn density="compact" icon="mdi-phone" variant="text" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop size="small"></v-btn>
           <v-btn density="compact" icon="mdi-message-text" variant="text" color="on-surface-variant" :href="`sms:${order.phone}`" @click.stop size="small"></v-btn>
           <v-btn density="compact" icon="mdi-whatsapp" variant="text" color="on-surface-variant" :href="`https://wa.me/${order.phone}`" target="_blank" @click.stop size="small"></v-btn>
-          <v-btn density="compact" icon="mdi-telegram" variant="text" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop size="small"></v-btn>
+          <v-btn density="compact" icon="$telegram" variant="text" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop size="small"></v-btn>
         </div>
       </div>
     </v-card-text>
@@ -184,5 +185,13 @@ const handleCancelClick = () => {
   background-color: rgba(var(--v-theme-on-surface), 0.05);
   padding: 8px 12px;
   border-radius: 8px;
+}
+.client-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.phone-number {
+  margin-top: 2px;
 }
 </style>
