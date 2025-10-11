@@ -136,7 +136,7 @@
                     ></v-checkbox>
                   </div>
 
-                  <p class="text-caption text-medium-emphasis">Для {{ settingsStore.appSettings.detailsTabLabel }}:</p>
+                  <p class="text-caption text-medium-emphasis">Для "{{ settingsStore.appSettings.detailsTabLabel }}":</p>
                   <div class="d-flex flex-wrap ga-2 mb-4">
                     <v-checkbox v-for="(label, key) in detailStatusLabels" :key="key"
                       v-model="settingsStore.appSettings.detailStatuses[key]"

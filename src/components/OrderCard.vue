@@ -3,16 +3,18 @@
     <!-- Основная видимая часть -->
     <v-card-text class="d-flex align-start pa-4">
       <!-- Аватар и инфо о клиенте -->
-      <div class="flex-grow-1 d-flex align-center" style="min-width: 0;">
-        <v-avatar color="primary-container" size="40" class="mr-3 flex-shrink-0">
-          <span class="text-on-primary-container font-weight-bold">{{ clientInitial }}</span>
-        </v-avatar>
-        <div class="client-info">
-          <div class="client-name-line">
-            <span class="text-truncate font-weight-bold">{{ order.clientName }}</span>
-            <span class="font-weight-bold ml-1">{{ order.lastName }}</span>
+      <div class="flex-grow-1 mr-4" style="min-width: 0;">
+        <div class="d-flex align-center">
+          <v-avatar color="primary-container" size="40" class="mr-3 flex-shrink-0">
+            <span class="text-on-primary-container font-weight-bold">{{ clientInitial }}</span>
+          </v-avatar>
+          <div class="client-info">
+            <div class="client-name-line">
+              <span class="text-truncate font-weight-bold">{{ order.clientName }}</span>
+              <span class="font-weight-bold ml-1">{{ order.lastName }}</span>
+            </div>
+            <div class="text-caption text-on-surface-variant">{{ order.phone }}</div>
           </div>
-          <div class="text-caption text-on-surface-variant">{{ order.phone }}</div>
         </div>
       </div>
       <!-- Статус и действия -->
@@ -26,7 +28,7 @@
           <v-btn density="compact" icon="mdi-phone" variant="text" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop size="small"></v-btn>
           <v-btn density="compact" icon="mdi-message-text" variant="text" color="on-surface-variant" :href="`sms:${order.phone}`" @click.stop size="small"></v-btn>
           <v-btn density="compact" icon="mdi-whatsapp" variant="text" color="on-surface-variant" :href="`https://wa.me/${order.phone}`" target="_blank" @click.stop size="small"></v-btn>
-          <v-btn density="compact" icon="mdi-telegram" variant="text" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop size="small"></v-btn>
+          <v-btn density="compact" icon="$telegram" variant="text" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop size="small"></v-btn>
         </div>
       </div>
     </v-card-text>
@@ -188,17 +190,17 @@ const handleCancelClick = () => {
 }
 .client-info {
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
 }
 .client-name-line {
   display: flex;
-  flex-wrap: wrap; /* Allow wrapping */
   align-items: baseline;
 }
 .client-name-line .text-truncate {
-  min-width: 0; /* Allow truncation */
-  flex-shrink: 1; /* Allow shrinking */
+  min-width: 0;
+  flex-shrink: 1;
+}
+.client-name-line span:last-child {
+  white-space: normal;
+  word-break: break-all;
 }
 </style>
