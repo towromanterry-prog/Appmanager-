@@ -10,8 +10,8 @@
           </v-avatar>
           <div class="client-info">
             <div class="client-name-line">
-              <span class="text-truncate font-weight-bold">{{ order.clientName }}</span>
-              <span class="font-weight-bold ml-1">{{ order.lastName }}</span>
+              <span class="text-truncate font-weight-bold">{{ clientNameDisplay.first }}</span>
+              <span class="font-weight-bold ml-1">{{ clientNameDisplay.last }}</span>
             </div>
             <div class="text-caption text-on-surface-variant">{{ order.phone }}</div>
           </div>
@@ -28,7 +28,7 @@
           <v-btn density="compact" icon="mdi-phone" variant="text" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop size="small"></v-btn>
           <v-btn density="compact" icon="mdi-message-text" variant="text" color="on-surface-variant" :href="`sms:${order.phone}`" @click.stop size="small"></v-btn>
           <v-btn density="compact" icon="mdi-whatsapp" variant="text" color="on-surface-variant" :href="`https://wa.me/${order.phone}`" target="_blank" @click.stop size="small"></v-btn>
-          <v-btn density="compact" icon="$telegram" variant="text" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop size="small"></v-btn>
+          <v-btn density="compact" icon="telegram" variant="text" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop size="small"></v-btn>
         </div>
       </div>
     </v-card-text>
@@ -120,6 +120,23 @@ const expanded = ref(false);
 
 const clientInitial = computed(() => props.order.clientName?.charAt(0).toUpperCase() || '?');
 
+const clientNameDisplay = computed(() => {
+  const firstName = props.order.clientName || '';
+  const lastName = props.order.lastName || '';
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  if (fullName.length > 25) { // Пороговая длина имени
+    return {
+      first: `${firstName.charAt(0)}.`,
+      last: lastName
+    };
+  }
+  return {
+    first: firstName,
+    last: lastName
+  };
+});
+
 const totalAmount = computed(() => props.order.totalAmount || 0);
 
 const formattedDeadline = computed(() => props.order.deadline ? toLongDate(props.order.deadline) : 'Не указан');
@@ -198,9 +215,13 @@ const handleCancelClick = () => {
 .client-name-line .text-truncate {
   min-width: 0;
   flex-shrink: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .client-name-line span:last-child {
-  white-space: normal;
-  word-break: break-all;
+  white-space: normal; /* Allows last name to wrap */
+  word-break: break-word; /* Breaks the word only if necessary */
+  flex-shrink: 0; /* Prevents the last name from shrinking */
 }
 </style>

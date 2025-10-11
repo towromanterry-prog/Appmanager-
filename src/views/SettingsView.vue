@@ -150,7 +150,7 @@
                   <p class="text-subtitle-1 mb-2">Синхронизация статусов</p>
 
                   <!-- Синхронизация услуг и деталей → заказ -->
-                  <p class="text-body-2 mb-3">Автоматически менять статус заказа, если ВСЕ услуги и детали перешли в статус:</p>
+                  <p class="text-body-2 mb-3">Автоматически менять статус заказа, если ВСЕ услуги и {{ settingsStore.appSettings.detailsTabLabel.toLowerCase() }} перешли в статус:</p>
                   <div class="sync-settings mb-4">
                     <div 
                       v-for="(label, key) in syncableServiceStatuses" 
@@ -171,7 +171,7 @@
 
                   <!-- Синхронизация заказ → услуги и детали -->
                   <v-divider class="my-4"></v-divider>
-                  <p class="text-body-2 mb-3">Синхронизировать услуги и детали при смене статуса заказа:</p>
+                  <p class="text-body-2 mb-3">Синхронизировать услуги и {{ settingsStore.appSettings.detailsTabLabel.toLowerCase() }} при смене статуса заказа:</p>
                   <div class="sync-settings">
                     <div 
                       v-for="(label, key) in syncableOrderStatuses" 
