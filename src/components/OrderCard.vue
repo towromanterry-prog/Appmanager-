@@ -3,18 +3,16 @@
     <!-- Основная видимая часть -->
     <v-card-text class="d-flex align-start pa-4">
       <!-- Аватар и инфо о клиенте -->
-      <div class="flex-grow-1 mr-4">
-        <div class="d-flex align-center mb-2">
-          <v-avatar color="primary-container" size="40" class="mr-3">
-            <span class="text-on-primary-container font-weight-bold">{{ clientInitial }}</span>
-          </v-avatar>
-          <div class="client-info">
-            <div>
-                <span class="font-weight-bold text-body-1 text-on-surface text-truncate">{{ order.clientName }}</span>
-                <span class="font-weight-bold text-body-1 text-on-surface">{{ order.lastName }}</span>
-            </div>
-            <div class="text-caption text-on-surface-variant phone-number">{{ order.phone }}</div>
+      <div class="flex-grow-1 d-flex align-center" style="min-width: 0;">
+        <v-avatar color="primary-container" size="40" class="mr-3 flex-shrink-0">
+          <span class="text-on-primary-container font-weight-bold">{{ clientInitial }}</span>
+        </v-avatar>
+        <div class="client-info">
+          <div class="client-name-line">
+            <span class="text-truncate font-weight-bold">{{ order.clientName }}</span>
+            <span class="font-weight-bold ml-1">{{ order.lastName }}</span>
           </div>
+          <div class="text-caption text-on-surface-variant">{{ order.phone }}</div>
         </div>
       </div>
       <!-- Статус и действия -->
@@ -189,23 +187,18 @@ const handleCancelClick = () => {
   border-radius: 8px;
 }
 .client-info {
-  display: block; /* Changed to block for better wrapping control */
   overflow: hidden;
-  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
-.client-info > div {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.client-name-line {
+  display: flex;
+  flex-wrap: wrap; /* Allow wrapping */
+  align-items: baseline;
 }
-.client-info .font-weight-bold.text-body-1.text-on-surface {
-    display: inline; /* Allow first and last name to be on the same line if space allows */
-    margin-right: 4px; /* Add space between first and last name */
-}
-.client-info .text-caption {
-    display: block; /* Ensure phone number is on its own line */
-}
-.phone-number {
-  margin-top: 2px;
+.client-name-line .text-truncate {
+  min-width: 0; /* Allow truncation */
+  flex-shrink: 1; /* Allow shrinking */
 }
 </style>
