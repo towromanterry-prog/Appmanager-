@@ -35,13 +35,29 @@ export const useSettingsStore = defineStore('settings', () => {
       in_progress: true,
       completed: true,
     },
+    detailStatuses: {
+      accepted: true,
+      additional: true,
+      in_progress: true,
+      completed: true,
+    },
     syncServiceToOrderStatus: {
+      additional: true,
+      in_progress: true,
+      completed: true,
+    },
+    syncDetailToOrderStatus: {
       additional: true,
       in_progress: true,
       completed: true,
     },
     // НОВАЯ СТРУКТУРА - вместо 'none' | 'auto' | 'confirm'
     syncOrderToServiceStatus: {
+      additional: { enabled: false, confirm: true },
+      in_progress: { enabled: true, confirm: true },
+      completed: { enabled: true, confirm: false },
+    },
+    syncOrderToDetailStatus: {
       additional: { enabled: false, confirm: true },
       in_progress: { enabled: true, confirm: true },
       completed: { enabled: true, confirm: false },
@@ -145,12 +161,28 @@ export const useSettingsStore = defineStore('settings', () => {
         in_progress: true,
         completed: true,
       },
+      detailStatuses: {
+        accepted: true,
+        additional: true,
+        in_progress: true,
+        completed: true,
+      },
       syncServiceToOrderStatus: {
         additional: true,
         in_progress: true,
         completed: true,
       },
+      syncDetailToOrderStatus: {
+        additional: true,
+        in_progress: true,
+        completed: true,
+      },
       syncOrderToServiceStatus: {
+        additional: { enabled: false, confirm: true },
+        in_progress: { enabled: true, confirm: true },
+        completed: { enabled: true, confirm: false },
+      },
+      syncOrderToDetailStatus: {
         additional: { enabled: false, confirm: true },
         in_progress: { enabled: true, confirm: true },
         completed: { enabled: true, confirm: false },

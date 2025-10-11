@@ -136,6 +136,16 @@
                     ></v-checkbox>
                   </div>
 
+                  <p class="text-caption text-medium-emphasis">Для {{ settingsStore.appSettings.detailsTabLabel }}:</p>
+                  <div class="d-flex flex-wrap ga-2 mb-4">
+                    <v-checkbox v-for="(label, key) in detailStatusLabels" :key="key"
+                      v-model="settingsStore.appSettings.detailStatuses[key]"
+                      :label="label"
+                      :disabled="key === 'accepted'"
+                      color="primary" hide-details @change="updateAppSettings"
+                    ></v-checkbox>
+                  </div>
+
                   <v-divider class="my-4"></v-divider>
                   <p class="text-subtitle-1 mb-2">Синхронизация статусов</p>
 
@@ -159,10 +169,30 @@
                     </div>
                   </div>
 
+                  <!-- Синхронизация деталей → заказ -->
+                  <p class="text-body-2 mb-3">Автоматически менять статус заказа, если ВСЕ {{ settingsStore.appSettings.detailsTabLabel.toLowerCase() }} перешли в статус:</p>
+                  <div class="sync-settings mb-4">
+                    <div
+                      v-for="(label, key) in syncableServiceStatuses"
+                      :key="key"
+                      class="sync-status-row"
+                      :class="{ 'disabled-row': !settingsStore.appSettings.orderStatuses[key] }"
+                    >
+                      <v-checkbox
+                        v-model="settingsStore.appSettings.syncDetailToOrderStatus[key]"
+                        :label="label"
+                        :disabled="!settingsStore.appSettings.orderStatuses[key]"
+                        color="primary"
+                        hide-details
+                        @change="updateAppSettings"
+                      ></v-checkbox>
+                    </div>
+                  </div>
+
                   <!-- Синхронизация заказ → услуги -->
                   <v-divider class="my-4"></v-divider>
                   <p class="text-body-2 mb-3">Синхронизировать услуги при смене статуса заказа:</p>
-                  <div class="sync-settings">
+                  <div class="sync-settings mb-4">
                     <div 
                       v-for="(label, key) in syncableOrderStatuses" 
                       :key="key"
@@ -183,6 +213,38 @@
                         label="С подтверждением"
                         :disabled="!settingsStore.appSettings.serviceStatuses[key] || 
                                    !settingsStore.appSettings.syncOrderToServiceStatus[key].enabled"
+                        color="secondary"
+                        hide-details
+                        class="ml-8"
+                        @change="updateAppSettings"
+                      ></v-checkbox>
+                    </div>
+                  </div>
+
+                  <!-- Синхронизация заказ → детали -->
+                  <v-divider class="my-4"></v-divider>
+                  <p class="text-body-2 mb-3">Синхронизировать {{ settingsStore.appSettings.detailsTabLabel.toLowerCase() }} при смене статуса заказа:</p>
+                  <div class="sync-settings">
+                    <div
+                      v-for="(label, key) in syncableOrderStatuses"
+                      :key="key"
+                      class="sync-status-row"
+                      :class="{ 'disabled-row': !settingsStore.appSettings.detailStatuses[key] }"
+                    >
+                      <v-checkbox
+                        v-model="settingsStore.appSettings.syncOrderToDetailStatus[key].enabled"
+                        :label="label"
+                        :disabled="!settingsStore.appSettings.detailStatuses[key]"
+                        color="primary"
+                        hide-details
+                        @change="updateAppSettings"
+                      ></v-checkbox>
+
+                      <v-checkbox
+                        v-model="settingsStore.appSettings.syncOrderToDetailStatus[key].confirm"
+                        label="С подтверждением"
+                        :disabled="!settingsStore.appSettings.detailStatuses[key] ||
+                                   !settingsStore.appSettings.syncOrderToDetailStatus[key].enabled"
                         color="secondary"
                         hide-details
                         class="ml-8"
@@ -453,6 +515,13 @@ const orderStatusLabels = computed(() => ({
 }));
 
 const serviceStatusLabels = computed(() => ({
+  accepted: 'Принят',
+  additional: settingsStore.appSettings.additionalStatusName,
+  in_progress: 'В работе',
+  completed: 'Выполнено',
+}));
+
+const detailStatusLabels = computed(() => ({
   accepted: 'Принят',
   additional: settingsStore.appSettings.additionalStatusName,
   in_progress: 'В работе',
