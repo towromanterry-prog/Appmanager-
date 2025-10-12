@@ -6,6 +6,7 @@ import { useConfirmationStore } from './confirmationStore';
 
 const ORDER_STATUS_FLOW = ['accepted', 'additional', 'in_progress', 'completed', 'delivered'];
 const SERVICE_STATUS_FLOW = ['accepted', 'additional', 'in_progress', 'completed'];
+const DETAIL_STATUS_FLOW = ['accepted', 'additional', 'in_progress', 'completed'];
 
 export const useOrderStore = defineStore('orders', () => {
   const orders = ref([]);
@@ -27,6 +28,10 @@ export const useOrderStore = defineStore('orders', () => {
             services: (o.services || []).map(s => ({
               ...s,
               status: s.status || 'accepted'
+            })),
+            details: (o.details || []).map(d => ({
+              ...d,
+              status: d.status || 'accepted'
             }))
           }));
         } else {
@@ -55,7 +60,10 @@ export const useOrderStore = defineStore('orders', () => {
         ...s,
         status: settingsStore.appSettings.defaultOrderStatus || 'accepted'
       })),
-      details: orderData.details || [],
+      details: (orderData.details || []).map(d => ({
+        ...d,
+        status: settingsStore.appSettings.defaultOrderStatus || 'accepted'
+      })),
       lastName: orderData.lastName || ''
     };
     orders.value.push(newOrder);
@@ -77,7 +85,10 @@ export const useOrderStore = defineStore('orders', () => {
           ...s,
           status: s.status || 'accepted'
         })),
-        details: orderData.details || originalOrder.details || [],
+        details: (orderData.details || originalOrder.details || []).map(d => ({
+          ...d,
+          status: d.status || 'accepted'
+        })),
         lastName: orderData.lastName || ''
       };
       _save();
@@ -105,143 +116,160 @@ export const useOrderStore = defineStore('orders', () => {
     return statusMap[status] || status;
   }
 
-  // ИЗМЕНЕНО: Исправлена логика синхронизации статуса заказа от статусов услуг.
-  function _syncOrderStatusFromServices(order) {
+  function _syncOrderStatusFromItems(order) {
     const settingsStore = useSettingsStore();
+    const allItems = [...(order.services || []), ...(order.details || [])];
+    if (allItems.length === 0) return;
+
+    const itemFlow = SERVICE_STATUS_FLOW; // Assuming services and details share the same flow
     const syncSettings = settingsStore.appSettings.syncServiceToOrderStatus;
+
     const orderStatusSettings = settingsStore.appSettings.orderStatuses;
-
-    if (!order.services || order.services.length === 0) {
-      return;
-    }
-
     const orderStatusIndex = ORDER_STATUS_FLOW.indexOf(order.status);
-    const serviceStatusIndices = order.services.map(s => SERVICE_STATUS_FLOW.indexOf(s.status));
+    const itemStatusIndices = allItems.map(item => itemFlow.indexOf(item.status));
 
-    // Правило 1: Все услуги должны иметь статус "старше" (индекс больше), чем у заказа.
-    const allServicesAreAhead = serviceStatusIndices.every(i => i > orderStatusIndex);
-    if (!allServicesAreAhead) {
+    const allItemsAreAhead = itemStatusIndices.every(i => i > orderStatusIndex);
+    if (!allItemsAreAhead) return;
+
+    const minItemIndex = Math.min(...itemStatusIndices);
+    if (minItemIndex === -1 || minItemIndex >= ORDER_STATUS_FLOW.length) return;
+
+    const newOrderStatus = ORDER_STATUS_FLOW[minItemIndex];
+
+    if (!orderStatusSettings[newOrderStatus] || !syncSettings[newOrderStatus]) {
       return;
     }
 
-    // Правило 2: Находим минимальный (самый "младший") статус среди услуг.
-    const minServiceIndex = Math.min(...serviceStatusIndices);
-    if (minServiceIndex === -1 || minServiceIndex >= ORDER_STATUS_FLOW.length) {
-      return; // Защита от некорректных индексов
-    }
-    const newOrderStatus = ORDER_STATUS_FLOW[minServiceIndex];
-
-    // Правило 3: Целевой статус должен быть активен в настройках статусов заказа.
-    if (!orderStatusSettings[newOrderStatus]) {
-      return;
-    }
-
-    // Правило 4: Для целевого статуса должна быть включена синхронизация.
-    if (!syncSettings[newOrderStatus]) {
-      return;
-    }
-    
-    // Правило 5: Если все проверки пройдены, обновляем статус заказа.
     if (order.status !== newOrderStatus) {
       order.status = newOrderStatus;
     }
   }
-  // КОНЕЦ ИЗМЕНЕНИЯ
 
-  async function _syncServicesStatusFromOrder(order, newStatus) {
+  function _syncOrderStatusFromServices(order) {
+    _syncOrderStatusFromItems(order);
+  }
+
+  function _syncOrderStatusFromDetails(order) {
+    _syncOrderStatusFromItems(order);
+  }
+
+  async function _syncItemsStatusFromOrder(order, newStatus, itemType) {
     const settingsStore = useSettingsStore();
     const confirmationStore = useConfirmationStore();
-    // Проверка 1: Статус должен быть в SERVICE_STATUS_FLOW
-    if (newStatus === 'accepted' || !SERVICE_STATUS_FLOW.includes(newStatus)) {
-      return;
-    }
     
-    // Проверка 2: Целевой статус активен для услуг
-    if (!settingsStore.appSettings.serviceStatuses[newStatus]) {
+    const items = order[itemType] || [];
+    const itemFlow = itemType === 'services' ? SERVICE_STATUS_FLOW : DETAIL_STATUS_FLOW;
+    const itemStatusesSettings = itemType === 'services'
+      ? settingsStore.appSettings.serviceStatuses
+      : settingsStore.appSettings.detailStatuses;
+    const syncConfigRoot = settingsStore.appSettings.syncOrderToServiceStatus;
+    const itemName = itemType === 'services' ? 'услуг(и)' : settingsStore.appSettings.detailsTabLabel.toLowerCase();
+
+    if (newStatus === 'accepted' || !itemFlow.includes(newStatus) || !itemStatusesSettings[newStatus]) {
       return;
     }
 
-    // Проверка 3: Синхронизация включена для этого статуса
-    const syncConfig = settingsStore.appSettings.syncOrderToServiceStatus[newStatus];
+    const syncConfig = syncConfigRoot[newStatus];
     if (!syncConfig || !syncConfig.enabled) {
       return;
     }
 
-    const newStatusIndex = SERVICE_STATUS_FLOW.indexOf(newStatus);
+    const newStatusIndex = itemFlow.indexOf(newStatus);
+    const itemsToUpdate = items.filter(item => itemFlow.indexOf(item.status) < newStatusIndex);
 
-    const servicesToUpdate = order.services.filter(s => {
-      const currentServiceIndex = SERVICE_STATUS_FLOW.indexOf(s.status);
-      return currentServiceIndex < newStatusIndex;
-    });
+    if (itemsToUpdate.length === 0) return;
 
-    if (servicesToUpdate.length === 0) {
-      return;
-    }
-
-    // Проверка 4: Нужно ли подтверждение
-    let applyToServices = true;
+    let applyUpdates = true;
     if (syncConfig.confirm) {
-      applyToServices = await confirmationStore.open(
+      applyUpdates = await confirmationStore.open(
         'Синхронизация статусов',
-        `Изменить статус ${servicesToUpdate.length} услуг(и) на "${getStatusText(newStatus)}"?`
+        `Изменить статус ${itemsToUpdate.length} ${itemName} на "${getStatusText(newStatus)}"?`
       );
     }
 
-    if (applyToServices) {
-      servicesToUpdate.forEach(s => {
-        s.status = newStatus;
+    if (applyUpdates) {
+      itemsToUpdate.forEach(item => {
+        item.status = newStatus;
       });
     }
   }
 
-  async function updateStatus(orderId, newStatus, isService = false, serviceIndex = -1) {
+  async function _syncServicesStatusFromOrder(order, newStatus) {
+    await _syncItemsStatusFromOrder(order, newStatus, 'services');
+  }
+
+  async function _syncDetailsStatusFromOrder(order, newStatus) {
+    await _syncItemsStatusFromOrder(order, newStatus, 'details');
+  }
+
+  async function updateStatus(orderId, newStatus, itemType = 'order', itemIndex = -1) {
     const order = orders.value.find(o => o.id === orderId);
     if (!order) return;
 
     const settingsStore = useSettingsStore();
     const confirmationStore = useConfirmationStore();
+
+    const isService = itemType === 'service';
+    const isDetail = itemType === 'detail';
     
-    const flow = isService ? SERVICE_STATUS_FLOW : ORDER_STATUS_FLOW;
-    const oldStatus = isService ? order.services[serviceIndex].status : order.status;
+    let flow, oldStatus, activeStatuses;
+
+    if (isService) {
+      flow = SERVICE_STATUS_FLOW;
+      oldStatus = order.services[itemIndex].status;
+      activeStatuses = settingsStore.appSettings.serviceStatuses;
+    } else if (isDetail) {
+      flow = DETAIL_STATUS_FLOW;
+      oldStatus = order.details[itemIndex].status;
+      activeStatuses = settingsStore.appSettings.detailStatuses;
+    } else { // order
+      flow = ORDER_STATUS_FLOW;
+      oldStatus = order.status;
+      activeStatuses = settingsStore.appSettings.orderStatuses;
+    }
+
     const oldIndex = flow.indexOf(oldStatus);
     const newIndex = flow.indexOf(newStatus);
-    const activeStatuses = isService ? settingsStore.appSettings.serviceStatuses : settingsStore.appSettings.orderStatuses;
     const activeFlow = flow.filter(s => activeStatuses[s]);
     const lastActiveStatusInFlow = activeFlow[activeFlow.length - 1];
     
-    // Case 1: Circular loop
     if (oldStatus === lastActiveStatusInFlow && newStatus === flow[0]) {
-      const confirmed = await confirmationStore.open(
-        'Начать сначала?',
-        `Вы уверены, что хотите вернуть статус с "${getStatusText(oldStatus)}" на начальный статус "${getStatusText(newStatus)}"?`
-      );
+      const confirmed = await confirmationStore.open('Начать сначала?', `Вы уверены, что хотите вернуть статус с "${getStatusText(oldStatus)}" на начальный статус "${getStatusText(newStatus)}"?`);
       if (!confirmed) return;
-    }
-    // Case 2: Any other downgrade
-    else if (newIndex < oldIndex && oldStatus !== 'cancelled') {
-      const confirmed = await confirmationStore.open(
-        'Понижение статуса',
-        `Вы уверены, что хотите изменить статус с "${getStatusText(oldStatus)}" на "${getStatusText(newStatus)}"?`
-      );
+    } else if (newIndex < oldIndex && oldStatus !== 'cancelled') {
+      const confirmed = await confirmationStore.open('Понижение статуса', `Вы уверены, что хотите изменить статус с "${getStatusText(oldStatus)}" на "${getStatusText(newStatus)}"?`);
       if (!confirmed) return;
     }
 
-    // Update the primary status (order or service)
     if (isService) {
-      order.services[serviceIndex].status = newStatus;
+      order.services[itemIndex].status = newStatus;
       _syncOrderStatusFromServices(order);
+    } else if (isDetail) {
+      order.details[itemIndex].status = newStatus;
+      _syncOrderStatusFromDetails(order);
     } else {
       order.status = newStatus;
       await _syncServicesStatusFromOrder(order, newStatus);
+      await _syncDetailsStatusFromOrder(order, newStatus);
     }
 
     _save();
   }
 
-  function calculateNextStatus(currentStatus, isService = false) {
+  function calculateNextStatus(currentStatus, itemType = 'order') {
     const settingsStore = useSettingsStore();
-    const flow = isService ? SERVICE_STATUS_FLOW : ORDER_STATUS_FLOW;
-    const activeStatuses = isService ? settingsStore.appSettings.serviceStatuses : settingsStore.appSettings.orderStatuses;
+    let flow, activeStatuses;
+
+    if (itemType === 'service') {
+      flow = SERVICE_STATUS_FLOW;
+      activeStatuses = settingsStore.appSettings.serviceStatuses;
+    } else if (itemType === 'detail') {
+      flow = DETAIL_STATUS_FLOW;
+      activeStatuses = settingsStore.appSettings.detailStatuses;
+    } else {
+      flow = ORDER_STATUS_FLOW;
+      activeStatuses = settingsStore.appSettings.orderStatuses;
+    }
 
     const currentIndex = flow.indexOf(currentStatus);
     if (currentIndex === -1) {
@@ -264,10 +292,20 @@ export const useOrderStore = defineStore('orders', () => {
     return currentStatus;
   }
 
-  function calculatePreviousStatus(currentStatus, isService = false) {
+  function calculatePreviousStatus(currentStatus, itemType = 'order') {
     const settingsStore = useSettingsStore();
-    const flow = isService ? SERVICE_STATUS_FLOW : ORDER_STATUS_FLOW;
-    const activeStatuses = isService ? settingsStore.appSettings.serviceStatuses : settingsStore.appSettings.orderStatuses;
+    let flow, activeStatuses;
+
+    if (itemType === 'service') {
+      flow = SERVICE_STATUS_FLOW;
+      activeStatuses = settingsStore.appSettings.serviceStatuses;
+    } else if (itemType === 'detail') {
+      flow = DETAIL_STATUS_FLOW;
+      activeStatuses = settingsStore.appSettings.detailStatuses;
+    } else {
+      flow = ORDER_STATUS_FLOW;
+      activeStatuses = settingsStore.appSettings.orderStatuses;
+    }
 
     const currentIndex = flow.indexOf(currentStatus);
     if (currentIndex <= 0) {
@@ -295,11 +333,13 @@ export const useOrderStore = defineStore('orders', () => {
     
     order.cachedState = {
       orderStatus: order.status,
-      serviceStatuses: order.services.map(s => s.status)
+      serviceStatuses: order.services.map(s => s.status),
+      detailStatuses: order.details.map(d => d.status)
     };
     
     order.status = 'cancelled';
     order.services.forEach(s => s.status = 'cancelled');
+    order.details.forEach(d => d.status = 'cancelled');
     _save();
   }
 
@@ -317,6 +357,9 @@ export const useOrderStore = defineStore('orders', () => {
     order.status = cachedState.orderStatus;
     order.services.forEach((service, index) => {
       service.status = cachedState.serviceStatuses[index] || 'accepted';
+    });
+    order.details.forEach((detail, index) => {
+      detail.status = cachedState.detailStatuses[index] || 'accepted';
     });
 
     delete order.cachedState;

@@ -35,6 +35,12 @@ export const useSettingsStore = defineStore('settings', () => {
       in_progress: true,
       completed: true,
     },
+    detailStatuses: {
+      accepted: true,
+      additional: true,
+      in_progress: true,
+      completed: true,
+    },
     syncServiceToOrderStatus: {
       additional: true,
       in_progress: true,

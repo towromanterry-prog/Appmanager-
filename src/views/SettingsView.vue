@@ -136,11 +136,21 @@
                     ></v-checkbox>
                   </div>
 
+                  <p class="text-caption text-medium-emphasis">Для "{{ settingsStore.appSettings.detailsTabLabel }}":</p>
+                  <div class="d-flex flex-wrap ga-2 mb-4">
+                    <v-checkbox v-for="(label, key) in detailStatusLabels" :key="key"
+                      v-model="settingsStore.appSettings.detailStatuses[key]"
+                      :label="label"
+                      :disabled="key === 'accepted'"
+                      color="primary" hide-details @change="updateAppSettings"
+                    ></v-checkbox>
+                  </div>
+
                   <v-divider class="my-4"></v-divider>
                   <p class="text-subtitle-1 mb-2">Синхронизация статусов</p>
 
-                  <!-- Синхронизация услуг → заказ -->
-                  <p class="text-body-2 mb-3">Автоматически менять статус заказа, если ВСЕ услуги перешли в статус:</p>
+                  <!-- Синхронизация услуг и деталей → заказ -->
+                  <p class="text-body-2 mb-3">Автоматически менять статус заказа, если ВСЕ услуги и {{ settingsStore.appSettings.detailsTabLabel.toLowerCase() }} перешли в статус:</p>
                   <div class="sync-settings mb-4">
                     <div 
                       v-for="(label, key) in syncableServiceStatuses" 
@@ -159,9 +169,9 @@
                     </div>
                   </div>
 
-                  <!-- Синхронизация заказ → услуги -->
+                  <!-- Синхронизация заказ → услуги и детали -->
                   <v-divider class="my-4"></v-divider>
-                  <p class="text-body-2 mb-3">Синхронизировать услуги при смене статуса заказа:</p>
+                  <p class="text-body-2 mb-3">Синхронизировать услуги и {{ settingsStore.appSettings.detailsTabLabel.toLowerCase() }} при смене статуса заказа:</p>
                   <div class="sync-settings">
                     <div 
                       v-for="(label, key) in syncableOrderStatuses" 
@@ -453,6 +463,13 @@ const orderStatusLabels = computed(() => ({
 }));
 
 const serviceStatusLabels = computed(() => ({
+  accepted: 'Принят',
+  additional: settingsStore.appSettings.additionalStatusName,
+  in_progress: 'В работе',
+  completed: 'Выполнено',
+}));
+
+const detailStatusLabels = computed(() => ({
   accepted: 'Принят',
   additional: settingsStore.appSettings.additionalStatusName,
   in_progress: 'В работе',
