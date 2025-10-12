@@ -53,38 +53,34 @@
               ></v-icon>
             </template>
 
-            <v-card min-width="250">
-              <v-list>
-                <v-list-item>
-                  <v-list-item-title class="text-subtitle-2">Статус</v-list-item-title>
-                  <v-chip-group
-                    v-model="orderStore.filterStatus"
-                    column
-                    multiple
+            <v-card>
+              <div class="d-flex">
+                <v-list dense>
+                  <v-list-subheader>СТАТУС</v-list-subheader>
+                  <v-list-item
+                    v-for="status in availableStatuses"
+                    :key="status.value"
+                    @click="toggleStatusFilter(status.value)"
                   >
-                    <v-chip
-                      v-for="status in availableStatuses"
-                      :key="status.value"
-                      :value="status.value"
-                      filter
-                      variant="outlined"
-                      size="small"
-                    >
-                      {{ status.text }}
-                    </v-chip>
-                  </v-chip-group>
-                </v-list-item>
+                    <template v-slot:prepend>
+                      <v-checkbox-btn
+                        :model-value="orderStore.filterStatus.includes(status.value)"
+                      ></v-checkbox-btn>
+                    </template>
+                    <v-list-item-title>{{ status.text }}</v-list-item-title>
+                  </v-list-item>
+                </v-list>
 
-                <v-divider class="my-2"></v-divider>
+                <v-divider vertical></v-divider>
 
-                <v-list-item>
-                   <v-list-item-title class="text-subtitle-2">Сортировка</v-list-item-title>
-                   <v-radio-group v-model="orderStore.sortBy" hide-details>
-                      <v-radio label="По дедлайну" value="deadline"></v-radio>
-                      <v-radio label="По дате создания" value="createDate"></v-radio>
-                   </v-radio-group>
-                </v-list-item>
-              </v-list>
+                <v-list dense>
+                  <v-list-subheader>СОРТИРОВКА</v-list-subheader>
+                  <v-radio-group v-model="orderStore.sortBy" hide-details class="pa-2">
+                    <v-radio label="По дедлайну" value="deadline"></v-radio>
+                    <v-radio label="По дате создания" value="createDate"></v-radio>
+                  </v-radio-group>
+                </v-list>
+              </div>
             </v-card>
           </v-menu>
         </template>
@@ -137,6 +133,15 @@ const availableStatuses = computed(() => {
     return settingsStore.appSettings.orderStatuses[s.value];
   });
 });
+
+const toggleStatusFilter = (statusValue) => {
+  const index = orderStore.filterStatus.indexOf(statusValue);
+  if (index === -1) {
+    orderStore.filterStatus.push(statusValue);
+  } else {
+    orderStore.filterStatus.splice(index, 1);
+  }
+};
 
 const menuItems = ref([
   { title: 'Главная', icon: 'mdi-home', route: 'home' },
