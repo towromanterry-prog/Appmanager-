@@ -10,8 +10,8 @@
           </v-avatar>
           <div class="client-info">
             <div class="client-name-line">
-              <span class="text-truncate font-weight-bold">{{ clientNameDisplay.first }}</span>
-              <span class="font-weight-bold ml-1">{{ clientNameDisplay.last }}</span>
+              <span class="font-weight-bold text-truncate">{{ order.clientName }}</span>
+              <span class="font-weight-bold text-truncate ml-1">{{ order.lastName }}</span>
             </div>
             <div class="text-caption text-on-surface-variant">{{ order.phone }}</div>
           </div>
@@ -120,23 +120,6 @@ const expanded = ref(false);
 
 const clientInitial = computed(() => props.order.clientName?.charAt(0).toUpperCase() || '?');
 
-const clientNameDisplay = computed(() => {
-  const firstName = props.order.clientName || '';
-  const lastName = props.order.lastName || '';
-  const fullName = `${firstName} ${lastName}`.trim();
-
-  if (fullName.length > 25) { // Пороговая длина имени
-    return {
-      first: `${firstName.charAt(0)}.`,
-      last: lastName
-    };
-  }
-  return {
-    first: firstName,
-    last: lastName
-  };
-});
-
 const totalAmount = computed(() => props.order.totalAmount || 0);
 
 const formattedDeadline = computed(() => props.order.deadline ? toLongDate(props.order.deadline) : 'Не указан');
@@ -209,19 +192,17 @@ const handleCancelClick = () => {
   overflow: hidden;
 }
 .client-name-line {
-  display: flex;
-  align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    line-height: 1.2;
 }
-.client-name-line .text-truncate {
-  min-width: 0;
-  flex-shrink: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.client-name-line span:last-child {
-  white-space: normal; /* Allows last name to wrap */
-  word-break: break-word; /* Breaks the word only if necessary */
-  flex-shrink: 0; /* Prevents the last name from shrinking */
+
+.client-name-line span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    max-width: 100%;
 }
 </style>
