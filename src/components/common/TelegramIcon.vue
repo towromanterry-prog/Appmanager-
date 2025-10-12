@@ -13,3 +13,10 @@
 <script setup>
 // This is a self-contained component for the Telegram icon.
 </script>
+
+<style scoped>
+svg {
+  width: 24px;
+  height: 24px;
+}
+</style>
