@@ -19,7 +19,10 @@ export default createVuetify({
   directives,
   icons: {
     defaultSet: 'mdi',
-    aliases: customAliases,
+    aliases: {
+      ...aliases,
+      telegram: mdiTelegram,
+    },
     sets: {
       mdi,
     },
