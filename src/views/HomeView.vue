@@ -301,26 +301,29 @@ const calendarWeeks = computed(() => {
     return weeks;
 });
 
-// УЛУЧШЕНИЕ: Упрощенная логика фильтрации и сортировки
 const filteredOrders = computed(() => {
   let ordersToDisplay = orders.value;
 
-  // 1. Фильтруем по дате, если она выбрана
+  // 1. Фильтр по дате (если выбрана)
   if (selectedDate.value) {
-    ordersToDisplay = orders.value.filter(order => {
-      return order.deadline?.startsWith(selectedDate.value);
-    });
+    ordersToDisplay = ordersToDisplay.filter(order => order.deadline?.startsWith(selectedDate.value));
+  } else {
+    // 2. Фильтр по статусу (если дата не выбрана)
+    if (orderStore.filterStatus.length > 0) {
+      ordersToDisplay = ordersToDisplay.filter(order => orderStore.filterStatus.includes(order.status));
+    } else {
+      // По умолчанию скрываем "сданные", если не выбраны статусы и не включен показ в настройках
+      if (!settingsStore.appSettings?.showCompletedOrders) {
+        ordersToDisplay = ordersToDisplay.filter(order => order.status !== 'delivered');
+      }
+    }
   }
 
-  // 2. Фильтруем по статусу (скрываем завершенные, если нужно)
-  if (!settingsStore.appSettings?.showCompletedOrders) {
-    ordersToDisplay = ordersToDisplay.filter(order => order.status !== 'delivered');
-  }
-
-  // 3. Сортируем результат
+  // 3. Сортировка
   return [...ordersToDisplay].sort((a, b) => {
-    const dateA = a.deadline || a.createDate;
-    const dateB = b.deadline || b.createDate;
+    const sortBy = orderStore.sortBy;
+    const dateA = a[sortBy] || (sortBy === 'deadline' ? a.createDate : '1970-01-01');
+    const dateB = b[sortBy] || (sortBy === 'deadline' ? b.createDate : '1970-01-01');
     return new Date(dateB) - new Date(dateA);
   });
 });

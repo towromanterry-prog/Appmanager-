@@ -10,6 +10,8 @@ const DETAIL_STATUS_FLOW = ['accepted', 'additional', 'in_progress', 'completed'
 
 export const useOrderStore = defineStore('orders', () => {
   const orders = ref([]);
+  const filterStatus = ref([]);
+  const sortBy = ref('deadline');
 
   function _save() {
     localStorage.setItem('orders', JSON.stringify(orders.value));
@@ -411,6 +413,8 @@ export const useOrderStore = defineStore('orders', () => {
 
   return {
     orders,
+    filterStatus,
+    sortBy,
     load: _load,
     _load,
     addOrder,
