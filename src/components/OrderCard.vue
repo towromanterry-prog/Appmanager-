@@ -2,16 +2,12 @@
   <v-card class="order-card" @click="expanded = !expanded">
     <!-- Основная видимая часть -->
     <v-card-text class="d-flex align-start pa-4">
-      <!-- Аватар и инфо о клиенте -->
+      <!-- Инфо о клиенте -->
       <div class="flex-grow-1 mr-4" style="min-width: 0;">
         <div class="d-flex align-center">
-          <v-avatar color="primary-container" size="40" class="mr-3 flex-shrink-0">
-            <span class="text-on-primary-container font-weight-bold">{{ clientInitial }}</span>
-          </v-avatar>
           <div class="client-info">
             <div class="client-name-line">
-              <span class="text-truncate font-weight-bold">{{ order.clientName }}</span>
-              <span class="font-weight-bold ml-1">{{ order.lastName }}</span>
+              <span class="text-truncate font-weight-bold">{{ order.clientName }} {{ order.lastName }}</span>
             </div>
             <div class="text-caption text-on-surface-variant">{{ order.phone }}</div>
           </div>
@@ -79,19 +75,20 @@
         <v-divider></v-divider>
         <!-- Действия -->
         <v-card-actions class="pa-2">
-          <v-btn icon="mdi-phone" variant="text" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop"></v-btn>
-          <v-btn icon="mdi-message-text" variant="text" color="on-surface-variant" :href="`sms:${order.phone}`" @click.stop"></v-btn>
-          <v-btn icon="$whatsapp" variant="text" color="on-surface-variant" :href="`https://wa.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
-          <v-btn icon="$telegram" variant="text" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
+          <v-btn icon="mdi-phone" variant="text" size="small" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop></v-btn>
+          <v-btn icon="mdi-message-text" variant="text" size="small" color="on-surface-variant" :href="`sms:${order.phone}`" @click.stop"></v-btn>
+          <v-btn icon="$whatsapp" variant="text" size="small" color="on-surface-variant" :href="`https://wa.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
+          <v-btn icon="$telegram" variant="text" size="small" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
            <v-spacer></v-spacer>
            <v-btn
               :icon="order.status === 'cancelled' ? 'mdi-restore' : 'mdi-cancel'"
               :color="order.status === 'cancelled' ? 'success' : 'warning'"
               variant="text"
+              size="small"
               @click.stop="handleCancelClick"
             ></v-btn>
-           <v-btn icon="mdi-delete" color="error" variant="text" @click.stop="emit('delete', order.id)"></v-btn>
-           <v-btn icon="mdi-pencil" color="primary" variant="text" @click.stop="emit('edit', order)" :disabled="order.status === 'cancelled'"></v-btn>
+           <v-btn icon="mdi-delete" color="error" variant="text" size="small" @click.stop="emit('delete', order.id)"></v-btn>
+           <v-btn icon="mdi-pencil" color="primary" variant="text" size="small" @click.stop="emit('edit', order)" :disabled="order.status === 'cancelled'"></v-btn>
         </v-card-actions>
       </div>
     </v-expand-transition>
@@ -115,8 +112,6 @@ const settingsStore = useSettingsStore();
 const { toLongDate } = useFormatDate();
 
 const expanded = ref(false);
-
-const clientInitial = computed(() => props.order.clientName?.charAt(0).toUpperCase() || '?');
 
 const totalAmount = computed(() => props.order.totalAmount || 0);
 
@@ -190,17 +185,14 @@ const handleCancelClick = () => {
   overflow: hidden;
 }
 .client-name-line {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    line-height: 1.2;
+  line-height: 1.2;
 }
 
-.client-name-line span {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: inline-block;
-    max-width: 100%;
+.client-name-line .text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block; /* Изменено на block для корректного усечения */
+  max-width: 100%;
 }
 </style>

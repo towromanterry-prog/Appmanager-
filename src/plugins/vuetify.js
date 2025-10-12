@@ -5,17 +5,17 @@ import * as components from 'vuetify/components';
 import * as directives from 'vuetify/directives';
 import { aliases, mdi } from 'vuetify/iconsets/mdi';
 import { h } from 'vue';
-import { IconTelegram, IconWhatsapp } from '@iconify-prerendered/vue-simple-icons';
+import { Telegram, Whatsapp } from '@iconify-prerendered/vue-simple-icons';
 import '@mdi/font/css/materialdesignicons.css';
 import { light, dark } from '@/theme/theme'; // Импортируем наши новые темы
 
 const customAliases = {
   ...aliases,
   whatsapp: {
-    component: IconWhatsapp,
+    component: Whatsapp,
   },
   telegram: {
-    component: IconTelegram,
+    component: Telegram,
   },
 };
 
