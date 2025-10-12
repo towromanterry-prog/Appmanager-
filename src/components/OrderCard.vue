@@ -77,8 +77,8 @@
         <v-card-actions class="pa-2">
           <v-btn icon="mdi-phone" variant="text" size="small" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop></v-btn>
           <v-btn icon="mdi-message-text" variant="text" size="small" color="on-surface-variant" :href="`sms:${order.phone}`" @click.stop"></v-btn>
-          <v-btn icon="$whatsapp" variant="text" size="small" color="on-surface-variant" :href="`https://wa.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
-          <v-btn icon="$telegram" variant="text" size="small" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
+          <v-btn :icon="IconWhatsapp" variant="text" size="small" color="on-surface-variant" :href="`https://wa.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
+          <v-btn :icon="IconTelegram" variant="text" size="small" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
            <v-spacer></v-spacer>
            <v-btn
               :icon="order.status === 'cancelled' ? 'mdi-restore' : 'mdi-cancel'"
@@ -101,6 +101,7 @@ import { useOrderStore } from '@/stores/orderStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import StatusIndicator from '@/components/common/StatusIndicator.vue';
 import { useFormatDate } from '@/composables/useDateUtils';
+import { IconTelegram, IconWhatsapp } from '@iconify-prerendered/vue-simple-icons';
 
 const props = defineProps({
   order: { type: Object, required: true },
