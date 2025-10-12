@@ -76,7 +76,7 @@
         <!-- Действия -->
         <v-card-actions class="pa-2">
           <v-btn icon="mdi-phone" variant="text" size="small" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop></v-btn>
-          <v-btn icon="mdi-message-text" variant="text" size="small" color="on-surface-variant" :href="`sms:${order.phone}`" @click.stop"></v-btn>
+          <v-btn icon="mdi-message-text" variant="text" size="small" color="on-surface-variant" :href="`sms:${order.phone}`" @click.stop></v-btn>
           <v-btn :icon="IconWhatsapp" variant="text" size="small" color="on-surface-variant" :href="`https://wa.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
           <v-btn :icon="IconTelegram" variant="text" size="small" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
            <v-spacer></v-spacer>
