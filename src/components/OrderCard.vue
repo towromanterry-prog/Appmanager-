@@ -7,7 +7,8 @@
         <div class="d-flex align-center">
           <div class="client-info">
             <div class="client-name-line">
-              <span class="text-truncate font-weight-bold">{{ order.clientName }} {{ order.lastName }}</span>
+              <span class="font-weight-bold text-truncate">{{ order.clientName }}</span>
+              <span class="font-weight-bold text-truncate">{{ order.lastName }}</span>
             </div>
             <div class="text-caption text-on-surface-variant">{{ order.phone }}</div>
           </div>
@@ -186,14 +187,15 @@ const handleCancelClick = () => {
   overflow: hidden;
 }
 .client-name-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
   line-height: 1.2;
+  gap: 0 0.25em; /* Добавляем небольшой отступ между именем и фамилией */
 }
 
 .client-name-line .text-truncate {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: block; /* Изменено на block для корректного усечения */
-  max-width: 100%;
+  /* Позволяет элементу усекаться, если он слишком длинный, но не заставляет его занимать всю ширину */
+  min-width: 0;
 }
 </style>
