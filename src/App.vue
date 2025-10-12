@@ -36,6 +36,52 @@
             @click.stop="drawer = !drawer"
           ></v-icon>
         </template>
+
+        <template v-slot:append-inner>
+          <v-menu
+            v-if="isHomePage"
+            v-model="sortMenu"
+            location="bottom end"
+            :close-on-content-click="false"
+          >
+            <template v-slot:activator="{ props }">
+              <v-icon
+                icon="mdi-sort-variant"
+                v-bind="props"
+                @mousedown.stop
+                @click.stop
+              ></v-icon>
+            </template>
+
+            <v-card min-width="250">
+              <v-list dense>
+                <v-list-subheader>СТАТУС</v-list-subheader>
+                <v-list-item
+                  v-for="status in availableStatuses"
+                  :key="status.value"
+                  @click="toggleStatusFilter(status.value)"
+                >
+                  <template v-slot:prepend>
+                    <v-checkbox-btn
+                      :model-value="orderStore.filterStatus.includes(status.value)"
+                    ></v-checkbox-btn>
+                  </template>
+                  <v-list-item-title>{{ status.text }}</v-list-item-title>
+                </v-list-item>
+              </v-list>
+
+              <v-divider></v-divider>
+
+              <v-list dense>
+                <v-list-subheader>СОРТИРОВКА</v-list-subheader>
+                <v-radio-group v-model="orderStore.sortBy" hide-details class="pa-2">
+                  <v-radio label="По дедлайну" value="deadline"></v-radio>
+                  <v-radio label="По дате создания" value="createDate"></v-radio>
+                </v-radio-group>
+              </v-list>
+            </v-card>
+          </v-menu>
+        </template>
       </v-text-field>
 
     </v-app-bar>
@@ -49,8 +95,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, computed } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useThemeStore } from '@/stores/themeStore.js';
 import { useServiceStore } from '@/stores/serviceStore.js';
 import { useOrderStore } from '@/stores/orderStore.js';
@@ -60,8 +106,40 @@ import { useTagsStore } from '@/stores/tagsStore.js';
 import ConfirmationDialog from '@/components/common/ConfirmationDialog.vue';
 
 const router = useRouter();
+const route = useRoute();
 const searchQuery = ref('');
 const drawer = ref(false);
+const sortMenu = ref(false);
+
+const isHomePage = computed(() => route.name === 'home');
+
+const orderStore = useOrderStore();
+const settingsStore = useSettingsStore();
+
+const availableStatuses = computed(() => {
+  const allStatuses = [
+    { value: 'accepted', text: orderStore.getStatusText('accepted') },
+    { value: 'additional', text: orderStore.getStatusText('additional') },
+    { value: 'in_progress', text: orderStore.getStatusText('in_progress') },
+    { value: 'completed', text: orderStore.getStatusText('completed') },
+    { value: 'delivered', text: orderStore.getStatusText('delivered') },
+    { value: 'cancelled', text: orderStore.getStatusText('cancelled') }
+  ];
+
+  return allStatuses.filter(s => {
+    if (s.value === 'cancelled') return true;
+    return settingsStore.appSettings.orderStatuses[s.value];
+  });
+});
+
+const toggleStatusFilter = (statusValue) => {
+  const index = orderStore.filterStatus.indexOf(statusValue);
+  if (index === -1) {
+    orderStore.filterStatus.push(statusValue);
+  } else {
+    orderStore.filterStatus.splice(index, 1);
+  }
+};
 
 const menuItems = ref([
   { title: 'Главная', icon: 'mdi-home', route: 'home' },
@@ -72,9 +150,7 @@ const menuItems = ref([
 
 const themeStore = useThemeStore();
 const serviceStore = useServiceStore();
-const orderStore = useOrderStore();
 const clientsStore = useClientsStore();
-const settingsStore = useSettingsStore();
 const tagsStore = useTagsStore();
 
 const goToRoute = (routeName) => {
