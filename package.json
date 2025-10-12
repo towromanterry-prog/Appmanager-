@@ -10,16 +10,17 @@
   },
   "dependencies": {
     "@mdi/font": "latest",
+    "@mdi/js": "^7.4.47",
+    "date-fns": "^2.30.0",
     "pinia": "^2.1.7",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0",
-    "vuetify": "^3.6.8",
-    "date-fns": "^2.30.0"
+    "vuetify": "^3.6.8"
   },
   "devDependencies": {
+    "@types/node": "^20.10.0",
     "@vitejs/plugin-vue": "^5.0.4",
     "vite": "^5.2.8",
-    "vite-plugin-vuetify": "^2.0.3",
-    "@types/node": "^20.10.0"
+    "vite-plugin-vuetify": "^2.0.3"
   }
 }

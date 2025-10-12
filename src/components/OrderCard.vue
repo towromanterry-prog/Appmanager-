@@ -28,7 +28,7 @@
           <v-btn density="compact" icon="mdi-phone" variant="text" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop size="small"></v-btn>
           <v-btn density="compact" icon="mdi-message-text" variant="text" color="on-surface-variant" :href="`sms:${order.phone}`" @click.stop size="small"></v-btn>
           <v-btn density="compact" icon="mdi-whatsapp" variant="text" color="on-surface-variant" :href="`https://wa.me/${order.phone}`" target="_blank" @click.stop size="small"></v-btn>
-          <v-btn density="compact" icon="mdi-telegram" variant="text" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop size="small" class="telegram-icon-fix"></v-btn>
+          <v-btn density="compact" icon="$telegram" variant="text" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop size="small"></v-btn>
         </div>
       </div>
     </v-card-text>
@@ -204,9 +204,5 @@ const handleCancelClick = () => {
     text-overflow: ellipsis;
     display: inline-block;
     max-width: 100%;
-}
-
-.telegram-icon-fix .v-icon {
-  font-size: 1.5rem !important;
 }
 </style>
