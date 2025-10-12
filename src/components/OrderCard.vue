@@ -10,8 +10,8 @@
           </v-avatar>
           <div class="client-info">
             <div class="client-name-line">
-              <span class="font-weight-bold text-truncate">{{ order.clientName }}</span>
-              <span class="font-weight-bold text-truncate ml-1">{{ order.lastName }}</span>
+              <span class="text-truncate font-weight-bold">{{ order.clientName }}</span>
+              <span class="font-weight-bold ml-1">{{ order.lastName }}</span>
             </div>
             <div class="text-caption text-on-surface-variant">{{ order.phone }}</div>
           </div>
@@ -81,8 +81,8 @@
         <v-card-actions class="pa-2">
           <v-btn icon="mdi-phone" variant="text" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop"></v-btn>
           <v-btn icon="mdi-message-text" variant="text" color="on-surface-variant" :href="`sms:${order.phone}`" @click.stop"></v-btn>
-          <v-btn icon="mdi-whatsapp" variant="text" color="on-surface-variant" :href="`https://wa.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
-          <v-btn :icon="TelegramIcon" variant="text" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
+          <v-btn icon="$whatsapp" variant="text" color="on-surface-variant" :href="`https://wa.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
+          <v-btn icon="$telegram" variant="text" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
            <v-spacer></v-spacer>
            <v-btn
               :icon="order.status === 'cancelled' ? 'mdi-restore' : 'mdi-cancel'"
@@ -103,7 +103,6 @@ import { ref, computed } from 'vue';
 import { useOrderStore } from '@/stores/orderStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import StatusIndicator from '@/components/common/StatusIndicator.vue';
-import TelegramIcon from '@/components/common/TelegramIcon.vue';
 import { useFormatDate } from '@/composables/useDateUtils';
 
 const props = defineProps({

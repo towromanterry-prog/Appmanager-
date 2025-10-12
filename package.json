@@ -9,7 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@mdi/font": "latest",
+    "@iconify-prerendered/vue-simple-icons": "^0.28.1754804480",
+    "@mdi/font": "^7.4.47",
     "date-fns": "^2.30.0",
     "pinia": "^2.1.7",
     "vue": "^3.4.21",
