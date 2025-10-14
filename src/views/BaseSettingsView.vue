@@ -44,7 +44,7 @@
             <v-divider class="my-0"></v-divider>
 
             <v-list lines="two" bg-color="surface" class="py-0">
-              <template v-for="(service, index) in filteredServices" :key="service.id">
+              <template v-for="(service, index) in serviceStore.services" :key="service.id">
                 <v-list-item class="px-2 py-1 my-1" density="compact">
                   <v-list-item-title class="font-weight-medium">{{ service.name }}</v-list-item-title>
                   <v-list-item-subtitle class="mb-2">{{ service.defaultPrice }}₽</v-list-item-subtitle>
@@ -68,7 +68,7 @@
                     </div>
                   </template>
                 </v-list-item>
-                <v-divider v-if="index < filteredServices.length - 1" class="mx-2"></v-divider>
+                <v-divider v-if="index < serviceStore.services.length - 1" class="mx-2"></v-divider>
               </template>
             </v-list>
           </v-card>
@@ -87,7 +87,7 @@
             <v-divider class="my-0"></v-divider>
 
             <v-list lines="two" bg-color="surface" class="py-0">
-              <template v-for="(detail, index) in filteredDetails" :key="detail.id">
+              <template v-for="(detail, index) in detailStore.details" :key="detail.id">
                 <v-list-item class="px-2 py-1 my-1" density="compact">
                   <v-list-item-title class="font-weight-medium">{{ detail.name }}</v-list-item-title>
                   <v-list-item-subtitle class="mb-2">{{ detail.defaultPrice }}₽</v-list-item-subtitle>
@@ -111,7 +111,7 @@
                     </div>
                   </template>
                 </v-list-item>
-                <v-divider v-if="index < filteredDetails.length - 1" class="mx-2"></v-divider>
+                <v-divider v-if="index < detailStore.details.length - 1" class="mx-2"></v-divider>
               </template>
             </v-list>
           </v-card>
@@ -130,7 +130,7 @@
             <v-divider class="my-0"></v-divider>
 
             <v-list bg-color="surface" class="py-0">
-              <template v-for="(tag, index) in filteredTags" :key="tag.id">
+              <template v-for="(tag, index) in tagsStore.tags" :key="tag.id">
                 <v-list-item class="px-2 py-1 my-1" density="compact">
                   <template v-slot:prepend>
                     <v-chip
@@ -147,7 +147,7 @@
                     </div>
                   </template>
                 </v-list-item>
-                 <v-divider v-if="index < filteredTags.length - 1" class="mx-2"></v-divider>
+                 <v-divider v-if="index < tagsStore.tags.length - 1" class="mx-2"></v-divider>
               </template>
             </v-list>
           </v-card>
@@ -239,26 +239,18 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import Fuse from 'fuse.js';
-import { storeToRefs } from 'pinia';
 import { useServiceStore } from '@/stores/serviceStore';
 import { useDetailStore } from '@/stores/detailStore';
 import { useTagsStore } from '@/stores/tagsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { useSettingsViewStore } from '@/stores/settingsViewStore';
 import { useConfirmationStore } from '@/stores/confirmationStore';
-import { useSearchStore } from '@/stores/searchStore';
 import ServiceFormDialog from '@/components/ServiceFormDialog.vue';
 
 const serviceStore = useServiceStore();
 const detailStore = useDetailStore();
 const tagsStore = useTagsStore();
 const settingsStore = useSettingsStore();
-const settingsViewStore = useSettingsViewStore();
 const confirmationStore = useConfirmationStore();
-const searchStore = useSearchStore();
-const { searchQuery } = storeToRefs(searchStore);
-const { sortBy } = storeToRefs(settingsViewStore);
 
 const tab = ref('services');
 const serviceDialog = ref(false);
@@ -284,60 +276,6 @@ const sliderTransform = computed(() => {
   if (tab.value === 'details') return 'translateX(100%)';
   if (tab.value === 'tags') return 'translateX(200%)';
   return 'translateX(0)';
-});
-
-const createFuse = (list, keys) => {
-  return new Fuse(list, {
-    keys,
-    includeScore: true,
-    threshold: 0.4,
-    minMatchCharLength: 1,
-  });
-};
-
-const filteredServices = computed(() => {
-  let items = [...serviceStore.services];
-  if (sortBy.value === 'name') {
-    items.sort((a, b) => a.name.localeCompare(b.name));
-  } else {
-    items.sort((a, b) => b.id - a.id);
-  }
-
-  if (!searchQuery.value) {
-    return items;
-  }
-  const fuse = createFuse(items, ['name']);
-  return fuse.search(searchQuery.value).map(result => result.item);
-});
-
-const filteredDetails = computed(() => {
-  let items = [...detailStore.details];
-  if (sortBy.value === 'name') {
-    items.sort((a, b) => a.name.localeCompare(b.name));
-  } else {
-    items.sort((a, b) => b.id - a.id);
-  }
-
-  if (!searchQuery.value) {
-    return items;
-  }
-  const fuse = createFuse(items, ['name']);
-  return fuse.search(searchQuery.value).map(result => result.item);
-});
-
-const filteredTags = computed(() => {
-  let items = [...tagsStore.tags];
-  if (sortBy.value === 'name') {
-    items.sort((a, b) => a.name.localeCompare(b.name));
-  } else {
-    items.sort((a, b) => b.id - a.id);
-  }
-
-  if (!searchQuery.value) {
-    return items;
-  }
-  const fuse = createFuse(items, ['name']);
-  return fuse.search(searchQuery.value).map(result => result.item);
 });
 
 const getTagsForService = (tagIds) => {

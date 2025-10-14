@@ -19,7 +19,6 @@
             <template v-slot:prepend>
               <v-icon icon="mdi-tune"></v-icon>
             </template>
-            <v-list-item-title>Настройки</v-list-item-title>
           </v-list-item>
         </div>
       </template>
@@ -51,7 +50,7 @@
 
         <template v-slot:append-inner>
            <v-menu
-            v-if="isHomePage || isClientsPage || isBaseSettingsPage"
+            v-if="isHomePage || isClientsPage"
             v-model="sortMenu"
             location="bottom end"
             :close-on-content-click="false"
@@ -104,17 +103,6 @@
                   </v-radio-group>
                 </v-list>
               </div>
-
-              <!-- Settings Sorting -->
-              <div v-if="isBaseSettingsPage">
-                <v-list dense>
-                  <v-list-subheader>СОРТИРОВКА</v-list-subheader>
-                  <v-radio-group v-model="settingsViewStore.sortBy" hide-details class="pa-2">
-                    <v-radio label="По имени (А-Я)" value="name"></v-radio>
-                    <v-radio label="По дате создания" value="id"></v-radio>
-                  </v-radio-group>
-                </v-list>
-              </div>
             </v-card>
           </v-menu>
         </template>
@@ -147,7 +135,6 @@ import { useServiceStore } from '@/stores/serviceStore.js';
 import { useOrderStore } from '@/stores/orderStore.js';
 import { useClientsStore } from '@/stores/clientsStore.js';
 import { useSettingsStore } from '@/stores/settingsStore.js';
-import { useSettingsViewStore } from '@/stores/settingsViewStore.js';
 import { useTagsStore } from '@/stores/tagsStore.js';
 import { useSearchStore } from '@/stores/searchStore.js';
 import ConfirmationDialog from '@/components/common/ConfirmationDialog.vue';
@@ -155,7 +142,6 @@ import ConfirmationDialog from '@/components/common/ConfirmationDialog.vue';
 const router = useRouter();
 const route = useRoute();
 const searchStore = useSearchStore();
-const settingsViewStore = useSettingsViewStore();
 
 const searchQuery = computed({
   get: () => searchStore.searchQuery,
@@ -167,8 +153,7 @@ const sortMenu = ref(false);
 
 const isHomePage = computed(() => route.name === 'home');
 const isClientsPage = computed(() => route.name === 'clients');
-const isBaseSettingsPage = computed(() => route.name === 'base-settings');
-const isSearchVisible = computed(() => isHomePage.value || isClientsPage.value || isBaseSettingsPage.value);
+const isSearchVisible = computed(() => isHomePage.value || isClientsPage.value);
 
 const currentTitle = computed(() => {
   const menuItem = menuItems.value.find(item => item.route === route.name);
@@ -206,6 +191,7 @@ const toggleStatusFilter = (statusValue) => {
 const menuItems = ref([
   { title: 'Главная', icon: 'mdi-home', route: 'home' },
   { title: 'Клиенты', icon: 'mdi-account-group', route: 'clients' },
+  { title: 'Базовые настройки', icon: 'mdi-cog-outline', route: 'base-settings' },
 ]);
 
 const themeStore = useThemeStore();
