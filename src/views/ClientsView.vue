@@ -6,62 +6,56 @@
           <h3 class="mt-4">Клиенты не найдены</h3>
           <p>Попробуйте изменить поисковый запрос или добавьте нового клиента.</p>
         </div>
-        <v-list v-else class="clients-list">
+        <v-list v-else class="clients-list" lines="two">
           <v-list-item
             v-for="client in sortedClients"
             :key="client.id"
             class="client-card-item"
           >
-            <v-card-text class="d-flex align-start pa-4">
-              <div class="flex-grow-1 mr-4" style="min-width: 0;">
-                <div class="d-flex align-center">
-                  <div class="client-info">
-                    <div class="client-name-line">
-                      <span class="font-weight-bold text-truncate">{{ client.name }}</span>
-                      <span class="font-weight-bold text-truncate">{{ client.lastName }}</span>
-                    </div>
-                    <div class="text-caption text-on-surface-variant d-flex align-center">
-                      {{ client.phone }}
-                      <v-spacer></v-spacer>
-                      <v-chip size="small" color="primary" variant="outlined" class="ml-2">
-                        {{ client.totalOrders }} заказов
-                      </v-chip>
-                    </div>
-                  </div>
-                </div>
-              </div>
-               <template v-slot:append>
-                  <v-menu>
-                    <template v-slot:activator="{ props }">
-                      <v-btn
-                        icon="mdi-dots-vertical"
-                        variant="text"
-                        v-bind="props"
-                      ></v-btn>
-                    </template>
-                    <v-list>
-                      <v-list-item @click="viewClientHistory(client)">
-                        <v-list-item-title>История заказов</v-list-item-title>
-                        <template v-slot:prepend>
-                          <v-icon>mdi-history</v-icon>
-                        </template>
-                      </v-list-item>
-                      <v-list-item @click="createOrderForClient(client)">
-                        <v-list-item-title>Новый заказ</v-list-item-title>
-                        <template v-slot:prepend>
-                          <v-icon>mdi-plus</v-icon>
-                        </template>
-                      </v-list-item>
-                      <v-list-item @click="deleteClient(client)" color="error">
-                        <v-list-item-title>Удалить</v-list-item-title>
-                        <template v-slot:prepend>
-                          <v-icon>mdi-delete</v-icon>
-                        </template>
-                      </v-list-item>
-                    </v-list>
-                  </v-menu>
+            <v-list-item-title class="client-name-line">
+              <span class="font-weight-bold text-truncate">{{ client.name }}</span>
+              <span class="font-weight-bold text-truncate">{{ client.lastName }}</span>
+            </v-list-item-title>
+
+            <v-list-item-subtitle class="d-flex align-center">
+              <span>{{ client.phone }}</span>
+              <v-spacer></v-spacer>
+              <v-chip size="small" color="primary" variant="outlined" class="ml-2">
+                {{ client.totalOrders }} заказов
+              </v-chip>
+            </v-list-item-subtitle>
+
+            <template v-slot:append>
+              <v-menu>
+                <template v-slot:activator="{ props }">
+                  <v-btn
+                    icon="mdi-dots-vertical"
+                    variant="text"
+                    v-bind="props"
+                  ></v-btn>
                 </template>
-            </v-card-text>
+                <v-list>
+                  <v-list-item @click="viewClientHistory(client)">
+                    <v-list-item-title>История заказов</v-list-item-title>
+                    <template v-slot:prepend>
+                      <v-icon>mdi-history</v-icon>
+                    </template>
+                  </v-list-item>
+                  <v-list-item @click="createOrderForClient(client)">
+                    <v-list-item-title>Новый заказ</v-list-item-title>
+                    <template v-slot:prepend>
+                      <v-icon>mdi-plus</v-icon>
+                    </template>
+                  </v-list-item>
+                  <v-list-item @click="deleteClient(client)" color="error">
+                    <v-list-item-title>Удалить</v-list-item-title>
+                    <template v-slot:prepend>
+                      <v-icon>mdi-delete</v-icon>
+                    </template>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </template>
           </v-list-item>
         </v-list>
     </div>
@@ -260,11 +254,6 @@ onMounted(() => {
   background-color: rgb(var(--v-theme-surface));
   border-radius: 8px;
   margin-bottom: 8px;
-}
-
-.client-info {
-  overflow: hidden;
-  width: 100%;
 }
 
 .client-name-line {
