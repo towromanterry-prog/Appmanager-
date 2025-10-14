@@ -176,6 +176,7 @@
 
 <script setup>
 import { reactive, computed, watch, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { useOrderStore } from '@/stores/orderStore.js';
 import { useClientsStore } from '@/stores/clientsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -292,6 +293,12 @@ watch(() => props.orderId, (newId) => {
     }
   } else {
     resetForm();
+    const route = useRoute();
+    if (route.query.clientName || route.query.clientPhone) {
+        form.clientName = route.query.clientName;
+        form.lastName = route.query.clientLastName;
+        form.phone = route.query.clientPhone;
+    }
   }
 }, { immediate: true });
 
