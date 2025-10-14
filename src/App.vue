@@ -130,7 +130,8 @@ const drawer = ref(false);
 const sortMenu = ref(false);
 
 const isHomePage = computed(() => route.name === 'home');
-const isSearchVisible = computed(() => route.name === 'home');
+const isClientsPage = computed(() => route.name === 'clients');
+const isSearchVisible = computed(() => isHomePage.value || isClientsPage.value);
 
 const currentTitle = computed(() => {
   const menuItem = menuItems.value.find(item => item.route === route.name);

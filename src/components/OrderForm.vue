@@ -319,6 +319,7 @@ const saveOrder = async () => {
     }
     clientsStore.addOrUpdateClient({
       name: form.clientName,
+      lastName: form.lastName,
       phone: form.phone,
       services: form.services.map(s => s.name),
     });

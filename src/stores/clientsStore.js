@@ -9,8 +9,17 @@ function loadClients() {
   try {
     const stored = localStorage.getItem('clientsDatabase');
     if (stored) {
-      const parsed = JSON.parse(stored);
+      let parsed = JSON.parse(stored);
       if (Array.isArray(parsed)) {
+        // Простая миграция для добавления lastName
+        parsed = parsed.map(client => {
+          if (client.name && !client.lastName) {
+            const nameParts = client.name.split(' ');
+            client.lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+            client.name = nameParts[0] || '';
+          }
+          return client;
+        });
         clients.value = parsed;
       } else {
         throw new Error('Stored clients is not an array');
@@ -28,14 +37,14 @@ function loadClients() {
   }
   
   function addOrUpdateClient(clientData) {
-    const { name, phone, services = [], notes = '' } = clientData;
+    const { name, lastName = '', phone, services = [], notes = '' } = clientData;
     
-    // Поиск существующего клиента по телефону
     const existingIndex = clients.value.findIndex(c => c.phone === phone);
     
     const clientRecord = {
-      id: phone, // Используем телефон как уникальный ID
+      id: phone,
       name,
+      lastName,
       phone,
       lastOrderDate: new Date().toISOString(),
       totalOrders: existingIndex >= 0 ? clients.value[existingIndex].totalOrders + 1 : 1,
@@ -47,7 +56,14 @@ function loadClients() {
     };
     
     if (existingIndex >= 0) {
-      clients.value[existingIndex] = clientRecord;
+      // Обновляем запись, сохраняя некоторые старые значения
+      const oldRecord = clients.value[existingIndex];
+      clients.value[existingIndex] = {
+        ...oldRecord,
+        ...clientRecord,
+        totalOrders: oldRecord.totalOrders + 1,
+        history: [...oldRecord.history, { date: new Date().toISOString(), services }].slice(-10)
+      };
     } else {
       clients.value.push(clientRecord);
     }
