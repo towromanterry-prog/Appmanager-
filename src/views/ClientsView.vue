@@ -1,12 +1,5 @@
 <template>
   <div class="clients-view-wrapper">
-    <div class="controls-bar">
-        <v-btn-toggle v-model="sortBy" mandatory density="compact" variant="outlined">
-          <v-btn value="name" icon="mdi-sort-alphabetical-variant"></v-btn>
-          <v-btn value="orders" icon="mdi-sort-numeric-variant"></v-btn>
-          <v-btn value="date" icon="mdi-sort-clock-descending-outline"></v-btn>
-        </v-btn-toggle>
-    </div>
     <div class="clients-list-container">
         <div v-if="!sortedClients.length" class="empty-state">
           <v-icon size="48">mdi-account-search-outline</v-icon>
@@ -127,12 +120,11 @@ const clientsStore = useClientsStore();
 const searchStore = useSearchStore();
 const confirmationStore = useConfirmationStore();
 
-const { clients } = storeToRefs(clientsStore);
+const { clients, sortBy } = storeToRefs(clientsStore);
 const { searchQuery } = storeToRefs(searchStore);
 
 const historyDialog = ref(false);
 const selectedClient = ref(null);
-const sortBy = ref('name');
 
 const fuse = computed(() => {
   const options = {
@@ -223,11 +215,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-.controls-bar {
-  padding: 8px 16px;
-  display: flex;
-  justify-content: flex-end;
+  padding-top: 16px;
 }
 .clients-list-container {
   flex-grow: 1;

@@ -4,6 +4,7 @@ import { ref, computed } from 'vue';
 
 export const useClientsStore = defineStore('clients', () => {
   const clients = ref([]);
+  const sortBy = ref('name');
   
 function loadClients() {
   try {
@@ -115,6 +116,7 @@ function loadClients() {
   
   return {
     clients,
+    sortBy,
     loadClients,
     addOrUpdateClient,
     searchClients,

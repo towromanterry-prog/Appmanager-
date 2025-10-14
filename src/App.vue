@@ -40,8 +40,8 @@
         </template>
 
         <template v-slot:append-inner>
-          <v-menu
-            v-if="isHomePage"
+           <v-menu
+            v-if="isHomePage || isClientsPage"
             v-model="sortMenu"
             location="bottom end"
             :close-on-content-click="false"
@@ -56,31 +56,44 @@
             </template>
 
             <v-card min-width="250">
-              <v-list dense>
-                <v-list-subheader>СТАТУС</v-list-subheader>
-                <v-list-item
-                  v-for="status in availableStatuses"
-                  :key="status.value"
-                  @click="toggleStatusFilter(status.value)"
-                >
-                  <template v-slot:prepend>
-                    <v-checkbox-btn
-                      :model-value="orderStore.filterStatus.includes(status.value)"
-                    ></v-checkbox-btn>
-                  </template>
-                  <v-list-item-title>{{ status.text }}</v-list-item-title>
-                </v-list-item>
-              </v-list>
+              <!-- Order Sorting -->
+              <div v-if="isHomePage">
+                <v-list dense>
+                  <v-list-subheader>СТАТУС</v-list-subheader>
+                  <v-list-item
+                    v-for="status in availableStatuses"
+                    :key="status.value"
+                    @click="toggleStatusFilter(status.value)"
+                  >
+                    <template v-slot:prepend>
+                      <v-checkbox-btn
+                        :model-value="orderStore.filterStatus.includes(status.value)"
+                      ></v-checkbox-btn>
+                    </template>
+                    <v-list-item-title>{{ status.text }}</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+                <v-divider></v-divider>
+                <v-list dense>
+                  <v-list-subheader>СОРТИРОВКА</v-list-subheader>
+                  <v-radio-group v-model="orderStore.sortBy" hide-details class="pa-2">
+                    <v-radio label="По дедлайну" value="deadline"></v-radio>
+                    <v-radio label="По дате создания" value="createDate"></v-radio>
+                  </v-radio-group>
+                </v-list>
+              </div>
 
-              <v-divider></v-divider>
-
-              <v-list dense>
-                <v-list-subheader>СОРТИРОВКА</v-list-subheader>
-                <v-radio-group v-model="orderStore.sortBy" hide-details class="pa-2">
-                  <v-radio label="По дедлайну" value="deadline"></v-radio>
-                  <v-radio label="По дате создания" value="createDate"></v-radio>
-                </v-radio-group>
-              </v-list>
+              <!-- Client Sorting -->
+              <div v-if="isClientsPage">
+                 <v-list dense>
+                  <v-list-subheader>СОРТИРОВКА</v-list-subheader>
+                  <v-radio-group v-model="clientsStore.sortBy" hide-details class="pa-2">
+                    <v-radio label="По имени (А-Я)" value="name"></v-radio>
+                    <v-radio label="По количеству заказов" value="orders"></v-radio>
+                    <v-radio label="По дате последнего заказа" value="date"></v-radio>
+                  </v-radio-group>
+                </v-list>
+              </div>
             </v-card>
           </v-menu>
         </template>
