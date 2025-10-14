@@ -157,6 +157,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import Fuse from 'fuse.js';
 import { useOrderStore } from '@/stores/orderStore.js';
 import { useClientsStore } from '@/stores/clientsStore.js';
 import { useSettingsStore } from '@/stores/settingsStore.js';
@@ -304,24 +305,29 @@ const calendarWeeks = computed(() => {
     return weeks;
 });
 
+const fuse = computed(() => {
+  const options = {
+    keys: [
+      { name: 'clientName', weight: 0.4 },
+      { name: 'phone', weight: 0.3 },
+      { name: 'services.name', weight: 0.2 },
+      { name: 'details.name', weight: 0.1 }
+    ],
+    includeScore: true,
+    threshold: 0.4,
+    minMatchCharLength: 2,
+  };
+  return new Fuse(orders.value, options);
+});
+
 const filteredOrders = computed(() => {
-  let ordersToDisplay = orders.value;
+  let ordersToDisplay;
 
-  // 1. Фильтр по поисковому запросу
+  // 1. Фильтр по поисковому запросу с использованием Fuse.js
   if (searchQuery.value) {
-    const lowerCaseQuery = searchQuery.value.toLowerCase();
-    ordersToDisplay = ordersToDisplay.filter(order => {
-      const clientName = order.clientName?.toLowerCase() || '';
-      const phone = order.phone?.toLowerCase() || '';
-      const services = order.services.map(s => s.name.toLowerCase()).join(' ');
-      const details = order.details.map(d => d.name.toLowerCase()).join(' ');
-
-      return clientName.includes(lowerCaseQuery) ||
-             phone.includes(lowerCaseQuery) ||
-             services.includes(lowerCaseQuery) ||
-             details.includes(lowerCaseQuery);
-    });
+    ordersToDisplay = fuse.value.search(searchQuery.value).map(result => result.item);
   } else {
+    ordersToDisplay = [...orders.value];
     // 2. Фильтр по дате (если выбрана и нет поискового запроса)
     if (selectedDate.value) {
       ordersToDisplay = ordersToDisplay.filter(order => order.deadline?.startsWith(selectedDate.value));
@@ -338,13 +344,17 @@ const filteredOrders = computed(() => {
     }
   }
 
-  // 4. Сортировка
-  return [...ordersToDisplay].sort((a, b) => {
-    const sortBy = orderStore.sortBy;
-    const dateA = a[sortBy] || (sortBy === 'deadline' ? a.createDate : '1970-01-01');
-    const dateB = b[sortBy] || (sortBy === 'deadline' ? b.createDate : '1970-01-01');
-    return new Date(dateB) - new Date(dateA);
-  });
+  // 4. Сортировка (только если нет активного поиска, т.к. Fuse.js сортирует по релевантности)
+  if (!searchQuery.value) {
+    return [...ordersToDisplay].sort((a, b) => {
+      const sortBy = orderStore.sortBy;
+      const dateA = a[sortBy] || (sortBy === 'deadline' ? a.createDate : '1970-01-01');
+      const dateB = b[sortBy] || (sortBy === 'deadline' ? b.createDate : '1970-01-01');
+      return new Date(dateB) - new Date(dateA);
+    });
+  }
+
+  return ordersToDisplay;
 });
 
 
