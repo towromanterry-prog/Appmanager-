@@ -89,7 +89,7 @@
                       size="small"
                       class="mr-1 mb-1"
                     >
-                      {{ service.name }}
+                      {{ service }}
                     </v-chip>
                   </div>
                 </v-card-text>
