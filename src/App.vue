@@ -17,6 +17,7 @@
 
     <v-app-bar app color="surface" height="68" flat border>
       <v-text-field
+        v-if="isSearchVisible"
         v-model="searchQuery"
         placeholder="Поиск..."
         variant="solo"
@@ -83,7 +84,16 @@
           </v-menu>
         </template>
       </v-text-field>
-
+      <div v-else class="app-bar-placeholder">
+        <v-icon
+          icon="mdi-menu"
+          class="burger-icon"
+          @mousedown.stop
+          @mouseup.stop
+          @click.stop="drawer = !drawer"
+        ></v-icon>
+        <span class="app-bar-title">{{ currentTitle }}</span>
+      </div>
     </v-app-bar>
 
     <v-main class="app-main">
@@ -103,15 +113,28 @@ import { useOrderStore } from '@/stores/orderStore.js';
 import { useClientsStore } from '@/stores/clientsStore.js';
 import { useSettingsStore } from '@/stores/settingsStore.js';
 import { useTagsStore } from '@/stores/tagsStore.js';
+import { useSearchStore } from '@/stores/searchStore.js';
 import ConfirmationDialog from '@/components/common/ConfirmationDialog.vue';
 
 const router = useRouter();
 const route = useRoute();
-const searchQuery = ref('');
+const searchStore = useSearchStore();
+
+const searchQuery = computed({
+  get: () => searchStore.searchQuery,
+  set: (value) => searchStore.setSearchQuery(value),
+});
+
 const drawer = ref(false);
 const sortMenu = ref(false);
 
 const isHomePage = computed(() => route.name === 'home');
+const isSearchVisible = computed(() => route.name === 'home');
+
+const currentTitle = computed(() => {
+  const menuItem = menuItems.value.find(item => item.route === route.name);
+  return menuItem ? menuItem.title : '';
+});
 
 const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
@@ -203,5 +226,16 @@ onMounted(initializeApp);
 .burger-icon {
   cursor: pointer;
   margin-right: 12px;
+}
+
+.app-bar-placeholder {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.app-bar-title {
+  font-size: 1.25rem;
+  font-weight: 500;
 }
 </style>

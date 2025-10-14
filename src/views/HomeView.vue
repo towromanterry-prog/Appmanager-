@@ -161,6 +161,7 @@ import { useOrderStore } from '@/stores/orderStore.js';
 import { useClientsStore } from '@/stores/clientsStore.js';
 import { useSettingsStore } from '@/stores/settingsStore.js';
 import { useConfirmationStore } from '@/stores/confirmationStore.js';
+import { useSearchStore } from '@/stores/searchStore.js';
 import { storeToRefs } from 'pinia';
 import OrderCard from '@/components/OrderCard.vue';
 import OrderForm from '@/components/OrderForm.vue';
@@ -172,7 +173,9 @@ const orderStore = useOrderStore();
 const clientsStore = useClientsStore();
 const settingsStore = useSettingsStore();
 const confirmationStore = useConfirmationStore();
+const searchStore = useSearchStore();
 const { orders } = storeToRefs(orderStore);
+const { searchQuery } = storeToRefs(searchStore);
 
 // -- Swipe to open Calendar --
 const touchStartX = ref(0);
@@ -304,22 +307,38 @@ const calendarWeeks = computed(() => {
 const filteredOrders = computed(() => {
   let ordersToDisplay = orders.value;
 
-  // 1. Фильтр по дате (если выбрана)
-  if (selectedDate.value) {
-    ordersToDisplay = ordersToDisplay.filter(order => order.deadline?.startsWith(selectedDate.value));
+  // 1. Фильтр по поисковому запросу
+  if (searchQuery.value) {
+    const lowerCaseQuery = searchQuery.value.toLowerCase();
+    ordersToDisplay = ordersToDisplay.filter(order => {
+      const clientName = order.clientName?.toLowerCase() || '';
+      const phone = order.phone?.toLowerCase() || '';
+      const services = order.services.map(s => s.name.toLowerCase()).join(' ');
+      const details = order.details.map(d => d.name.toLowerCase()).join(' ');
+
+      return clientName.includes(lowerCaseQuery) ||
+             phone.includes(lowerCaseQuery) ||
+             services.includes(lowerCaseQuery) ||
+             details.includes(lowerCaseQuery);
+    });
   } else {
-    // 2. Фильтр по статусу (если дата не выбрана)
-    if (orderStore.filterStatus.length > 0) {
-      ordersToDisplay = ordersToDisplay.filter(order => orderStore.filterStatus.includes(order.status));
+    // 2. Фильтр по дате (если выбрана и нет поискового запроса)
+    if (selectedDate.value) {
+      ordersToDisplay = ordersToDisplay.filter(order => order.deadline?.startsWith(selectedDate.value));
     } else {
-      // По умолчанию скрываем "сданные", если не выбраны статусы и не включен показ в настройках
-      if (!settingsStore.appSettings?.showCompletedOrders) {
-        ordersToDisplay = ordersToDisplay.filter(order => order.status !== 'delivered');
+      // 3. Фильтр по статусу (если дата не выбрана и нет поискового запроса)
+      if (orderStore.filterStatus.length > 0) {
+        ordersToDisplay = ordersToDisplay.filter(order => orderStore.filterStatus.includes(order.status));
+      } else {
+        // По умолчанию скрываем "сданные", если не выбраны статусы и не включен показ в настройках
+        if (!settingsStore.appSettings?.showCompletedOrders) {
+          ordersToDisplay = ordersToDisplay.filter(order => order.status !== 'delivered');
+        }
       }
     }
   }
 
-  // 3. Сортировка
+  // 4. Сортировка
   return [...ordersToDisplay].sort((a, b) => {
     const sortBy = orderStore.sortBy;
     const dateA = a[sortBy] || (sortBy === 'deadline' ? a.createDate : '1970-01-01');
