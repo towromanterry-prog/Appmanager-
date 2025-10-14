@@ -40,19 +40,14 @@
         </template>
 
         <template v-slot:append-inner>
-           <v-menu
+          <v-menu
             v-if="isHomePage || isClientsPage"
             v-model="sortMenu"
             location="bottom end"
             :close-on-content-click="false"
           >
             <template v-slot:activator="{ props }">
-              <v-icon
-                icon="mdi-sort-variant"
-                v-bind="props"
-                @mousedown.stop
-                @click.stop
-              ></v-icon>
+              <v-icon icon="mdi-sort-variant" v-bind="props" @mousedown.stop @click.stop></v-icon>
             </template>
 
             <v-card min-width="250">
@@ -66,9 +61,7 @@
                     @click="toggleStatusFilter(status.value)"
                   >
                     <template v-slot:prepend>
-                      <v-checkbox-btn
-                        :model-value="orderStore.filterStatus.includes(status.value)"
-                      ></v-checkbox-btn>
+                      <v-checkbox-btn :model-value="orderStore.filterStatus.includes(status.value)"></v-checkbox-btn>
                     </template>
                     <v-list-item-title>{{ status.text }}</v-list-item-title>
                   </v-list-item>
@@ -85,7 +78,7 @@
 
               <!-- Client Sorting -->
               <div v-if="isClientsPage">
-                 <v-list dense>
+                <v-list dense>
                   <v-list-subheader>СОРТИРОВКА</v-list-subheader>
                   <v-radio-group v-model="clientsStore.sortBy" hide-details class="pa-2">
                     <v-radio label="По имени (А-Я)" value="name"></v-radio>
@@ -144,7 +137,8 @@ const sortMenu = ref(false);
 
 const isHomePage = computed(() => route.name === 'home');
 const isClientsPage = computed(() => route.name === 'clients');
-const isSearchVisible = computed(() => isHomePage.value || isClientsPage.value);
+const isBaseSettingsPage = computed(() => route.name === 'base-settings');
+const isSearchVisible = computed(() => isHomePage.value || isClientsPage.value || isBaseSettingsPage.value);
 
 const currentTitle = computed(() => {
   const menuItem = menuItems.value.find(item => item.route === route.name);
