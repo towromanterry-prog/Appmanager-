@@ -27,6 +27,7 @@
         flat
         rounded="pill"
         class="full-width-search"
+        clearable
       >
         <template v-slot:prepend-inner>
           <v-icon
