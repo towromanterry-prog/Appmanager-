@@ -13,6 +13,16 @@
           <v-list-item-title>{{ item.title }}</v-list-item-title>
         </v-list-item>
       </v-list>
+      <template v-slot:append>
+        <div class="pa-2">
+          <v-list-item @click="goToRoute('settings')">
+            <template v-slot:prepend>
+              <v-icon icon="mdi-tune"></v-icon>
+            </template>
+            <v-list-item-title>Настройки</v-list-item-title>
+          </v-list-item>
+        </div>
+      </template>
     </v-navigation-drawer>
 
     <v-app-bar app color="surface" height="68" flat border>
@@ -40,14 +50,19 @@
         </template>
 
         <template v-slot:append-inner>
-          <v-menu
+           <v-menu
             v-if="isHomePage || isClientsPage || isBaseSettingsPage"
             v-model="sortMenu"
             location="bottom end"
             :close-on-content-click="false"
           >
             <template v-slot:activator="{ props }">
-              <v-icon icon="mdi-sort-variant" v-bind="props" @mousedown.stop @click.stop></v-icon>
+              <v-icon
+                icon="mdi-sort-variant"
+                v-bind="props"
+                @mousedown.stop
+                @click.stop
+              ></v-icon>
             </template>
 
             <v-card min-width="250">
@@ -61,7 +76,9 @@
                     @click="toggleStatusFilter(status.value)"
                   >
                     <template v-slot:prepend>
-                      <v-checkbox-btn :model-value="orderStore.filterStatus.includes(status.value)"></v-checkbox-btn>
+                      <v-checkbox-btn
+                        :model-value="orderStore.filterStatus.includes(status.value)"
+                      ></v-checkbox-btn>
                     </template>
                     <v-list-item-title>{{ status.text }}</v-list-item-title>
                   </v-list-item>
@@ -78,7 +95,7 @@
 
               <!-- Client Sorting -->
               <div v-if="isClientsPage">
-                <v-list dense>
+                 <v-list dense>
                   <v-list-subheader>СОРТИРОВКА</v-list-subheader>
                   <v-radio-group v-model="clientsStore.sortBy" hide-details class="pa-2">
                     <v-radio label="По имени (А-Я)" value="name"></v-radio>
@@ -189,8 +206,6 @@ const toggleStatusFilter = (statusValue) => {
 const menuItems = ref([
   { title: 'Главная', icon: 'mdi-home', route: 'home' },
   { title: 'Клиенты', icon: 'mdi-account-group', route: 'clients' },
-  { title: 'Базовые настройки', icon: 'mdi-cog-outline', route: 'base-settings' },
-  { title: 'Настройки', icon: 'mdi-tune', route: 'settings' }
 ]);
 
 const themeStore = useThemeStore();
