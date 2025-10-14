@@ -245,6 +245,7 @@ import { useServiceStore } from '@/stores/serviceStore';
 import { useDetailStore } from '@/stores/detailStore';
 import { useTagsStore } from '@/stores/tagsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useSettingsViewStore } from '@/stores/settingsViewStore';
 import { useConfirmationStore } from '@/stores/confirmationStore';
 import { useSearchStore } from '@/stores/searchStore';
 import ServiceFormDialog from '@/components/ServiceFormDialog.vue';
@@ -253,9 +254,11 @@ const serviceStore = useServiceStore();
 const detailStore = useDetailStore();
 const tagsStore = useTagsStore();
 const settingsStore = useSettingsStore();
+const settingsViewStore = useSettingsViewStore();
 const confirmationStore = useConfirmationStore();
 const searchStore = useSearchStore();
 const { searchQuery } = storeToRefs(searchStore);
+const { sortBy } = storeToRefs(settingsViewStore);
 
 const tab = ref('services');
 const serviceDialog = ref(false);
@@ -293,29 +296,47 @@ const createFuse = (list, keys) => {
 };
 
 const filteredServices = computed(() => {
-  const sortedServices = [...serviceStore.services].sort((a, b) => a.name.localeCompare(b.name));
-  if (!searchQuery.value) {
-    return sortedServices;
+  let items = [...serviceStore.services];
+  if (sortBy.value === 'name') {
+    items.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    items.sort((a, b) => b.id - a.id);
   }
-  const fuse = createFuse(sortedServices, ['name', 'tags.name']);
+
+  if (!searchQuery.value) {
+    return items;
+  }
+  const fuse = createFuse(items, ['name']);
   return fuse.search(searchQuery.value).map(result => result.item);
 });
 
 const filteredDetails = computed(() => {
-  const sortedDetails = [...detailStore.details].sort((a, b) => a.name.localeCompare(b.name));
-  if (!searchQuery.value) {
-    return sortedDetails;
+  let items = [...detailStore.details];
+  if (sortBy.value === 'name') {
+    items.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    items.sort((a, b) => b.id - a.id);
   }
-  const fuse = createFuse(sortedDetails, ['name', 'tags.name']);
+
+  if (!searchQuery.value) {
+    return items;
+  }
+  const fuse = createFuse(items, ['name']);
   return fuse.search(searchQuery.value).map(result => result.item);
 });
 
 const filteredTags = computed(() => {
-  const sortedTags = [...tagsStore.tags].sort((a, b) => a.name.localeCompare(b.name));
-  if (!searchQuery.value) {
-    return sortedTags;
+  let items = [...tagsStore.tags];
+  if (sortBy.value === 'name') {
+    items.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    items.sort((a, b) => b.id - a.id);
   }
-  const fuse = createFuse(sortedTags, ['name']);
+
+  if (!searchQuery.value) {
+    return items;
+  }
+  const fuse = createFuse(items, ['name']);
   return fuse.search(searchQuery.value).map(result => result.item);
 });
 
