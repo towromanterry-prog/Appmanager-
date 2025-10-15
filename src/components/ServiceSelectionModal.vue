@@ -81,6 +81,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
+import Fuse from 'fuse.js';
 import { useServiceStore } from '@/stores/serviceStore';
 import { useTagsStore } from '@/stores/tagsStore';
 import ServiceFormDialog from './ServiceFormDialog.vue';
@@ -98,17 +99,25 @@ const searchQuery = ref('');
 const selected = ref([]);
 const isServiceFormVisible = ref(false);
 
-const availableServices = computed(() => serviceStore.services);
+const availableServices = computed(() => {
+  return serviceStore.services.map(service => ({
+    ...service,
+    tagNames: getTags(service.tags).map(t => t.name)
+  }));
+});
+
+const fuse = computed(() => {
+  return new Fuse(availableServices.value, {
+    keys: ['name', 'tagNames'],
+    threshold: 0.3,
+  });
+});
 
 const filteredServices = computed(() => {
   if (!searchQuery.value) {
     return availableServices.value;
   }
-  const lowerCaseQuery = searchQuery.value.toLowerCase();
-  return availableServices.value.filter(service =>
-    service.name.toLowerCase().includes(lowerCaseQuery) ||
-    (service.tags && getTags(service.tags).some(tag => tag.name.toLowerCase().includes(lowerCaseQuery)))
-  );
+  return fuse.value.search(searchQuery.value).map(result => result.item);
 });
 
 const isSelected = (service) => {

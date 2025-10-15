@@ -42,6 +42,7 @@
                 :label="`Телефон ${settingsStore.isFieldRequired('phone') ? '*' : ''}`"
                 :rules="settingsStore.isFieldRequired('phone') ? [rules.required] : []"
                 type="tel"
+                prefix="+"
               ></v-text-field>
             </v-col>
 
@@ -62,7 +63,16 @@
               <div v-if="form.services.length > 0" class="item-list">
                 <div v-for="(service, index) in form.services" :key="`service-${index}`" class="item-card">
                   <div class="item-content">
-                    <div class="item-title">{{ service.name }} - {{ service.price }}₽</div>
+                    <div class="item-title">{{ service.name }}</div>
+                    <v-text-field
+                      v-model="service.price"
+                      type="number"
+                      variant="underlined"
+                      density="compact"
+                      suffix="₽"
+                      hide-details
+                      class="price-input"
+                    ></v-text-field>
                     <div class="tags-container">
                       <v-chip
                         v-for="tag in getTags(service.tags)"
@@ -101,7 +111,16 @@
               <div v-if="form.details.length > 0" class="item-list">
                 <div v-for="(detail, index) in form.details" :key="`detail-${index}`" class="item-card">
                   <div class="item-content">
-                    <div class="item-title">{{ detail.name }} - {{ detail.price }}₽</div>
+                    <div class="item-title">{{ detail.name }}</div>
+                    <v-text-field
+                      v-model="detail.price"
+                      type="number"
+                      variant="underlined"
+                      density="compact"
+                      suffix="₽"
+                      hide-details
+                      class="price-input"
+                    ></v-text-field>
                      <div class="tags-container">
                       <v-chip
                         v-for="tag in getTags(detail.tags)"
@@ -257,7 +276,7 @@ watch(() => form.phone, (newVal, oldVal) => {
 
   let formatted = '';
   if (digits.length > 0) {
-    formatted = '+' + digits.substring(0, 1);
+    formatted = digits.substring(0, 1);
   }
   if (digits.length > 1) {
     formatted += ' (' + digits.substring(1, 4);
@@ -387,6 +406,13 @@ if (tagsStore.tags.length === 0) {
 .item-content {
   display: flex;
   flex-direction: column;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.price-input {
+  max-width: 120px;
+  margin-top: 4px;
 }
 
 .item-title {
