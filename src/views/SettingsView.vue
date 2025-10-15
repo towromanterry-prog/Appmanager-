@@ -525,7 +525,7 @@
             <template v-slot:append-inner>
               <v-tooltip location="top">
                 <template v-slot:activator="{ props }">
-                  <v-icon v-bind="props" icon="mdi-help-circle-outline"></v-icon>
+                  <v-icon v-bind="props" icon="mdi-help-circle-outline" @click.stop></v-icon>
                 </template>
                 <div>
                   <div>%имя% - что бы отправить имя клиента из заказа</div>
