@@ -63,11 +63,9 @@ export const useSettingsStore = defineStore('settings', () => {
       clearSearch: true,
       resetStatusFilter: true,
     },
-    messageTemplates: {
-      sms: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.',
-      whatsapp: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.',
-      telegram: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.',
-    },
+    messageTemplates: [
+      { id: 1, text: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.' }
+    ],
   });
   
   function loadSettings() {
@@ -181,11 +179,9 @@ export const useSettingsStore = defineStore('settings', () => {
         clearSearch: true,
         resetStatusFilter: true,
       },
-      messageTemplates: {
-        sms: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.',
-        whatsapp: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.',
-        telegram: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.',
-      },
+      messageTemplates: [
+        { id: 1, text: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.' }
+      ],
     };
     
     localStorage.removeItem('requiredFields');
@@ -195,6 +191,28 @@ export const useSettingsStore = defineStore('settings', () => {
   function isFieldRequired(fieldName) {
     return requiredFields.value[fieldName] || false;
   }
+
+  function addMessageTemplate(text) {
+    const newTemplate = {
+      id: Date.now(),
+      text,
+    };
+    appSettings.value.messageTemplates.push(newTemplate);
+    updateAppSettings(appSettings.value);
+  }
+
+  function updateMessageTemplate(id, text) {
+    const index = appSettings.value.messageTemplates.findIndex(t => t.id === id);
+    if (index !== -1) {
+      appSettings.value.messageTemplates[index].text = text;
+      updateAppSettings(appSettings.value);
+    }
+  }
+
+  function deleteMessageTemplate(id) {
+    appSettings.value.messageTemplates = appSettings.value.messageTemplates.filter(t => t.id !== id);
+    updateAppSettings(appSettings.value);
+  }
   
   return {
     requiredFields,
@@ -203,6 +221,9 @@ export const useSettingsStore = defineStore('settings', () => {
     updateRequiredFields,
     updateAppSettings,
     resetSettings,
-    isFieldRequired
+    isFieldRequired,
+    addMessageTemplate,
+    updateMessageTemplate,
+    deleteMessageTemplate,
   };
 });

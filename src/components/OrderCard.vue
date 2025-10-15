@@ -77,9 +77,9 @@
         <!-- Действия -->
         <v-card-actions class="pa-2">
           <v-btn icon="mdi-phone" variant="text" size="small" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop></v-btn>
-          <v-btn icon="mdi-message-text" variant="text" size="small" color="on-surface-variant" :href="smsLink" @click.stop></v-btn>
-          <v-btn :icon="IconWhatsapp" variant="text" size="small" color="on-surface-variant" :href="whatsappLink" target="_blank" @click.stop></v-btn>
-          <v-btn :icon="IconTelegram" variant="text" size="small" color="on-surface-variant" :href="telegramLink" target="_blank" @click.stop></v-btn>
+          <v-btn icon="mdi-message-text" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessage('sms')"></v-btn>
+          <v-btn :icon="IconWhatsapp" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessage('whatsapp')"></v-btn>
+          <v-btn :icon="IconTelegram" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessage('telegram')"></v-btn>
            <v-spacer></v-spacer>
            <v-btn
               :icon="order.status === 'cancelled' ? 'mdi-restore' : 'mdi-cancel'"
@@ -100,6 +100,7 @@
 import { ref, computed } from 'vue';
 import { useOrderStore } from '@/stores/orderStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useTemplateSelectionStore } from '@/stores/templateSelectionStore';
 import StatusIndicator from '@/components/common/StatusIndicator.vue';
 import { useFormatDate } from '@/composables/useDateUtils';
 import { IconTelegram, IconWhatsapp } from '@iconify-prerendered/vue-simple-icons';
@@ -111,6 +112,7 @@ const emit = defineEmits(['edit', 'delete']);
 
 const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
+const templateSelectionStore = useTemplateSelectionStore();
 const { toLongDate } = useFormatDate();
 
 const expanded = ref(false);
@@ -124,35 +126,6 @@ const isOverdue = computed(() => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return new Date(props.order.deadline) < today && props.order.status !== 'delivered' && props.order.status !== 'cancelled';
-});
-
-const formattedPhone = computed(() => {
-  if (!props.order.phone) return '';
-  return `+${props.order.phone.replace(/\D/g, '')}`;
-});
-
-const smsLink = computed(() => {
-  const template = settingsStore.appSettings.messageTemplates.sms;
-  const message = template
-    .replace('%имя%', props.order.clientName)
-    .replace('%цена%', totalAmount.value);
-  return `sms:${formattedPhone.value}?&body=${encodeURIComponent(message)}`;
-});
-
-const whatsappLink = computed(() => {
-  const template = settingsStore.appSettings.messageTemplates.whatsapp;
-  const message = template
-    .replace('%имя%', props.order.clientName)
-    .replace('%цена%', totalAmount.value);
-  return `https://wa.me/${formattedPhone.value}?text=${encodeURIComponent(message)}`;
-});
-
-const telegramLink = computed(() => {
-  const template = settingsStore.appSettings.messageTemplates.telegram;
-  const message = template
-    .replace('%имя%', props.order.clientName)
-    .replace('%цена%', totalAmount.value);
-  return `https://t.me/${formattedPhone.value}?text=${encodeURIComponent(message)}`;
 });
 
 const changeOrderStatus = () => {
@@ -186,6 +159,46 @@ const handleCancelClick = () => {
     orderStore.undoCancelOrder(props.order.id);
   } else {
     orderStore.cancelOrder(props.order.id);
+  }
+};
+
+const formattedPhone = computed(() => {
+  if (!props.order.phone) return '';
+  return `+${props.order.phone.replace(/\D/g, '')}`;
+});
+
+const sendMessage = async (service) => {
+  const templates = settingsStore.appSettings.messageTemplates;
+  let selectedTemplate;
+
+  if (templates.length > 1) {
+    selectedTemplate = await templateSelectionStore.open(templates);
+    if (!selectedTemplate) return; // User cancelled
+  } else if (templates.length === 1) {
+    selectedTemplate = templates[0];
+  } else {
+    selectedTemplate = { text: '' }; // No templates, use empty message
+  }
+
+  const message = selectedTemplate.text
+    .replace('%имя%', props.order.clientName)
+    .replace('%цена%', totalAmount.value);
+
+  let url;
+  switch (service) {
+    case 'sms':
+      url = `sms:${formattedPhone.value}?&body=${encodeURIComponent(message)}`;
+      break;
+    case 'whatsapp':
+      url = `https://wa.me/${formattedPhone.value}?text=${encodeURIComponent(message)}`;
+      break;
+    case 'telegram':
+      url = `https://t.me/${formattedPhone.value}?text=${encodeURIComponent(message)}`;
+      break;
+  }
+
+  if (url) {
+    window.open(url, '_blank');
   }
 };
 </script>

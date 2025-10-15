@@ -341,63 +341,30 @@
             <v-expansion-panel-text>
               <v-card flat>
                 <v-card-text>
-                  <p class="text-body-2 text-medium-emphasis mb-4">
-                    Настройте шаблоны для быстрой отправки сообщений клиентам.
+                  <div class="d-flex justify-space-between align-center mb-2">
+                    <p class="text-body-2 text-medium-emphasis">
+                      Управляйте шаблонами для быстрой отправки сообщений.
+                    </p>
+                    <v-btn color="primary" @click="openTemplateDialog()">
+                      <v-icon start>mdi-plus</v-icon>
+                      Добавить
+                    </v-btn>
+                  </div>
+                  <v-list lines="two" v-if="settingsStore.appSettings.messageTemplates.length">
+                    <v-list-item
+                      v-for="template in settingsStore.appSettings.messageTemplates"
+                      :key="template.id"
+                      :title="template.text"
+                    >
+                      <template v-slot:append>
+                        <v-btn icon="mdi-pencil" variant="text" @click="openTemplateDialog(template)"></v-btn>
+                        <v-btn icon="mdi-delete" variant="text" color="error" @click="deleteTemplate(template.id)"></v-btn>
+                      </template>
+                    </v-list-item>
+                  </v-list>
+                  <p v-else class="text-center text-medium-emphasis mt-4">
+                    Нет сохраненных шаблонов.
                   </p>
-
-                  <v-text-field
-                    v-model="settingsStore.appSettings.messageTemplates.sms"
-                    label="Шаблон для SMS"
-                    variant="outlined"
-                    dense
-                    class="mb-2"
-                    @update:modelValue="updateAppSettings"
-                  >
-                    <template v-slot:append-inner>
-                      <v-tooltip location="top">
-                        <template v-slot:activator="{ props }">
-                          <v-icon v-bind="props" icon="mdi-help-circle-outline"></v-icon>
-                        </template>
-                        <span>Доступные переменные: %имя%, %цена%</span>
-                      </v-tooltip>
-                    </template>
-                  </v-text-field>
-
-                  <v-text-field
-                    v-model="settingsStore.appSettings.messageTemplates.whatsapp"
-                    label="Шаблон для WhatsApp"
-                    variant="outlined"
-                    dense
-                    class="mb-2"
-                    @update:modelValue="updateAppSettings"
-                  >
-                    <template v-slot:append-inner>
-                      <v-tooltip location="top">
-                        <template v-slot:activator="{ props }">
-                          <v-icon v-bind="props" icon="mdi-help-circle-outline"></v-icon>
-                        </template>
-                        <span>Доступные переменные: %имя%, %цена%</span>
-                      </v-tooltip>
-                    </template>
-                  </v-text-field>
-
-                  <v-text-field
-                    v-model="settingsStore.appSettings.messageTemplates.telegram"
-                    label="Шаблон для Telegram"
-                    variant="outlined"
-                    dense
-                    @update:modelValue="updateAppSettings"
-                  >
-                    <template v-slot:append-inner>
-                      <v-tooltip location="top">
-                        <template v-slot:activator="{ props }">
-                          <v-icon v-bind="props" icon="mdi-help-circle-outline"></v-icon>
-                        </template>
-                        <span>Доступные переменные: %имя%, %цена%</span>
-                      </v-tooltip>
-                    </template>
-                  </v-text-field>
-
                 </v-card-text>
               </v-card>
             </v-expansion-panel-text>
@@ -542,6 +509,36 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Диалог редактирования шаблона -->
+    <v-dialog v-model="templateDialog.show" max-width="500">
+      <v-card>
+        <v-card-title>{{ templateDialog.isEdit ? 'Редактировать' : 'Добавить' }} шаблон</v-card-title>
+        <v-card-text>
+          <v-textarea
+            v-model="templateDialog.text"
+            label="Текст шаблона"
+            rows="4"
+            auto-grow
+            variant="outlined"
+          >
+            <template v-slot:append-inner>
+              <v-tooltip location="top">
+                <template v-slot:activator="{ props }">
+                  <v-icon v-bind="props" icon="mdi-help-circle-outline"></v-icon>
+                </template>
+                <span>Доступные переменные: %имя%, %цена%</span>
+              </v-tooltip>
+            </template>
+          </v-textarea>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn @click="templateDialog.show = false">Отмена</v-btn>
+          <v-btn color="primary" @click="saveTemplate">Сохранить</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -558,6 +555,13 @@ const settingsStore = useSettingsStore();
 const confirmationStore = useConfirmationStore();
 
 const showClientsManager = ref(false);
+
+const templateDialog = ref({
+  show: false,
+  isEdit: false,
+  id: null,
+  text: '',
+});
 
 const orderStatusLabels = computed(() => ({
   accepted: 'Принят',
@@ -663,6 +667,33 @@ const resetAllSettings = async () => {
   if (confirmed) {
     settingsStore.resetSettings();
     themeStore.setTheme('light');
+  }
+};
+
+const openTemplateDialog = (template = null) => {
+  if (template) {
+    templateDialog.value = { show: true, isEdit: true, id: template.id, text: template.text };
+  } else {
+    templateDialog.value = { show: true, isEdit: false, id: null, text: '' };
+  }
+};
+
+const saveTemplate = () => {
+  if (templateDialog.value.isEdit) {
+    settingsStore.updateMessageTemplate(templateDialog.value.id, templateDialog.value.text);
+  } else {
+    settingsStore.addMessageTemplate(templateDialog.value.text);
+  }
+  templateDialog.value.show = false;
+};
+
+const deleteTemplate = async (id) => {
+  const confirmed = await confirmationStore.open(
+    'Удаление шаблона',
+    'Вы уверены, что хотите удалить этот шаблон?'
+  );
+  if (confirmed) {
+    settingsStore.deleteMessageTemplate(id);
   }
 };
 </script>
