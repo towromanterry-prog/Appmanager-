@@ -331,6 +331,79 @@
           </v-expansion-panel>
         </v-expansion-panels>
 
+        <!-- Шаблоны сообщений -->
+        <v-expansion-panels variant="accordion" class="mb-4">
+          <v-expansion-panel>
+            <v-expansion-panel-title>
+              <v-icon class="mr-3">mdi-message-cog</v-icon>
+              Шаблоны сообщений
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <v-card flat>
+                <v-card-text>
+                  <p class="text-body-2 text-medium-emphasis mb-4">
+                    Настройте шаблоны для быстрой отправки сообщений клиентам.
+                  </p>
+
+                  <v-text-field
+                    v-model="settingsStore.appSettings.messageTemplates.sms"
+                    label="Шаблон для SMS"
+                    variant="outlined"
+                    dense
+                    class="mb-2"
+                    @update:modelValue="updateAppSettings"
+                  >
+                    <template v-slot:append-inner>
+                      <v-tooltip location="top">
+                        <template v-slot:activator="{ props }">
+                          <v-icon v-bind="props" icon="mdi-help-circle-outline"></v-icon>
+                        </template>
+                        <span>Доступные переменные: %имя%, %цена%</span>
+                      </v-tooltip>
+                    </template>
+                  </v-text-field>
+
+                  <v-text-field
+                    v-model="settingsStore.appSettings.messageTemplates.whatsapp"
+                    label="Шаблон для WhatsApp"
+                    variant="outlined"
+                    dense
+                    class="mb-2"
+                    @update:modelValue="updateAppSettings"
+                  >
+                    <template v-slot:append-inner>
+                      <v-tooltip location="top">
+                        <template v-slot:activator="{ props }">
+                          <v-icon v-bind="props" icon="mdi-help-circle-outline"></v-icon>
+                        </template>
+                        <span>Доступные переменные: %имя%, %цена%</span>
+                      </v-tooltip>
+                    </template>
+                  </v-text-field>
+
+                  <v-text-field
+                    v-model="settingsStore.appSettings.messageTemplates.telegram"
+                    label="Шаблон для Telegram"
+                    variant="outlined"
+                    dense
+                    @update:modelValue="updateAppSettings"
+                  >
+                    <template v-slot:append-inner>
+                      <v-tooltip location="top">
+                        <template v-slot:activator="{ props }">
+                          <v-icon v-bind="props" icon="mdi-help-circle-outline"></v-icon>
+                        </template>
+                        <span>Доступные переменные: %имя%, %цена%</span>
+                      </v-tooltip>
+                    </template>
+                  </v-text-field>
+
+                </v-card-text>
+              </v-card>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
+
         <!-- Дополнительные настройки -->
         <v-expansion-panels variant="accordion">
           <v-expansion-panel>

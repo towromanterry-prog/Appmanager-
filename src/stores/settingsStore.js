@@ -63,6 +63,11 @@ export const useSettingsStore = defineStore('settings', () => {
       clearSearch: true,
       resetStatusFilter: true,
     },
+    messageTemplates: {
+      sms: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.',
+      whatsapp: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.',
+      telegram: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.',
+    },
   });
   
   function loadSettings() {
@@ -175,6 +180,11 @@ export const useSettingsStore = defineStore('settings', () => {
         closeFullCalendar: true,
         clearSearch: true,
         resetStatusFilter: true,
+      },
+      messageTemplates: {
+        sms: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.',
+        whatsapp: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.',
+        telegram: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.',
       },
     };
     

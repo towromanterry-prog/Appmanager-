@@ -77,9 +77,9 @@
         <!-- Действия -->
         <v-card-actions class="pa-2">
           <v-btn icon="mdi-phone" variant="text" size="small" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop></v-btn>
-          <v-btn icon="mdi-message-text" variant="text" size="small" color="on-surface-variant" :href="`sms:${order.phone}`" @click.stop></v-btn>
-          <v-btn :icon="IconWhatsapp" variant="text" size="small" color="on-surface-variant" :href="`https://wa.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
-          <v-btn :icon="IconTelegram" variant="text" size="small" color="on-surface-variant" :href="`https://t.me/${order.phone}`" target="_blank" @click.stop"></v-btn>
+          <v-btn icon="mdi-message-text" variant="text" size="small" color="on-surface-variant" :href="smsLink" @click.stop></v-btn>
+          <v-btn :icon="IconWhatsapp" variant="text" size="small" color="on-surface-variant" :href="whatsappLink" target="_blank" @click.stop></v-btn>
+          <v-btn :icon="IconTelegram" variant="text" size="small" color="on-surface-variant" :href="telegramLink" target="_blank" @click.stop></v-btn>
            <v-spacer></v-spacer>
            <v-btn
               :icon="order.status === 'cancelled' ? 'mdi-restore' : 'mdi-cancel'"
@@ -124,6 +124,35 @@ const isOverdue = computed(() => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return new Date(props.order.deadline) < today && props.order.status !== 'delivered' && props.order.status !== 'cancelled';
+});
+
+const formattedPhone = computed(() => {
+  if (!props.order.phone) return '';
+  return `+${props.order.phone.replace(/\D/g, '')}`;
+});
+
+const smsLink = computed(() => {
+  const template = settingsStore.appSettings.messageTemplates.sms;
+  const message = template
+    .replace('%имя%', props.order.clientName)
+    .replace('%цена%', totalAmount.value);
+  return `sms:${formattedPhone.value}?&body=${encodeURIComponent(message)}`;
+});
+
+const whatsappLink = computed(() => {
+  const template = settingsStore.appSettings.messageTemplates.whatsapp;
+  const message = template
+    .replace('%имя%', props.order.clientName)
+    .replace('%цена%', totalAmount.value);
+  return `https://wa.me/${formattedPhone.value}?text=${encodeURIComponent(message)}`;
+});
+
+const telegramLink = computed(() => {
+  const template = settingsStore.appSettings.messageTemplates.telegram;
+  const message = template
+    .replace('%имя%', props.order.clientName)
+    .replace('%цена%', totalAmount.value);
+  return `https://t.me/${formattedPhone.value}?text=${encodeURIComponent(message)}`;
 });
 
 const changeOrderStatus = () => {
