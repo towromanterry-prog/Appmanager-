@@ -1,231 +1,68 @@
 <template>
-  <v-container class="clients-container">
-    <v-card flat>
-      <v-card-title class="d-flex align-center pa-6">
-        <v-icon size="28" class="mr-3">mdi-account-group</v-icon>
-        <h1 class="text-h5 font-weight-medium">База клиентов</h1>
-        <v-spacer></v-spacer>
-        <v-btn 
-          color="primary"
-          @click="refreshClients"
-          :loading="loading"
-        >
-          <v-icon class="mr-2">mdi-refresh</v-icon>
-          Обновить
-        </v-btn>
-      </v-card-title>
+  <div class="clients-view-wrapper">
+    <div class="clients-list-container">
+        <div v-if="!sortedClients.length" class="empty-state">
+          <v-icon size="48">mdi-account-search-outline</v-icon>
+          <h3 class="mt-4">Клиенты не найдены</h3>
+          <p>Попробуйте изменить поисковый запрос или добавьте нового клиента.</p>
+        </div>
+        <v-list v-else class="clients-list" lines="two">
+          <v-list-item
+            v-for="client in sortedClients"
+            :key="client.id"
+            class="client-card-item"
+          >
+            <v-list-item-title class="client-name-line">
+              <span class="font-weight-bold text-truncate">{{ client.name }}</span>
+              <span class="font-weight-bold text-truncate">{{ client.lastName }}</span>
+            </v-list-item-title>
 
-      <v-card-text>
-        <!-- Поиск клиентов -->
-        <v-text-field
-          v-model="searchQuery"
-          prepend-inner-icon="mdi-magnify"
-          label="Поиск по имени или телефону..."
-          variant="outlined"
-          clearable
-          hide-details
-          class="mb-4"
-        ></v-text-field>
+            <v-list-item-subtitle class="d-flex align-center">
+              <span>{{ client.phone }}</span>
+              <v-spacer></v-spacer>
+              <v-chip size="small" color="primary" variant="outlined" class="ml-2">
+                {{ client.totalOrders }} заказов
+              </v-chip>
+            </v-list-item-subtitle>
 
-        <!-- Статистика -->
-        <v-row class="mb-4">
-          <v-col cols="12" md="4">
-            <v-card variant="outlined">
-              <v-card-text class="text-center">
-                <v-icon size="48" color="primary" class="mb-2">mdi-account-multiple</v-icon>
-                <h3 class="text-h4 font-weight-bold">{{ clientsStore.clients.length }}</h3>
-                <p class="text-body-2 text-medium-emphasis">Всего клиентов</p>
-              </v-card-text>
-            </v-card>
-          </v-col>
-          
-          <v-col cols="12" md="4">
-            <v-card variant="outlined">
-              <v-card-text class="text-center">
-                <v-icon size="48" color="success" class="mb-2">mdi-star</v-icon>
-                <h3 class="text-h4 font-weight-bold">{{ topClients.length }}</h3>
-                <p class="text-body-2 text-medium-emphasis">Постоянные клиенты</p>
-              </v-card-text>
-            </v-card>
-          </v-col>
-          
-          <v-col cols="12" md="4">
-            <v-card variant="outlined">
-              <v-card-text class="text-center">
-                <v-icon size="48" color="warning" class="mb-2">mdi-clock</v-icon>
-                <h3 class="text-h4 font-weight-bold">{{ recentClients.length }}</h3>
-                <p class="text-body-2 text-medium-emphasis">Недавние клиенты</p>
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
-
-        <!-- Вкладки -->
-        <v-tabs v-model="currentTab" class="mb-4">
-          <v-tab value="all">Все клиенты</v-tab>
-          <v-tab value="top">Постоянные</v-tab>
-          <v-tab value="recent">Недавние</v-tab>
-        </v-tabs>
-
-        <!-- Список клиентов -->
-        <v-window v-model="currentTab">
-          <!-- Все клиенты -->
-          <v-window-item value="all">
-            <v-list v-if="filteredClients.length > 0">
-              <v-list-item
-                v-for="client in paginatedClients"
-                :key="client.id"
-                class="mb-2"
-              >
-                <template v-slot:prepend>
-                  <v-avatar color="primary" size="48">
-                    <v-icon color="white">mdi-account</v-icon>
-                  </v-avatar>
+            <template v-slot:append>
+              <v-menu>
+                <template v-slot:activator="{ props }">
+                  <v-btn
+                    icon="mdi-dots-vertical"
+                    variant="text"
+                    v-bind="props"
+                  ></v-btn>
                 </template>
-
-                <v-list-item-title class="font-weight-medium">
-                  {{ client.name }}
-                </v-list-item-title>
-                
-                <v-list-item-subtitle class="d-flex align-center">
-                  <v-icon size="16" class="mr-1">mdi-phone</v-icon>
-                  {{ client.phone }}
-                  <v-spacer></v-spacer>
-                  <v-chip size="small" color="primary" variant="outlined">
-                    {{ client.totalOrders }} заказов
-                  </v-chip>
-                </v-list-item-subtitle>
-
-                <template v-slot:append>
-                  <v-menu>
-                    <template v-slot:activator="{ props }">
-                      <v-btn
-                        icon="mdi-dots-vertical"
-                        variant="text"
-                        v-bind="props"
-                      ></v-btn>
+                <v-list>
+                  <v-list-item @click="viewClientHistory(client)">
+                    <v-list-item-title>История заказов</v-list-item-title>
+                    <template v-slot:prepend>
+                      <v-icon>mdi-history</v-icon>
                     </template>
-                    <v-list>
-                      <v-list-item @click="viewClientHistory(client)">
-                        <v-list-item-title>История заказов</v-list-item-title>
-                        <template v-slot:prepend>
-                          <v-icon>mdi-history</v-icon>
-                        </template>
-                      </v-list-item>
-                      <v-list-item @click="createOrderForClient(client)">
-                        <v-list-item-title>Новый заказ</v-list-item-title>
-                        <template v-slot:prepend>
-                          <v-icon>mdi-plus</v-icon>
-                        </template>
-                      </v-list-item>
-                      <v-list-item @click="deleteClient(client)" color="error">
-                        <v-list-item-title>Удалить</v-list-item-title>
-                        <template v-slot:prepend>
-                          <v-icon>mdi-delete</v-icon>
-                        </template>
-                      </v-list-item>
-                    </v-list>
-                  </v-menu>
-                </template>
-              </v-list-item>
-            </v-list>
-            
-            <div v-else class="text-center py-8">
-              <v-icon size="64" color="grey-lighten-2">mdi-account-search</v-icon>
-              <h3 class="mt-4 text-h6">Клиенты не найдены</h3>
-              <p class="text-medium-emphasis">Попробуйте изменить поисковый запрос</p>
-            </div>
-
-            <!-- Пагинация -->
-            <v-pagination
-              v-if="filteredClients.length > itemsPerPage"
-              v-model="currentPage"
-              :length="Math.ceil(filteredClients.length / itemsPerPage)"
-              class="mt-4"
-            ></v-pagination>
-          </v-window-item>
-
-          <!-- Постоянные клиенты -->
-          <v-window-item value="top">
-            <v-list v-if="topClients.length > 0">
-              <v-list-item
-                v-for="(client, index) in topClients"
-                :key="client.id"
-                class="mb-2"
-              >
-                <template v-slot:prepend>
-                  <v-avatar :color="index < 3 ? 'amber' : 'primary'" size="48">
-                    <v-icon color="white">
-                      {{ index < 3 ? 'mdi-crown' : 'mdi-account' }}
-                    </v-icon>
-                  </v-avatar>
-                </template>
-
-                <v-list-item-title class="font-weight-medium">
-                  {{ client.name }}
-                </v-list-item-title>
-                
-                <v-list-item-subtitle>
-                  {{ client.phone }} • {{ client.totalOrders }} заказов
-                </v-list-item-subtitle>
-
-                <template v-slot:append>
-                  <v-chip 
-                    :color="index < 3 ? 'amber' : 'primary'" 
-                    size="small"
-                  >
-                    #{{ index + 1 }}
-                  </v-chip>
-                </template>
-              </v-list-item>
-            </v-list>
-            
-            <div v-else class="text-center py-8">
-              <v-icon size="64" color="grey-lighten-2">mdi-crown-outline</v-icon>
-              <h3 class="mt-4 text-h6">Нет постоянных клиентов</h3>
-              <p class="text-medium-emphasis">Клиенты появятся здесь после нескольких заказов</p>
-            </div>
-          </v-window-item>
-
-          <!-- Недавние клиенты -->
-          <v-window-item value="recent">
-            <v-list v-if="recentClients.length > 0">
-              <v-list-item
-                v-for="client in recentClients"
-                :key="client.id"
-                class="mb-2"
-              >
-                <template v-slot:prepend>
-                  <v-avatar color="success" size="48">
-                    <v-icon color="white">mdi-account-clock</v-icon>
-                  </v-avatar>
-                </template>
-
-                <v-list-item-title class="font-weight-medium">
-                  {{ client.name }}
-                </v-list-item-title>
-                
-                <v-list-item-subtitle>
-                  {{ client.phone }} • {{ formatDate(client.lastOrderDate) }}
-                </v-list-item-subtitle>
-              </v-list-item>
-            </v-list>
-            
-            <div v-else class="text-center py-8">
-              <v-icon size="64" color="grey-lighten-2">mdi-clock-outline</v-icon>
-              <h3 class="mt-4 text-h6">Нет недавних клиентов</h3>
-              <p class="text-medium-emphasis">Недавние клиенты появятся здесь</p>
-            </div>
-          </v-window-item>
-        </v-window>
-      </v-card-text>
-    </v-card>
-
-    <!-- Диалог истории клиента -->
-    <v-dialog v-model="historyDialog" max-width="600">
+                  </v-list-item>
+                  <v-list-item @click="createOrderForClient(client)">
+                    <v-list-item-title>Новый заказ</v-list-item-title>
+                    <template v-slot:prepend>
+                      <v-icon>mdi-plus</v-icon>
+                    </template>
+                  </v-list-item>
+                  <v-list-item @click="deleteClient(client)" color="error">
+                    <v-list-item-title>Удалить</v-list-item-title>
+                    <template v-slot:prepend>
+                      <v-icon>mdi-delete</v-icon>
+                    </template>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </template>
+          </v-list-item>
+        </v-list>
+    </div>
+     <v-dialog v-model="historyDialog" max-width="600">
       <v-card v-if="selectedClient">
         <v-card-title>
-          История заказов - {{ selectedClient.name }}
+          История заказов - {{ selectedClient.name }} {{ selectedClient.lastName }}
         </v-card-title>
         <v-card-text>
           <v-timeline density="compact">
@@ -246,7 +83,7 @@
                       size="small"
                       class="mr-1 mb-1"
                     >
-                      {{ service.name }}
+                      {{ service }}
                     </v-chip>
                   </div>
                 </v-card-text>
@@ -260,57 +97,66 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-container>
+  </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import Fuse from 'fuse.js';
 import { useClientsStore } from '@/stores/clientsStore';
+import { useSearchStore } from '@/stores/searchStore';
 import { useConfirmationStore } from '@/stores/confirmationStore';
+import { storeToRefs } from 'pinia';
 
 const router = useRouter();
 const clientsStore = useClientsStore();
+const searchStore = useSearchStore();
 const confirmationStore = useConfirmationStore();
 
-// Реактивные данные
-const loading = ref(false);
-const searchQuery = ref('');
-const currentTab = ref('all');
-const currentPage = ref(1);
-const itemsPerPage = 20;
+const { clients, sortBy } = storeToRefs(clientsStore);
+const { searchQuery } = storeToRefs(searchStore);
+
 const historyDialog = ref(false);
 const selectedClient = ref(null);
 
-// Computed
+const fuse = computed(() => {
+  const options = {
+    keys: [
+      { name: 'name', weight: 0.5 },
+      { name: 'lastName', weight: 0.3 },
+      { name: 'phone', weight: 0.2 }
+    ],
+    includeScore: true,
+    threshold: 0.4,
+    minMatchCharLength: 2,
+  };
+  return new Fuse(clients.value, options);
+});
+
 const filteredClients = computed(() => {
-  if (!searchQuery.value) return clientsStore.clients;
-  
-  const query = searchQuery.value.toLowerCase();
-  return clientsStore.clients.filter(client =>
-    client.name.toLowerCase().includes(query) ||
-    client.phone.includes(searchQuery.value)
-  );
-});
-
-const paginatedClients = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage;
-  const end = start + itemsPerPage;
-  return filteredClients.value.slice(start, end);
-});
-
-const topClients = computed(() => clientsStore.getTopClients(10));
-const recentClients = computed(() => clientsStore.getRecentClients(10));
-
-// Методы
-const refreshClients = async () => {
-  loading.value = true;
-  try {
-    clientsStore.loadClients();
-  } finally {
-    loading.value = false;
+  if (searchQuery.value) {
+    return fuse.value.search(searchQuery.value).map(result => result.item);
   }
-};
+  return clients.value;
+});
+
+const sortedClients = computed(() => {
+    return [...filteredClients.value].sort((a, b) => {
+        if (sortBy.value === 'name') {
+            const nameA = `${a.name} ${a.lastName}`.toLowerCase();
+            const nameB = `${b.name} ${b.lastName}`.toLowerCase();
+            return nameA.localeCompare(nameB);
+        }
+        if (sortBy.value === 'orders') {
+            return b.totalOrders - a.totalOrders;
+        }
+        if (sortBy.value === 'date') {
+            return new Date(b.lastOrderDate) - new Date(a.lastOrderDate);
+        }
+        return 0;
+    });
+});
 
 const viewClientHistory = (client) => {
   selectedClient.value = client;
@@ -323,6 +169,7 @@ const createOrderForClient = (client) => {
     query: {
       action: 'create',
       clientName: client.name,
+      clientLastName: client.lastName,
       clientPhone: client.phone
     }
   });
@@ -331,15 +178,16 @@ const createOrderForClient = (client) => {
 const deleteClient = async (client) => {
   const confirmed = await confirmationStore.open(
     'Удаление клиента',
-    `Вы уверены, что хотите удалить клиента "${client.name}"? Эта операция необратима.`
+    `Вы уверены, что хотите удалить клиента "${client.name} ${client.lastName}"? Эта операция необратима.`
   );
-  
+
   if (confirmed) {
     clientsStore.deleteClient(client.phone);
   }
 };
 
 const formatDate = (dateString) => {
+  if (!dateString) return '';
   const date = new Date(dateString);
   return date.toLocaleDateString('ru-RU', {
     day: 'numeric',
@@ -356,14 +204,67 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.clients-container {
-  max-width: 1000px;
-  margin: 0 auto;
+.clients-view-wrapper {
+  height: calc(100vh - 68px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: 16px;
+}
+.clients-list-container {
+  flex-grow: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  margin: 8px;
+  padding: 8px;
+  position: relative;
+  z-index: 1;
+  background-color: rgb(var(--v-theme-secondary));
+  border-radius: 16px;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+.clients-list {
+  background-color: transparent;
 }
 
-@media (max-width: 768px) {
-  .clients-container {
-    padding: 8px;
-  }
+.clients-list::-webkit-scrollbar {
+  display: none;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 70%;
+  color: rgba(var(--v-theme-on-secondary), 0.7);
+}
+.empty-state p {
+    font-size: 0.9rem;
+}
+
+.client-card-item {
+  padding: 0;
+  background-color: rgb(var(--v-theme-surface));
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.client-name-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  line-height: 1.2;
+  gap: 0 0.25em;
+}
+
+.client-name-line .text-truncate {
+  min-width: 0;
 }
 </style>

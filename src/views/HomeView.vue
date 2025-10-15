@@ -157,10 +157,12 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import Fuse from 'fuse.js';
 import { useOrderStore } from '@/stores/orderStore.js';
 import { useClientsStore } from '@/stores/clientsStore.js';
 import { useSettingsStore } from '@/stores/settingsStore.js';
 import { useConfirmationStore } from '@/stores/confirmationStore.js';
+import { useSearchStore } from '@/stores/searchStore.js';
 import { storeToRefs } from 'pinia';
 import OrderCard from '@/components/OrderCard.vue';
 import OrderForm from '@/components/OrderForm.vue';
@@ -172,7 +174,9 @@ const orderStore = useOrderStore();
 const clientsStore = useClientsStore();
 const settingsStore = useSettingsStore();
 const confirmationStore = useConfirmationStore();
+const searchStore = useSearchStore();
 const { orders } = storeToRefs(orderStore);
+const { searchQuery } = storeToRefs(searchStore);
 
 // -- Swipe to open Calendar --
 const touchStartX = ref(0);
@@ -208,7 +212,13 @@ const handleTouchEnd = () => {
   if (touchEndX.value !== 0 && dx < -80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
     if (!showFullCalendar.value) {
       showFullCalendar.value = true;
+      return;
     }
+  }
+
+  // Свайп вправо для сброса
+  if (touchEndX.value !== 0 && dx > 80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    handleRightSwipe();
   }
 
   // Сброс
@@ -301,31 +311,56 @@ const calendarWeeks = computed(() => {
     return weeks;
 });
 
-const filteredOrders = computed(() => {
-  let ordersToDisplay = orders.value;
+const fuse = computed(() => {
+  const options = {
+    keys: [
+      { name: 'clientName', weight: 0.4 },
+      { name: 'phone', weight: 0.3 },
+      { name: 'services.name', weight: 0.2 },
+      { name: 'details.name', weight: 0.1 }
+    ],
+    includeScore: true,
+    threshold: 0.4,
+    minMatchCharLength: 2,
+  };
+  return new Fuse(orders.value, options);
+});
 
-  // 1. Фильтр по дате (если выбрана)
-  if (selectedDate.value) {
-    ordersToDisplay = ordersToDisplay.filter(order => order.deadline?.startsWith(selectedDate.value));
+const filteredOrders = computed(() => {
+  let ordersToDisplay;
+
+  // 1. Фильтр по поисковому запросу с использованием Fuse.js
+  if (searchQuery.value) {
+    ordersToDisplay = fuse.value.search(searchQuery.value).map(result => result.item);
   } else {
-    // 2. Фильтр по статусу (если дата не выбрана)
-    if (orderStore.filterStatus.length > 0) {
-      ordersToDisplay = ordersToDisplay.filter(order => orderStore.filterStatus.includes(order.status));
+    ordersToDisplay = [...orders.value];
+    // 2. Фильтр по дате (если выбрана и нет поискового запроса)
+    if (selectedDate.value) {
+      ordersToDisplay = ordersToDisplay.filter(order => order.deadline?.startsWith(selectedDate.value));
     } else {
-      // По умолчанию скрываем "сданные", если не выбраны статусы и не включен показ в настройках
-      if (!settingsStore.appSettings?.showCompletedOrders) {
-        ordersToDisplay = ordersToDisplay.filter(order => order.status !== 'delivered');
+      // 3. Фильтр по статусу (если дата не выбрана и нет поискового запроса)
+      if (orderStore.filterStatus.length > 0) {
+        ordersToDisplay = ordersToDisplay.filter(order => orderStore.filterStatus.includes(order.status));
+      } else {
+        // По умолчанию скрываем "сданные", если не выбраны статусы и не включен показ в настройках
+        if (!settingsStore.appSettings?.showCompletedOrders) {
+          ordersToDisplay = ordersToDisplay.filter(order => order.status !== 'delivered');
+        }
       }
     }
   }
 
-  // 3. Сортировка
-  return [...ordersToDisplay].sort((a, b) => {
-    const sortBy = orderStore.sortBy;
-    const dateA = a[sortBy] || (sortBy === 'deadline' ? a.createDate : '1970-01-01');
-    const dateB = b[sortBy] || (sortBy === 'deadline' ? b.createDate : '1970-01-01');
-    return new Date(dateB) - new Date(dateA);
-  });
+  // 4. Сортировка (только если нет активного поиска, т.к. Fuse.js сортирует по релевантности)
+  if (!searchQuery.value) {
+    return [...ordersToDisplay].sort((a, b) => {
+      const sortBy = orderStore.sortBy;
+      const dateA = a[sortBy] || (sortBy === 'deadline' ? a.createDate : '1970-01-01');
+      const dateB = b[sortBy] || (sortBy === 'deadline' ? b.createDate : '1970-01-01');
+      return new Date(dateB) - new Date(dateA);
+    });
+  }
+
+  return ordersToDisplay;
 });
 
 
@@ -430,6 +465,32 @@ const handleOrderSaved = () => {
   }
 };
 
+const handleRightSwipe = () => {
+  const { swipeRightActions } = settingsStore.appSettings;
+
+  if (swipeRightActions.closeFullCalendar) {
+    showFullCalendar.value = false;
+  }
+
+  if (swipeRightActions.resetMiniCalendar) {
+    selectedDate.value = null;
+    currentDate.value = new Date();
+    scrollToToday();
+  }
+
+  if (swipeRightActions.clearSearch) {
+    searchStore.setSearchQuery('');
+  }
+
+  if (swipeRightActions.resetStatusFilter) {
+    orderStore.filterStatus = [];
+  }
+
+  if (settingsStore.appSettings?.enableHapticFeedback && 'vibrate' in navigator) {
+    navigator.vibrate(50);
+  }
+};
+
 const handlePullToRefresh = async () => {
   if (!settingsStore.appSettings?.enablePullToRefresh) return;
   refreshing.value = true;
@@ -446,7 +507,7 @@ watch(() => route.query, (newQuery) => {
     createOrder();
   }
 }, { immediate: true });
-onMounted(async () => {
+const scrollToToday = async (behavior = 'smooth') => {
   await nextTick();
   const container = calendarDaysContainer.value;
   if (!container) return;
@@ -454,13 +515,16 @@ onMounted(async () => {
   const todayElement = container.querySelector('.is-today');
   if (todayElement) {
     const scrollParent = container.parentElement;
-    if (scrollParent && typeof scrollParent.getBoundingClientRect === 'function') {
-      const parentRect = scrollParent.getBoundingClientRect();
-      const childRect = todayElement.getBoundingClientRect();
-      const scrollOffset = childRect.left - parentRect.left - (parentRect.width / 2) + (childRect.width / 2);
-      scrollParent.scrollTo({ left: scrollOffset, behavior: 'auto' });
+    if (scrollParent) {
+      // Используем offsetLeft и offsetWidth для более стабильного расчета
+      const scrollOffset = todayElement.offsetLeft - (scrollParent.offsetWidth / 2) + (todayElement.offsetWidth / 2);
+      scrollParent.scrollTo({ left: scrollOffset, behavior });
     }
   }
+};
+
+onMounted(() => {
+  scrollToToday('auto');
 });
 </script>
 

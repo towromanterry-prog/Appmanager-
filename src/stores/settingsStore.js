@@ -56,6 +56,13 @@ export const useSettingsStore = defineStore('settings', () => {
     orderFormLastNameLabel: 'Фамилия',
     // Название вкладки "Детали"
     detailsTabLabel: 'Детали',
+    // Поведение правого свайпа
+    swipeRightActions: {
+      resetMiniCalendar: true,
+      closeFullCalendar: true,
+      clearSearch: true,
+      resetStatusFilter: true,
+    },
   });
   
   function loadSettings() {
@@ -163,6 +170,12 @@ export const useSettingsStore = defineStore('settings', () => {
       },
       orderFormLastNameLabel: 'Фамилия',
       detailsTabLabel: 'Детали',
+      swipeRightActions: {
+        resetMiniCalendar: true,
+        closeFullCalendar: true,
+        clearSearch: true,
+        resetStatusFilter: true,
+      },
     };
     
     localStorage.removeItem('requiredFields');

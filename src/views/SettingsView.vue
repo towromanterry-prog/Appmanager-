@@ -388,6 +388,38 @@
                     inset
                     @change="updateAppSettings"
                   ></v-switch>
+
+                  <v-divider class="my-4"></v-divider>
+
+                  <p class="text-subtitle-1 mb-2">Поведение правого свайпа</p>
+                  <v-switch
+                    v-model="settingsStore.appSettings.swipeRightActions.resetMiniCalendar"
+                    label="Сброс мини-календаря на текущий день"
+                    color="primary"
+                    inset
+                    @change="updateAppSettings"
+                  ></v-switch>
+                  <v-switch
+                    v-model="settingsStore.appSettings.swipeRightActions.closeFullCalendar"
+                    label="Закрытие большого календаря"
+                    color="primary"
+                    inset
+                    @change="updateAppSettings"
+                  ></v-switch>
+                  <v-switch
+                    v-model="settingsStore.appSettings.swipeRightActions.clearSearch"
+                    label="Сброс поиска"
+                    color="primary"
+                    inset
+                    @change="updateAppSettings"
+                  ></v-switch>
+                  <v-switch
+                    v-model="settingsStore.appSettings.swipeRightActions.resetStatusFilter"
+                    label="Сброс фильтра по статусу"
+                    color="primary"
+                    inset
+                    @change="updateAppSettings"
+                  ></v-switch>
                   
                   <v-divider class="my-4"></v-divider>
                   

@@ -66,6 +66,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
+import Fuse from 'fuse.js';
 import { useDetailStore } from '@/stores/detailStore';
 import { useTagsStore } from '@/stores/tagsStore';
 
@@ -81,17 +82,25 @@ const dialog = ref(props.modelValue);
 const searchQuery = ref('');
 const selected = ref([]);
 
-const availableDetails = computed(() => detailStore.details);
+const availableDetails = computed(() => {
+  return detailStore.details.map(detail => ({
+    ...detail,
+    tagNames: getTags(detail.tags).map(t => t.name)
+  }));
+});
+
+const fuse = computed(() => {
+  return new Fuse(availableDetails.value, {
+    keys: ['name', 'tagNames'],
+    threshold: 0.3,
+  });
+});
 
 const filteredDetails = computed(() => {
   if (!searchQuery.value) {
     return availableDetails.value;
   }
-  const lowerCaseQuery = searchQuery.value.toLowerCase();
-  return availableDetails.value.filter(detail =>
-    detail.name.toLowerCase().includes(lowerCaseQuery) ||
-    (detail.tags && getTags(detail.tags).some(tag => tag.name.toLowerCase().includes(lowerCaseQuery)))
-  );
+  return fuse.value.search(searchQuery.value).map(result => result.item);
 });
 
 const isSelected = (detail) => {
