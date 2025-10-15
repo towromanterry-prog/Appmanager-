@@ -58,7 +58,8 @@ export const useSettingsStore = defineStore('settings', () => {
     detailsTabLabel: 'Детали',
     // Поведение правого свайпа
     swipeRightActions: {
-      resetCalendar: true,
+      resetMiniCalendar: true,
+      closeFullCalendar: true,
       clearSearch: true,
       resetStatusFilter: true,
     },
@@ -170,7 +171,8 @@ export const useSettingsStore = defineStore('settings', () => {
       orderFormLastNameLabel: 'Фамилия',
       detailsTabLabel: 'Детали',
       swipeRightActions: {
-        resetCalendar: true,
+        resetMiniCalendar: true,
+        closeFullCalendar: true,
         clearSearch: true,
         resetStatusFilter: true,
       },

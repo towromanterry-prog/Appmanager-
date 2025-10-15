@@ -468,10 +468,14 @@ const handleOrderSaved = () => {
 const handleRightSwipe = () => {
   const { swipeRightActions } = settingsStore.appSettings;
 
-  if (swipeRightActions.resetCalendar) {
+  if (swipeRightActions.closeFullCalendar) {
     showFullCalendar.value = false;
-    selectedDate.value = null; // Сбрасываем выбранную дату
-    currentDate.value = new Date(); // Возвращаем календарь к текущему месяцу
+  }
+
+  if (swipeRightActions.resetMiniCalendar) {
+    selectedDate.value = null;
+    currentDate.value = new Date();
+    scrollToToday();
   }
 
   if (swipeRightActions.clearSearch) {
@@ -503,7 +507,7 @@ watch(() => route.query, (newQuery) => {
     createOrder();
   }
 }, { immediate: true });
-onMounted(async () => {
+const scrollToToday = async (behavior = 'smooth') => {
   await nextTick();
   const container = calendarDaysContainer.value;
   if (!container) return;
@@ -515,9 +519,13 @@ onMounted(async () => {
       const parentRect = scrollParent.getBoundingClientRect();
       const childRect = todayElement.getBoundingClientRect();
       const scrollOffset = childRect.left - parentRect.left - (parentRect.width / 2) + (childRect.width / 2);
-      scrollParent.scrollTo({ left: scrollOffset, behavior: 'auto' });
+      scrollParent.scrollTo({ left: scrollOffset, behavior });
     }
   }
+};
+
+onMounted(() => {
+  scrollToToday('auto');
 });
 </script>
 

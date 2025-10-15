@@ -393,8 +393,15 @@
 
                   <p class="text-subtitle-1 mb-2">Поведение правого свайпа</p>
                   <v-switch
-                    v-model="settingsStore.appSettings.swipeRightActions.resetCalendar"
-                    label="Сброс календаря и закрытие большого"
+                    v-model="settingsStore.appSettings.swipeRightActions.resetMiniCalendar"
+                    label="Сброс мини-календаря на текущий день"
+                    color="primary"
+                    inset
+                    @change="updateAppSettings"
+                  ></v-switch>
+                  <v-switch
+                    v-model="settingsStore.appSettings.swipeRightActions.closeFullCalendar"
+                    label="Закрытие большого календаря"
                     color="primary"
                     inset
                     @change="updateAppSettings"
