@@ -212,7 +212,13 @@ const handleTouchEnd = () => {
   if (touchEndX.value !== 0 && dx < -80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
     if (!showFullCalendar.value) {
       showFullCalendar.value = true;
+      return;
     }
+  }
+
+  // Свайп вправо для сброса
+  if (touchEndX.value !== 0 && dx > 80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    handleRightSwipe();
   }
 
   // Сброс
@@ -456,6 +462,28 @@ const closeForm = () => {
 const handleOrderSaved = () => {
   if (settingsStore.appSettings?.enableHapticFeedback && 'vibrate' in navigator) {
       navigator.vibrate([100, 50, 100]);
+  }
+};
+
+const handleRightSwipe = () => {
+  const { swipeRightActions } = settingsStore.appSettings;
+
+  if (swipeRightActions.resetCalendar) {
+    showFullCalendar.value = false;
+    selectedDate.value = null; // Сбрасываем выбранную дату
+    currentDate.value = new Date(); // Возвращаем календарь к текущему месяцу
+  }
+
+  if (swipeRightActions.clearSearch) {
+    searchStore.setSearchQuery('');
+  }
+
+  if (swipeRightActions.resetStatusFilter) {
+    orderStore.filterStatus = [];
+  }
+
+  if (settingsStore.appSettings?.enableHapticFeedback && 'vibrate' in navigator) {
+    navigator.vibrate(50);
   }
 };
 
