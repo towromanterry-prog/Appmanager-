@@ -513,7 +513,20 @@
     <!-- Диалог редактирования шаблона -->
     <v-dialog v-model="templateDialog.show" max-width="500">
       <v-card>
-        <v-card-title>{{ templateDialog.isEdit ? 'Редактировать' : 'Добавить' }} шаблон</v-card-title>
+        <v-card-title class="d-flex justify-space-between align-center">
+          <span>{{ templateDialog.isEdit ? 'Редактировать' : 'Добавить' }} шаблон</span>
+          <v-menu location="bottom end" open-on-click>
+            <template v-slot:activator="{ props }">
+              <v-btn v-bind="props" icon="mdi-help-circle-outline" variant="text"></v-btn>
+            </template>
+            <v-card class="pa-2" elevation="2">
+              <v-card-text>
+                <p class="text-body-2"><b>%имя%</b> - имя клиента</p>
+                <p class="text-body-2"><b>%цена%</b> - общая стоимость</p>
+              </v-card-text>
+            </v-card>
+          </v-menu>
+        </v-card-title>
         <v-card-text>
           <v-textarea
             v-model="templateDialog.text"
@@ -521,19 +534,7 @@
             rows="4"
             auto-grow
             variant="outlined"
-          >
-            <template v-slot:append-inner>
-              <v-tooltip location="top">
-                <template v-slot:activator="{ props }">
-                  <v-icon v-bind="props" icon="mdi-help-circle-outline" @mousedown.prevent></v-icon>
-                </template>
-                <div>
-                  <div>%имя% - что бы отправить имя клиента из заказа</div>
-                  <div>%цена% - что бы отправить общую стоимость заказа</div>
-                </div>
-              </v-tooltip>
-            </template>
-          </v-textarea>
+          ></v-textarea>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
