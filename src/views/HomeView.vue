@@ -515,10 +515,9 @@ const scrollToToday = async (behavior = 'smooth') => {
   const todayElement = container.querySelector('.is-today');
   if (todayElement) {
     const scrollParent = container.parentElement;
-    if (scrollParent && typeof scrollParent.getBoundingClientRect === 'function') {
-      const parentRect = scrollParent.getBoundingClientRect();
-      const childRect = todayElement.getBoundingClientRect();
-      const scrollOffset = childRect.left - parentRect.left - (parentRect.width / 2) + (childRect.width / 2);
+    if (scrollParent) {
+      // Используем offsetLeft и offsetWidth для более стабильного расчета
+      const scrollOffset = todayElement.offsetLeft - (scrollParent.offsetWidth / 2) + (todayElement.offsetWidth / 2);
       scrollParent.scrollTo({ left: scrollOffset, behavior });
     }
   }
