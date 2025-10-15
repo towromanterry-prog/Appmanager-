@@ -155,53 +155,51 @@ export const useOrderStore = defineStore('orders', () => {
     _syncOrderStatusFromItems(order);
   }
 
-  async function _syncItemsStatusFromOrder(order, newStatus, itemType) {
+  async function _syncItemsStatusFromOrderUnified(order, newStatus) {
     const settingsStore = useSettingsStore();
     const confirmationStore = useConfirmationStore();
-    
-    const items = order[itemType] || [];
-    const itemFlow = itemType === 'services' ? SERVICE_STATUS_FLOW : DETAIL_STATUS_FLOW;
-    const itemStatusesSettings = itemType === 'services'
-      ? settingsStore.appSettings.serviceStatuses
-      : settingsStore.appSettings.detailStatuses;
     const syncConfigRoot = settingsStore.appSettings.syncOrderToServiceStatus;
-    const itemName = itemType === 'services' ? 'услуг(и)' : settingsStore.appSettings.detailsTabLabel.toLowerCase();
 
-    if (newStatus === 'accepted' || !itemFlow.includes(newStatus) || !itemStatusesSettings[newStatus]) {
+    if (newStatus === 'accepted' || !syncConfigRoot[newStatus] || !syncConfigRoot[newStatus].enabled) {
       return;
     }
 
-    const syncConfig = syncConfigRoot[newStatus];
-    if (!syncConfig || !syncConfig.enabled) {
+    // --- Prepare services for update ---
+    const servicesToUpdate = (order.services || []).filter(item => {
+      const isStatusConfigured = settingsStore.appSettings.serviceStatuses[newStatus];
+      const canUpdate = SERVICE_STATUS_FLOW.indexOf(item.status) < SERVICE_STATUS_FLOW.indexOf(newStatus);
+      return isStatusConfigured && canUpdate;
+    });
+
+    // --- Prepare details for update ---
+    const detailsToUpdate = (order.details || []).filter(item => {
+      const isStatusConfigured = settingsStore.appSettings.detailStatuses[newStatus];
+      const canUpdate = DETAIL_STATUS_FLOW.indexOf(item.status) < DETAIL_STATUS_FLOW.indexOf(newStatus);
+      return isStatusConfigured && canUpdate;
+    });
+
+    if (servicesToUpdate.length === 0 && detailsToUpdate.length === 0) {
       return;
     }
-
-    const newStatusIndex = itemFlow.indexOf(newStatus);
-    const itemsToUpdate = items.filter(item => itemFlow.indexOf(item.status) < newStatusIndex);
-
-    if (itemsToUpdate.length === 0) return;
 
     let applyUpdates = true;
-    if (syncConfig.confirm) {
-      applyUpdates = await confirmationStore.open(
-        'Синхронизация статусов',
-        `Изменить статус ${itemsToUpdate.length} ${itemName} на "${getStatusText(newStatus)}"?`
-      );
+    if (syncConfigRoot[newStatus].confirm) {
+      const serviceName = 'услуг(и)';
+      const detailName = settingsStore.appSettings.detailsTabLabel.toLowerCase();
+
+      const parts = [];
+      if (servicesToUpdate.length > 0) parts.push(`${servicesToUpdate.length} ${serviceName}`);
+      if (detailsToUpdate.length > 0) parts.push(`${detailsToUpdate.length} ${detailName}`);
+
+      const message = `Изменить статус ${parts.join(' и ')} на "${getStatusText(newStatus)}"?`;
+
+      applyUpdates = await confirmationStore.open('Синхронизация статусов', message);
     }
 
     if (applyUpdates) {
-      itemsToUpdate.forEach(item => {
-        item.status = newStatus;
-      });
+      servicesToUpdate.forEach(item => { item.status = newStatus; });
+      detailsToUpdate.forEach(item => { item.status = newStatus; });
     }
-  }
-
-  async function _syncServicesStatusFromOrder(order, newStatus) {
-    await _syncItemsStatusFromOrder(order, newStatus, 'services');
-  }
-
-  async function _syncDetailsStatusFromOrder(order, newStatus) {
-    await _syncItemsStatusFromOrder(order, newStatus, 'details');
   }
 
   async function updateStatus(orderId, newStatus, itemType = 'order', itemIndex = -1) {
@@ -251,8 +249,7 @@ export const useOrderStore = defineStore('orders', () => {
       _syncOrderStatusFromDetails(order);
     } else {
       order.status = newStatus;
-      await _syncServicesStatusFromOrder(order, newStatus);
-      await _syncDetailsStatusFromOrder(order, newStatus);
+      await _syncItemsStatusFromOrderUnified(order, newStatus);
     }
 
     _save();

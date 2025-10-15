@@ -57,6 +57,20 @@
             </div>
           </div>
 
+          <!-- Теги -->
+          <div v-if="allTags.length" class="tags-section mb-4">
+            <v-chip
+              v-for="tag in allTags"
+              :key="tag.id"
+              :color="tag.color"
+              size="small"
+              class="mr-2 mb-2"
+              label
+            >
+              {{ tag.name }}
+            </v-chip>
+          </div>
+
           <!-- Дедлайн и цена -->
           <div class="d-flex justify-space-between align-center text-body-2 mb-4">
             <div>
@@ -101,6 +115,7 @@ import { ref, computed } from 'vue';
 import { useOrderStore } from '@/stores/orderStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useTemplateSelectionStore } from '@/stores/templateSelectionStore';
+import { useTagsStore } from '@/stores/tagsStore';
 import StatusIndicator from '@/components/common/StatusIndicator.vue';
 import { useFormatDate } from '@/composables/useDateUtils';
 import { IconTelegram, IconWhatsapp } from '@iconify-prerendered/vue-simple-icons';
@@ -113,9 +128,18 @@ const emit = defineEmits(['edit', 'delete']);
 const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
 const templateSelectionStore = useTemplateSelectionStore();
+const tagsStore = useTagsStore();
 const { toLongDate } = useFormatDate();
 
 const expanded = ref(false);
+
+const allTags = computed(() => {
+  const tagIds = new Set();
+  (props.order.services || []).forEach(s => (s.tagIds || []).forEach(id => tagIds.add(id)));
+  (props.order.details || []).forEach(d => (d.tagIds || []).forEach(id => tagIds.add(id)));
+
+  return Array.from(tagIds).map(id => tagsStore.getTagById(id)).filter(Boolean);
+});
 
 const totalAmount = computed(() => props.order.totalAmount || 0);
 
