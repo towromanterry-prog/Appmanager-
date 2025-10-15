@@ -527,8 +527,10 @@
                 <template v-slot:activator="{ props }">
                   <v-icon v-bind="props" icon="mdi-help-circle-outline"></v-icon>
                 </template>
-                <div>%имя% - что бы отправить имя клиента из заказа</div>
-                <div>%цена% - что бы отправить общую стоимость заказа</div>
+                <div>
+                  <div>%имя% - что бы отправить имя клиента из заказа</div>
+                  <div>%цена% - что бы отправить общую стоимость заказа</div>
+                </div>
               </v-tooltip>
             </template>
           </v-textarea>
