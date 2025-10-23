@@ -160,6 +160,7 @@ import { useRoute, useRouter } from 'vue-router';
 import Fuse from 'fuse.js';
 import { useOrderStore } from '@/stores/orderStore.js';
 import { useClientsStore } from '@/stores/clientsStore.js';
+import { useTagsStore } from '@/stores/tagsStore.js';
 import { useSettingsStore } from '@/stores/settingsStore.js';
 import { useConfirmationStore } from '@/stores/confirmationStore.js';
 import { useSearchStore } from '@/stores/searchStore.js';
@@ -172,6 +173,7 @@ const route = useRoute();
 const router = useRouter();
 const orderStore = useOrderStore();
 const clientsStore = useClientsStore();
+const tagsStore = useTagsStore();
 const settingsStore = useSettingsStore();
 const confirmationStore = useConfirmationStore();
 const searchStore = useSearchStore();
@@ -311,19 +313,41 @@ const calendarWeeks = computed(() => {
     return weeks;
 });
 
+const ordersWithTagNames = computed(() => {
+  return orders.value.map(order => {
+    const tagIds = new Set();
+    (order.services || []).forEach(service => {
+      (service.tags || []).forEach(tagId => tagIds.add(tagId));
+    });
+    (order.details || []).forEach(detail => {
+      (detail.tags || []).forEach(tagId => tagIds.add(tagId));
+    });
+
+    const tagNames = Array.from(tagIds)
+      .map(tagId => tagsStore.getTagById(tagId)?.name)
+      .filter(Boolean);
+
+    return {
+      ...order,
+      tagNames
+    };
+  });
+});
+
 const fuse = computed(() => {
   const options = {
     keys: [
       { name: 'clientName', weight: 0.4 },
       { name: 'phone', weight: 0.3 },
       { name: 'services.name', weight: 0.2 },
-      { name: 'details.name', weight: 0.1 }
+      { name: 'details.name', weight: 0.1 },
+      { name: 'tagNames', weight: 0.3 }
     ],
     includeScore: true,
     threshold: 0.4,
     minMatchCharLength: 2,
   };
-  return new Fuse(orders.value, options);
+  return new Fuse(ordersWithTagNames.value, options);
 });
 
 const filteredOrders = computed(() => {
@@ -333,7 +357,7 @@ const filteredOrders = computed(() => {
   if (searchQuery.value) {
     ordersToDisplay = fuse.value.search(searchQuery.value).map(result => result.item);
   } else {
-    ordersToDisplay = [...orders.value];
+    ordersToDisplay = [...ordersWithTagNames.value];
     // 2. Фильтр по дате (если выбрана и нет поискового запроса)
     if (selectedDate.value) {
       ordersToDisplay = ordersToDisplay.filter(order => order.deadline?.startsWith(selectedDate.value));
