@@ -21,7 +21,7 @@
             class="mb-4"
           ></v-text-field>
           <v-select
-            v-model="serviceForm.tags"
+            v-model="serviceForm.tagIds"
             :items="availableTags"
             item-title="name"
             item-value="id"
@@ -68,7 +68,7 @@ const tagsStore = useTagsStore();
 
 const dialog = ref(props.modelValue);
 const serviceFormRef = ref(null);
-const serviceForm = ref({ name: '', defaultPrice: 0, tags: [] });
+const serviceForm = ref({ name: '', defaultPrice: 0, tagIds: [] });
 const editingService = ref(null);
 
 const availableTags = computed(() => tagsStore.tags);
@@ -78,10 +78,10 @@ watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     if (props.service) {
       editingService.value = props.service;
-      serviceForm.value = { ...props.service };
+      serviceForm.value = { ...props.service, tagIds: props.service.tagIds ? [...props.service.tagIds] : [] };
     } else {
       editingService.value = null;
-      serviceForm.value = { name: '', defaultPrice: 0, tags: [] };
+      serviceForm.value = { name: '', defaultPrice: 0, tagIds: [] };
     }
   }
 });
