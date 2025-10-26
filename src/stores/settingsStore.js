@@ -66,6 +66,8 @@ export const useSettingsStore = defineStore('settings', () => {
     messageTemplates: [
       { id: 1, text: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.' }
     ],
+    miniCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'],
+    fullCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'],
   });
   
   function loadSettings() {
@@ -182,6 +184,8 @@ export const useSettingsStore = defineStore('settings', () => {
       messageTemplates: [
         { id: 1, text: 'Здравствуйте, %имя%. Ваш заказ на сумму %цена% готов.' }
       ],
+      miniCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'],
+      fullCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'],
     };
     
     localStorage.removeItem('requiredFields');

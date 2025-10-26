@@ -22,10 +22,15 @@
                     <div class="day-initial">{{ day.initial }}</div>
                     <div class="day-number">{{ day.number }}</div>
                   </div>
-                  <div v-if="day.orderStats.total" class="day-badges">
-                    <span v-if="day.orderStats.inProgress" class="badge in-progress">{{ day.orderStats.inProgress }}</span>
-                    <span v-if="day.orderStats.completed" class="badge completed">{{ day.orderStats.completed }}</span>
-                    <span v-if="day.orderStats.delivered" class="badge delivered">{{ day.orderStats.delivered }}</span>
+                  <div v-if="day.orderStats.total > 0" class="day-badges">
+                    <span
+                      v-for="(count, status) in day.orderStats.statuses"
+                      :key="status"
+                      class="badge"
+                      :class="status"
+                    >
+                      {{ count }}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -115,12 +120,17 @@
                           @click="handleDayClick(day)"
                       >
                           <div v-if="day.date || day.otherMonth" class="day-content">
-                              <div class="day-number">{{ day.number }}</div>
-                              <div v-if="day.orderStats && day.orderStats.total" class="day-badges">
-                                <span v-if="day.orderStats.inProgress" class="badge in-progress">{{ day.orderStats.inProgress }}</span>
-                                <span v-if="day.orderStats.completed" class="badge completed">{{ day.orderStats.completed }}</span>
-                                <span v-if="day.orderStats.delivered" class="badge delivered">{{ day.orderStats.delivered }}</span>
-                              </div>
+                            <div class="day-number">{{ day.number }}</div>
+                            <div v-if="day.orderStats.total > 0" class="day-badges">
+                              <span
+                                v-for="(count, status) in day.orderStats.statuses"
+                                :key="status"
+                                class="badge"
+                                :class="status"
+                              >
+                                {{ count }}
+                              </span>
+                            </div>
                           </div>
                       </div>
                   </div>
@@ -175,6 +185,7 @@ const orderStore = useOrderStore();
 const clientsStore = useClientsStore();
 const tagsStore = useTagsStore();
 const settingsStore = useSettingsStore();
+const { appSettings } = storeToRefs(settingsStore);
 const confirmationStore = useConfirmationStore();
 const searchStore = useSearchStore();
 const { orders } = storeToRefs(orderStore);
@@ -263,6 +274,15 @@ const weekDays = computed(() => {
     d.setDate(today.getDate() + i - 14);
     const ds = getLocalDateString(d);
     const dayOrders = orders.value.filter(o => o.deadline?.startsWith(ds));
+
+    const statuses = {};
+    appSettings.value.miniCalendarIndicatorStatuses.forEach(status => {
+      const count = dayOrders.filter(o => o.status === status).length;
+      if (count > 0) {
+        statuses[status] = count;
+      }
+    });
+
     return {
       date: ds,
       initial: dayNames[d.getDay()],
@@ -270,9 +290,7 @@ const weekDays = computed(() => {
       isToday: ds === todayStr,
       orderStats: {
         total: dayOrders.length,
-        inProgress: dayOrders.filter(o => o.status === 'in_progress').length,
-        completed: dayOrders.filter(o => o.status === 'completed').length,
-        delivered: dayOrders.filter(o => o.status === 'delivered').length,
+        statuses
       }
     };
   });
@@ -294,6 +312,14 @@ const calendarWeeks = computed(() => {
 
             const dayOrders = orders.value.filter(o => o.deadline?.startsWith(dateStr));
 
+            const statuses = {};
+            appSettings.value.fullCalendarIndicatorStatuses.forEach(status => {
+              const count = dayOrders.filter(o => o.status === status).length;
+              if (count > 0) {
+                statuses[status] = count;
+              }
+            });
+
             week.days.push({
                 date: dateStr,
                 number: currentCalendarDate.getDate(),
@@ -301,9 +327,7 @@ const calendarWeeks = computed(() => {
                 otherMonth: !isCurrentMonth,
                 orderStats: {
                   total: dayOrders.length,
-                  inProgress: dayOrders.filter(o => o.status === 'in_progress').length,
-                  completed: dayOrders.filter(o => o.status === 'completed').length,
-                  delivered: dayOrders.filter(o => o.status === 'delivered').length
+                  statuses,
                 }
             });
             startDate.setDate(startDate.getDate() + 1);
@@ -745,6 +769,8 @@ onMounted(() => {
 .badge.in-progress { background-color: rgb(var(--v-theme-warning)); }
 .badge.completed { background-color: rgb(var(--v-theme-info)); }
 .badge.delivered { background-color: rgb(var(--v-theme-success)); }
+.badge.accepted { background-color: rgb(var(--v-theme-primary)); }
+.badge.additional { background-color: #9E9E9E; }
 
 .empty-state {
   display: flex;

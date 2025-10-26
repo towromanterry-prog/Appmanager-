@@ -201,6 +201,53 @@
                     </div>
                   </div>
 
+                  <v-divider class="my-4"></v-divider>
+                  <p class="text-subtitle-1 mb-2">Индикаторы календаря</p>
+                  <p class="text-body-2 mb-4">
+                    Выберите до 3-х статусов заказов, которые будут отображаться
+                    в виде цветных точек в календарях.
+                  </p>
+
+                  <v-row>
+                    <v-col cols="12" md="6">
+                      <p class="text-caption text-medium-emphasis">Для мини-календаря:</p>
+                      <div class="d-flex flex-wrap ga-2">
+                        <v-checkbox
+                          v-for="status in activeOrderStatuses"
+                          :key="status.key"
+                          v-model="appSettings.miniCalendarIndicatorStatuses"
+                          :label="status.label"
+                          :value="status.key"
+                          :disabled="
+                            appSettings.miniCalendarIndicatorStatuses.length >= 3 &&
+                            !appSettings.miniCalendarIndicatorStatuses.includes(status.key)
+                          "
+                          color="primary"
+                          hide-details
+                          @change="updateAppSettings"
+                        ></v-checkbox>
+                      </div>
+                    </v-col>
+                    <v-col cols="12" md="6">
+                      <p class="text-caption text-medium-emphasis">Для полного календаря:</p>
+                      <div class="d-flex flex-wrap ga-2">
+                        <v-checkbox
+                          v-for="status in activeOrderStatuses"
+                          :key="status.key"
+                          v-model="appSettings.fullCalendarIndicatorStatuses"
+                          :label="status.label"
+                          :value="status.key"
+                          :disabled="
+                            appSettings.fullCalendarIndicatorStatuses.length >= 3 &&
+                            !appSettings.fullCalendarIndicatorStatuses.includes(status.key)
+                          "
+                          color="primary"
+                          hide-details
+                          @change="updateAppSettings"
+                        ></v-checkbox>
+                      </div>
+                    </v-col>
+                  </v-row>
                 </v-card-text>
               </v-card>
             </v-expansion-panel-text>
@@ -548,6 +595,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useThemeStore } from '@/stores/themeStore';
 import { useClientsStore } from '@/stores/clientsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -556,6 +604,7 @@ import { useConfirmationStore } from '@/stores/confirmationStore';
 const themeStore = useThemeStore();
 const clientsStore = useClientsStore();
 const settingsStore = useSettingsStore();
+const { appSettings } = storeToRefs(settingsStore);
 const confirmationStore = useConfirmationStore();
 
 const showClientsManager = ref(false);
@@ -602,6 +651,12 @@ const syncableOrderStatuses = computed(() => ({
   in_progress: 'В работе',
   completed: 'Выполнено',
 }));
+
+const activeOrderStatuses = computed(() => {
+  return Object.entries(orderStatusLabels.value)
+    .filter(([key]) => appSettings.value.orderStatuses[key])
+    .map(([key, label]) => ({ key, label }));
+});
 
 const faqList = ref([
   {
