@@ -75,7 +75,7 @@
                     ></v-text-field>
                     <div class="tags-container">
                       <v-chip
-                        v-for="tag in getTags(service.tags)"
+                        v-for="tag in getTags(service.tagIds)"
                         :key="tag.id"
                         :color="tag.color"
                         size="small"
@@ -123,7 +123,7 @@
                     ></v-text-field>
                      <div class="tags-container">
                       <v-chip
-                        v-for="tag in getTags(detail.tags)"
+                        v-for="tag in getTags(detail.tagIds)"
                         :key="tag.id"
                         :color="tag.color"
                         size="small"
