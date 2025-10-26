@@ -766,11 +766,12 @@ onMounted(() => {
   border: 1px solid rgba(var(--v-theme-surface), 0.8);
 }
 
-.badge.in-progress { background-color: rgb(var(--v-theme-warning)); }
-.badge.completed { background-color: rgb(var(--v-theme-info)); }
-.badge.delivered { background-color: rgb(var(--v-theme-success)); }
-.badge.accepted { background-color: rgb(var(--v-theme-primary)); }
-.badge.additional { background-color: #9E9E9E; }
+.badge.accepted { background-color: rgb(var(--v-theme-primary)) !important; }
+.badge.additional { background-color: rgb(var(--v-theme-deep-purple)) !important; }
+.badge.in-progress { background-color: rgb(var(--v-theme-warning)) !important; }
+.badge.completed { background-color: rgb(var(--v-theme-info)) !important; }
+.badge.delivered { background-color: rgb(var(--v-theme-success)) !important; }
+.badge.cancelled { background-color: rgb(var(--v-theme-error)) !important; }
 
 .empty-state {
   display: flex;
