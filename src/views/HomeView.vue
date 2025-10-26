@@ -317,10 +317,10 @@ const ordersWithTagNames = computed(() => {
   return orders.value.map(order => {
     const tagIds = new Set();
     (order.services || []).forEach(service => {
-      (service.tags || []).forEach(tagId => tagIds.add(tagId));
+      (service.tagIds || []).forEach(tagId => tagIds.add(tagId));
     });
     (order.details || []).forEach(detail => {
-      (detail.tags || []).forEach(tagId => tagIds.add(tagId));
+      (detail.tagIds || []).forEach(tagId => tagIds.add(tagId));
     });
 
     const tagNames = Array.from(tagIds)
