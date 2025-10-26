@@ -23,14 +23,15 @@
                     <div class="day-number">{{ day.number }}</div>
                   </div>
                   <div v-if="day.orderStats.total > 0" class="day-badges">
-                    <span
+                    <v-chip
                       v-for="(count, status) in day.orderStats.statuses"
                       :key="status"
-                      class="badge"
-                      :class="status"
+                      :color="getStatusColor(status)"
+                      size="x-small"
+                      class="calendar-badge"
                     >
                       {{ count }}
-                    </span>
+                    </v-chip>
                   </div>
                 </div>
               </div>
@@ -122,14 +123,15 @@
                           <div v-if="day.date || day.otherMonth" class="day-content">
                             <div class="day-number">{{ day.number }}</div>
                             <div v-if="day.orderStats.total > 0" class="day-badges">
-                              <span
+                              <v-chip
                                 v-for="(count, status) in day.orderStats.statuses"
                                 :key="status"
-                                class="badge"
-                                :class="status"
+                                :color="getStatusColor(status)"
+                                size="x-small"
+                                class="calendar-badge"
                               >
                                 {{ count }}
-                              </span>
+                              </v-chip>
                             </div>
                           </div>
                       </div>
@@ -190,6 +192,18 @@ const confirmationStore = useConfirmationStore();
 const searchStore = useSearchStore();
 const { orders } = storeToRefs(orderStore);
 const { searchQuery } = storeToRefs(searchStore);
+
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'accepted': return 'primary';
+    case 'additional': return 'deep-purple';
+    case 'in_progress': return 'warning';
+    case 'completed': return 'info';
+    case 'delivered': return 'success';
+    case 'cancelled': return 'error';
+    default: return 'grey';
+  }
+};
 
 // -- Swipe to open Calendar --
 const touchStartX = ref(0);
@@ -766,12 +780,12 @@ onMounted(() => {
   border: 1px solid rgba(var(--v-theme-surface), 0.8);
 }
 
-.badge.accepted { background-color: rgb(var(--v-theme-primary)) !important; }
-.badge.additional { background-color: rgb(var(--v-theme-deep-purple)) !important; }
-.badge.in-progress { background-color: rgb(var(--v-theme-warning)) !important; }
-.badge.completed { background-color: rgb(var(--v-theme-info)) !important; }
-.badge.delivered { background-color: rgb(var(--v-theme-success)) !important; }
-.badge.cancelled { background-color: rgb(var(--v-theme-error)) !important; }
+.calendar-badge {
+  height: 16px !important;
+  min-width: 16px !important;
+  padding: 0 4px !important;
+  font-size: 11px;
+}
 
 .empty-state {
   display: flex;
