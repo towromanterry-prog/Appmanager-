@@ -116,6 +116,8 @@ import { useOrderStore } from '@/stores/orderStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useTemplateSelectionStore } from '@/stores/templateSelectionStore';
 import { useTagsStore } from '@/stores/tagsStore';
+import { useServiceStore } from '@/stores/serviceStore';
+import { useDetailStore } from '@/stores/detailStore';
 import StatusIndicator from '@/components/common/StatusIndicator.vue';
 import { useFormatDate } from '@/composables/useDateUtils';
 import { IconTelegram, IconWhatsapp } from '@iconify-prerendered/vue-simple-icons';
@@ -129,14 +131,28 @@ const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
 const templateSelectionStore = useTemplateSelectionStore();
 const tagsStore = useTagsStore();
+const serviceStore = useServiceStore();
+const detailStore = useDetailStore();
 const { toLongDate } = useFormatDate();
 
 const expanded = ref(false);
 
 const allTags = computed(() => {
   const tagIds = new Set();
-  (props.order.services || []).forEach(s => (s.tagIds || []).forEach(id => tagIds.add(id)));
-  (props.order.details || []).forEach(d => (d.tagIds || []).forEach(id => tagIds.add(id)));
+
+  (props.order.services || []).forEach(serviceInOrder => {
+    const masterService = serviceStore.getServiceById(serviceInOrder.id);
+    if (masterService && masterService.tagIds) {
+      masterService.tagIds.forEach(id => tagIds.add(id));
+    }
+  });
+
+  (props.order.details || []).forEach(detailInOrder => {
+    const masterDetail = detailStore.getDetailById(detailInOrder.id);
+    if (masterDetail && masterDetail.tagIds) {
+      masterDetail.tagIds.forEach(id => tagIds.add(id));
+    }
+  });
 
   return Array.from(tagIds).map(id => tagsStore.getTagById(id)).filter(Boolean);
 });

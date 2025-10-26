@@ -3,9 +3,9 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';  
 
 const defaultDetails = [  
-  { id: 1, name: 'Болт М8', defaultPrice: 50, tags: [], icon: '' },  
-  { id: 2, name: 'Гайка М8', defaultPrice: 30, tags: [], icon: '' },  
-  { id: 3, name: 'Шайба', defaultPrice: 10, tags: [], icon: '' },  
+  { id: 1, name: 'Болт М8', defaultPrice: 50, tagIds: [], icon: '' },
+  { id: 2, name: 'Гайка М8', defaultPrice: 30, tagIds: [], icon: '' },
+  { id: 3, name: 'Шайба', defaultPrice: 10, tagIds: [], icon: '' },
 ];  
 
 export const useDetailStore = defineStore('details', () => {  
@@ -15,22 +15,35 @@ export const useDetailStore = defineStore('details', () => {
     try {
       const stored = localStorage.getItem('details');
       if (stored) {
-        const parsed = JSON.parse(stored);
+        let parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          details.value = parsed.map(d => ({
-            ...d,
-            tags: Array.isArray(d.tags) ? d.tags : [],
-            icon: d.icon || ''
-          }));
+          let needsSave = false;
+          details.value = parsed.map(d => {
+            // Migration from 'tags' to 'tagIds'
+            if (d.hasOwnProperty('tags')) {
+              d.tagIds = d.tags;
+              delete d.tags;
+              needsSave = true;
+            }
+            // Ensure tagIds is always an array
+            if (!Array.isArray(d.tagIds)) {
+              d.tagIds = [];
+            }
+            d.icon = d.icon || '';
+            return d;
+          });
+          if (needsSave) {
+            saveDetails();
+          }
         } else {
           throw new Error('Stored details is not an array');
         }
       } else {
-        details.value = [...defaultDetails];
+        details.value = defaultDetails.map(d => ({...d}));
       }
     } catch (error) {
       console.error('Ошибка загрузки details из localStorage:', error);
-      details.value = [...defaultDetails];
+      details.value = defaultDetails.map(d => ({...d}));
       localStorage.removeItem('details');
     }
   }
@@ -44,7 +57,7 @@ export const useDetailStore = defineStore('details', () => {
       id: Date.now(),  
       name: detailData.name,  
       defaultPrice: detailData.defaultPrice,  
-      tags: detailData.tags || [],
+      tagIds: detailData.tagIds || [],
       icon: detailData.icon || ''
     };  
     details.value.push(newDetail);  
@@ -59,7 +72,7 @@ export const useDetailStore = defineStore('details', () => {
         ...details.value[index],  
         name: detailData.name,  
         defaultPrice: detailData.defaultPrice,  
-        tags: detailData.tags || [],
+        tagIds: detailData.tagIds || [],
         icon: detailData.icon || ''
       };  
       saveDetails();  
@@ -93,10 +106,10 @@ export const useDetailStore = defineStore('details', () => {
     ];
   }
   
-  function getDetailsByTag(tagName) {
-    if (!tagName) return details.value;
+  function getDetailsByTag(tagId) {
+    if (!tagId) return details.value;
     return details.value.filter(detail => 
-      detail.tags && detail.tags.includes(tagName)
+      detail.tagIds && detail.tagIds.includes(tagId)
     );
   }
 
