@@ -51,7 +51,7 @@
 
                   <div class="tags-container mb-1">
                     <v-chip
-                      v-for="tag in getTagsForService(service.tags)"
+                      v-for="tag in getTagsForService(service.tagIds)"
                       :key="tag.id"
                       :color="tag.color"
                       size="small"
@@ -94,7 +94,7 @@
 
                   <div class="tags-container mb-1">
                     <v-chip
-                      v-for="tag in getTagsForDetail(detail.tags)"
+                      v-for="tag in getTagsForDetail(detail.tagIds)"
                       :key="tag.id"
                       :color="tag.color"
                       size="small"
@@ -172,7 +172,7 @@
             <v-text-field v-model="detailForm.name" label="Название детали" :rules="[v => !!v || 'Название обязательно']" variant="outlined" class="mb-4"></v-text-field>
             <v-text-field v-model.number="detailForm.defaultPrice" label="Цена по умолчанию" type="number" prefix="₽" :rules="[v => v > 0 || 'Цена должна быть больше 0']" variant="outlined" class="mb-4"></v-text-field>
             <v-select 
-              v-model="detailForm.tags" 
+              v-model="detailForm.tagIds"
               :items="availableTags" 
               item-title="name" 
               item-value="id" 
@@ -266,7 +266,7 @@ const detailDialog = ref(false);
 const tagDialog = ref(false);
 const detailFormRef = ref(null);
 const tagFormRef = ref(null);
-const detailForm = ref({ name: '', defaultPrice: 0, tags: [] });
+const detailForm = ref({ name: '', defaultPrice: 0, tagIds: [] });
 const tagForm = ref({ name: '', color: 'blue' });
 
 const editingService = ref(null);
@@ -371,13 +371,13 @@ const deleteService = async (serviceId) => {
 // ФУНКЦИИ ДЕТАЛЕЙ
 const openDetailDialog = () => {
   editingDetail.value = null;
-  detailForm.value = { name: '', defaultPrice: 0, tags: [] };
+  detailForm.value = { name: '', defaultPrice: 0, tagIds: [] };
   detailDialog.value = true;
 };
 
 const editDetail = (detail) => {
   editingDetail.value = detail;
-  detailForm.value = { name: detail.name, defaultPrice: detail.defaultPrice, tags: [...detail.tags] };
+  detailForm.value = { name: detail.name, defaultPrice: detail.defaultPrice, tagIds: [...detail.tagIds] };
   detailDialog.value = true;
 };
 

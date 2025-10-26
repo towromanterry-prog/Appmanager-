@@ -331,6 +331,46 @@
           </v-expansion-panel>
         </v-expansion-panels>
 
+        <!-- Шаблоны сообщений -->
+        <v-expansion-panels variant="accordion" class="mb-4">
+          <v-expansion-panel>
+            <v-expansion-panel-title>
+              <v-icon class="mr-3">mdi-message-cog</v-icon>
+              Шаблоны сообщений
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <v-card flat>
+                <v-card-text>
+                  <div class="d-flex justify-space-between align-center mb-2">
+                    <p class="text-body-2 text-medium-emphasis">
+                      Управляйте шаблонами для быстрой отправки сообщений.
+                    </p>
+                    <v-btn color="primary" @click="openTemplateDialog()">
+                      <v-icon start>mdi-plus</v-icon>
+                      Добавить
+                    </v-btn>
+                  </div>
+                  <v-list lines="two" v-if="settingsStore.appSettings.messageTemplates.length">
+                    <v-list-item
+                      v-for="template in settingsStore.appSettings.messageTemplates"
+                      :key="template.id"
+                      :title="template.text"
+                    >
+                      <template v-slot:append>
+                        <v-btn icon="mdi-pencil" variant="text" @click="openTemplateDialog(template)"></v-btn>
+                        <v-btn icon="mdi-delete" variant="text" color="error" @click="deleteTemplate(template.id)"></v-btn>
+                      </template>
+                    </v-list-item>
+                  </v-list>
+                  <p v-else class="text-center text-medium-emphasis mt-4">
+                    Нет сохраненных шаблонов.
+                  </p>
+                </v-card-text>
+              </v-card>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
+
         <!-- Дополнительные настройки -->
         <v-expansion-panels variant="accordion">
           <v-expansion-panel>
@@ -469,6 +509,40 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Диалог редактирования шаблона -->
+    <v-dialog v-model="templateDialog.show" max-width="500">
+      <v-card>
+        <v-card-title class="d-flex justify-space-between align-center">
+          <span>{{ templateDialog.isEdit ? 'Редактировать' : 'Добавить' }} шаблон</span>
+          <v-menu location="bottom end" open-on-click>
+            <template v-slot:activator="{ props }">
+              <v-btn v-bind="props" icon="mdi-help-circle-outline" variant="text"></v-btn>
+            </template>
+            <v-card class="pa-2" elevation="2">
+              <v-card-text>
+                <p class="text-body-2"><b>%имя%</b> - имя клиента</p>
+                <p class="text-body-2"><b>%цена%</b> - общая стоимость</p>
+              </v-card-text>
+            </v-card>
+          </v-menu>
+        </v-card-title>
+        <v-card-text>
+          <v-textarea
+            v-model="templateDialog.text"
+            label="Текст шаблона"
+            rows="4"
+            auto-grow
+            variant="outlined"
+          ></v-textarea>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn @click="templateDialog.show = false">Отмена</v-btn>
+          <v-btn color="primary" @click="saveTemplate">Сохранить</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -485,6 +559,13 @@ const settingsStore = useSettingsStore();
 const confirmationStore = useConfirmationStore();
 
 const showClientsManager = ref(false);
+
+const templateDialog = ref({
+  show: false,
+  isEdit: false,
+  id: null,
+  text: '',
+});
 
 const orderStatusLabels = computed(() => ({
   accepted: 'Принят',
@@ -590,6 +671,33 @@ const resetAllSettings = async () => {
   if (confirmed) {
     settingsStore.resetSettings();
     themeStore.setTheme('light');
+  }
+};
+
+const openTemplateDialog = (template = null) => {
+  if (template) {
+    templateDialog.value = { show: true, isEdit: true, id: template.id, text: template.text };
+  } else {
+    templateDialog.value = { show: true, isEdit: false, id: null, text: '' };
+  }
+};
+
+const saveTemplate = () => {
+  if (templateDialog.value.isEdit) {
+    settingsStore.updateMessageTemplate(templateDialog.value.id, templateDialog.value.text);
+  } else {
+    settingsStore.addMessageTemplate(templateDialog.value.text);
+  }
+  templateDialog.value.show = false;
+};
+
+const deleteTemplate = async (id) => {
+  const confirmed = await confirmationStore.open(
+    'Удаление шаблона',
+    'Вы уверены, что хотите удалить этот шаблон?'
+  );
+  if (confirmed) {
+    settingsStore.deleteMessageTemplate(id);
   }
 };
 </script>

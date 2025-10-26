@@ -40,15 +40,17 @@
 
               <v-list-item-title>{{ detail.name }}</v-list-item-title>
               <v-list-item-subtitle>
-                <v-chip
-                  v-for="tag in getTags(detail.tags)"
-                  :key="tag.id"
-                  :color="tag.color"
-                  size="x-small"
-                  class="mr-1"
-                >
-                  {{ tag.name }}
-                </v-chip>
+                <div class="tags-container">
+                  <v-chip
+                    v-for="tag in getTags(detail.tagIds)"
+                    :key="tag.id"
+                    :color="tag.color"
+                    size="small"
+                    class="mr-1"
+                  >
+                    {{ tag.name }}
+                  </v-chip>
+                </div>
               </v-list-item-subtitle>
 
               <template v-slot:append>
@@ -85,7 +87,7 @@ const selected = ref([]);
 const availableDetails = computed(() => {
   return detailStore.details.map(detail => ({
     ...detail,
-    tagNames: getTags(detail.tags).map(t => t.name)
+    tagNames: getTags(detail.tagIds).map(t => t.name)
   }));
 });
 
@@ -122,7 +124,7 @@ const toggleDetail = (detail) => {
       name: detail.name,
       price: detail.defaultPrice,
       status: 'accepted',
-      tags: detail.tags || []
+      tagIds: detail.tagIds || []
     });
   }
 };

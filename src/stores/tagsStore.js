@@ -50,13 +50,10 @@ function loadTags() {
   }
 
   function updateTag(id, tagData) {
-    const index = tags.value.findIndex(t => t.id === id);
-    if (index !== -1) {
-      tags.value[index] = {
-        ...tags.value[index],
-        name: tagData.name,
-        color: tagData.color
-      };
+    const tagToUpdate = tags.value.find(t => t.id === id);
+    if (tagToUpdate) {
+      tagToUpdate.name = tagData.name;
+      tagToUpdate.color = tagData.color;
       saveTags();
     }
   }

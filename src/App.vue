@@ -131,6 +131,7 @@
     </v-main>
 
     <ConfirmationDialog />
+    <TemplateSelectionDialog />
   </v-app>
 </template>
 
@@ -146,6 +147,7 @@ import { useSettingsViewStore } from '@/stores/settingsViewStore.js';
 import { useTagsStore } from '@/stores/tagsStore.js';
 import { useSearchStore } from '@/stores/searchStore.js';
 import ConfirmationDialog from '@/components/common/ConfirmationDialog.vue';
+import TemplateSelectionDialog from '@/components/TemplateSelectionDialog.vue';
 
 const router = useRouter();
 const route = useRoute();

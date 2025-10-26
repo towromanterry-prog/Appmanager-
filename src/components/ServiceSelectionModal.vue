@@ -51,15 +51,17 @@
 
               <v-list-item-title>{{ service.name }}</v-list-item-title>
               <v-list-item-subtitle>
-                <v-chip
-                  v-for="tag in getTags(service.tags)"
-                  :key="tag.id"
-                  :color="tag.color"
-                  size="x-small"
-                  class="mr-1"
-                >
-                  {{ tag.name }}
-                </v-chip>
+                <div class="tags-container">
+                  <v-chip
+                    v-for="tag in getTags(service.tagIds)"
+                    :key="tag.id"
+                    :color="tag.color"
+                    size="small"
+                    class="mr-1"
+                  >
+                    {{ tag.name }}
+                  </v-chip>
+                </div>
               </v-list-item-subtitle>
 
               <template v-slot:append>
@@ -102,7 +104,7 @@ const isServiceFormVisible = ref(false);
 const availableServices = computed(() => {
   return serviceStore.services.map(service => ({
     ...service,
-    tagNames: getTags(service.tags).map(t => t.name)
+    tagNames: getTags(service.tagIds).map(t => t.name)
   }));
 });
 
@@ -140,7 +142,7 @@ const toggleService = (service) => {
       price: service.defaultPrice,
       status: 'accepted',
       icon: service.icon || '',
-      tags: service.tags || []
+      tagIds: service.tagIds || []
     });
   }
 };

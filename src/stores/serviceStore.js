@@ -4,10 +4,10 @@ import { ref } from 'vue';
 import { useOrderStore } from './orderStore';
 
 const defaultServices = [  
-  { id: 1, name: 'Стрижка', defaultPrice: 1500, tags: [] },  
-  { id: 2, name: 'Окрашивание', defaultPrice: 5000, tags: [] },  
-  { id: 3, name: 'Маникюр', defaultPrice: 2000, tags: [] },  
-  { id: 4, name: 'Педикюр', defaultPrice: 2500, tags: [] },  
+  { id: 1, name: 'Стрижка', defaultPrice: 1500, tagIds: [] },
+  { id: 2, name: 'Окрашивание', defaultPrice: 5000, tagIds: [] },
+  { id: 3, name: 'Маникюр', defaultPrice: 2000, tagIds: [] },
+  { id: 4, name: 'Педикюр', defaultPrice: 2500, tagIds: [] },
 ];
 
 export const useServiceStore = defineStore('services', () => {  
@@ -17,21 +17,34 @@ export const useServiceStore = defineStore('services', () => {
     try {
       const stored = localStorage.getItem('services');
       if (stored) {
-        const parsed = JSON.parse(stored);
+        let parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          services.value = parsed.map(s => ({
-            ...s,
-            tags: Array.isArray(s.tags) ? s.tags : []
-          }));
+          let needsSave = false;
+          services.value = parsed.map(s => {
+            // Migration from 'tags' to 'tagIds'
+            if (s.hasOwnProperty('tags')) {
+              s.tagIds = s.tags;
+              delete s.tags;
+              needsSave = true;
+            }
+            // Ensure tagIds is always an array
+            if (!Array.isArray(s.tagIds)) {
+              s.tagIds = [];
+            }
+            return s;
+          });
+          if (needsSave) {
+            saveServices();
+          }
         } else {
           throw new Error('Stored services is not an array');
         }
       } else {
-        services.value = [...defaultServices];
+        services.value = defaultServices.map(s => ({...s}));
       }
     } catch (error) {
       console.error('Ошибка загрузки services из localStorage:', error);
-      services.value = [...defaultServices];
+      services.value = defaultServices.map(s => ({...s}));
       localStorage.removeItem('services');
     }
   }
@@ -45,7 +58,7 @@ export const useServiceStore = defineStore('services', () => {
       id: Date.now(),  
       name: serviceData.name,  
       defaultPrice: serviceData.defaultPrice,  
-      tags: serviceData.tags || []
+      tagIds: serviceData.tagIds || []
     };  
     services.value.push(newService);  
     saveServices();  
@@ -59,7 +72,7 @@ export const useServiceStore = defineStore('services', () => {
         ...services.value[index],  
         name: serviceData.name,  
         defaultPrice: serviceData.defaultPrice,  
-        tags: serviceData.tags || []
+        tagIds: serviceData.tagIds || []
       };  
       saveServices();
       // Обновляем цены в активных заказах при обновлении услуги  
@@ -80,10 +93,10 @@ export const useServiceStore = defineStore('services', () => {
     return services.value.find(s => s.id === id);
   }
   
-  function getServicesByTag(tagName) {
-    if (!tagName) return services.value;
+  function getServicesByTag(tagId) {
+    if (!tagId) return services.value;
     return services.value.filter(service => 
-      service.tags && service.tags.includes(tagName)
+      service.tagIds && service.tagIds.includes(tagId)
     );
   }
 

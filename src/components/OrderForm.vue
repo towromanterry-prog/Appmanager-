@@ -61,7 +61,7 @@
               </div>
 
               <div v-if="form.services.length > 0" class="item-list">
-                <div v-for="(service, index) in form.services" :key="`service-${index}`" class="item-card">
+                <div v-for="(service, index) in servicesWithLiveTags" :key="`service-${index}`" class="item-card">
                   <div class="item-content">
                     <div class="item-title">{{ service.name }}</div>
                     <v-text-field
@@ -75,7 +75,7 @@
                     ></v-text-field>
                     <div class="tags-container">
                       <v-chip
-                        v-for="tag in getTags(service.tags)"
+                        v-for="tag in getTags(service.tagIds)"
                         :key="tag.id"
                         :color="tag.color"
                         size="small"
@@ -109,7 +109,7 @@
               </div>
 
               <div v-if="form.details.length > 0" class="item-list">
-                <div v-for="(detail, index) in form.details" :key="`detail-${index}`" class="item-card">
+                <div v-for="(detail, index) in detailsWithLiveTags" :key="`detail-${index}`" class="item-card">
                   <div class="item-content">
                     <div class="item-title">{{ detail.name }}</div>
                     <v-text-field
@@ -123,7 +123,7 @@
                     ></v-text-field>
                      <div class="tags-container">
                       <v-chip
-                        v-for="tag in getTags(detail.tags)"
+                        v-for="tag in getTags(detail.tagIds)"
                         :key="tag.id"
                         :color="tag.color"
                         size="small"
@@ -200,6 +200,8 @@ import { useOrderStore } from '@/stores/orderStore.js';
 import { useClientsStore } from '@/stores/clientsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useTagsStore } from '@/stores/tagsStore';
+import { useServiceStore } from '@/stores/serviceStore';
+import { useDetailStore } from '@/stores/detailStore';
 import ServiceSelectionModal from './ServiceSelectionModal.vue';
 import DetailSelectionModal from './DetailSelectionModal.vue';
 
@@ -212,6 +214,8 @@ const orderStore = useOrderStore();
 const clientsStore = useClientsStore();
 const settingsStore = useSettingsStore();
 const tagsStore = useTagsStore();
+const serviceStore = useServiceStore();
+const detailStore = useDetailStore();
 
 const isSaving = ref(false);
 const isServiceModalOpen = ref(false);
@@ -250,9 +254,29 @@ const isFormValid = computed(() => {
   return true;
 });
 
+const servicesWithLiveTags = computed(() => {
+  return form.services.map(service => {
+    const liveService = serviceStore.getServiceById(service.id);
+    return {
+      ...service,
+      tagIds: liveService ? liveService.tagIds : service.tagIds || []
+    };
+  });
+});
+
+const detailsWithLiveTags = computed(() => {
+  return form.details.map(detail => {
+    const liveDetail = detailStore.getDetailById(detail.id);
+    return {
+      ...detail,
+      tagIds: liveDetail ? liveDetail.tagIds : detail.tagIds || []
+    };
+  });
+});
+
 const getTags = (tagIds) => {
   if (!tagIds) return [];
-  return tagIds.map(id => tagsStore.tags.find(t => t.id === id)).filter(Boolean);
+  return tagIds.map(id => tagsStore.getTagById(id)).filter(Boolean);
 };
 
 const resetForm = () => {
@@ -381,6 +405,12 @@ const handleDetailsSelected = (selectedDetails) => {
 
 if (tagsStore.tags.length === 0) {
   tagsStore.loadTags();
+}
+if (serviceStore.services.length === 0) {
+  serviceStore.loadServices();
+}
+if (detailStore.details.length === 0) {
+  detailStore.loadDetails();
 }
 </script>
 
