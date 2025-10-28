@@ -1,7 +1,7 @@
 <template>
-  <div class="base-settings-view">
-    <div class="settings-container">
-      <v-card flat class="mb-0">
+  <div class="base-settings-view d-flex flex-column">
+    <div class="settings-container d-flex flex-column">
+      <v-card flat class="mb-0 flex-shrink-0">
         <div class="custom-tabs-container bg-surface">
           <div class="custom-tabs-wrapper">
             <div
@@ -30,11 +30,11 @@
         </div>
       </v-card>
 
-      <v-window v-model="tab" class="window-full-height">
+      <v-window v-model="tab" class="window-full-height flex-grow-1" style="min-height: 0;">
         <!-- УСЛУГИ -->
-        <v-window-item value="services" class="window-item-full-height">
+        <v-window-item value="services" class="window-item-full-height" style="height: 100%; overflow-y: auto;">
           <v-card flat class="mt-2" bg-color="surface">
-            <div class="d-flex align-center justify-space-between pa-2 bg-surface">
+            <div class="d-flex align-center justify-space-between pa-2 bg-surface" style="position: sticky; top: 0; z-index: 1;">
               <h3 class="text-h6">Услуги</h3>
               <v-btn color="primary" @click="openServiceDialog">
                 <v-icon class="mr-2">mdi-plus</v-icon>
@@ -75,9 +75,9 @@
         </v-window-item>
 
         <!-- ДЕТАЛИ -->
-        <v-window-item value="details" class="window-item-full-height">
+        <v-window-item value="details" class="window-item-full-height" style="height: 100%; overflow-y: auto;">
           <v-card flat class="mt-2" bg-color="surface">
-            <div class="d-flex align-center justify-space-between pa-2 bg-surface">
+            <div class="d-flex align-center justify-space-between pa-2 bg-surface" style="position: sticky; top: 0; z-index: 1;">
               <h3 class="text-h6">Детали</h3>
               <v-btn color="primary" @click="openDetailDialog">
                 <v-icon class="mr-2">mdi-plus</v-icon>
@@ -118,9 +118,9 @@
         </v-window-item>
 
         <!-- ТЕГИ -->
-        <v-window-item value="tags" class="window-item-full-height">
+        <v-window-item value="tags" class="window-item-full-height" style="height: 100%; overflow-y: auto;">
           <v-card flat class="mt-2" bg-color="surface">
-            <div class="d-flex align-center justify-space-between pa-2 bg-surface">
+            <div class="d-flex align-center justify-space-between pa-2 bg-surface" style="position: sticky; top: 0; z-index: 1;">
               <h3 class="text-h6">Теги</h3>
               <v-btn color="primary" @click="openTagDialog">
                 <v-icon class="mr-2">mdi-plus</v-icon>
@@ -447,9 +447,6 @@ onMounted(() => {
 .settings-container {
   flex-grow: 1;
   min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
   margin: 8px;
   padding: 8px;
   background-color: rgb(var(--v-theme-secondary));
@@ -460,24 +457,22 @@ onMounted(() => {
     0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
-.settings-container::-webkit-scrollbar {
-  display: none;
-}
-
-.settings-container .v-card {
-  background-color: transparent !important;
-  box-shadow: none !important;
-}
-
 .window-full-height {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  min-height: 0;
 }
 
 .window-item-full-height {
   height: 100%;
-  min-height: 0;
+  overflow-y: auto;
+}
+
+.window-item-full-height::-webkit-scrollbar {
+  width: 4px;
+}
+
+.window-item-full-height::-webkit-scrollbar-thumb {
+  background-color: rgba(0,0,0,0.2);
+  border-radius: 2px;
 }
 
 .custom-tabs-container {
