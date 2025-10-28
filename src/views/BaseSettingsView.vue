@@ -30,9 +30,9 @@
         </div>
       </v-card>
 
-      <v-window v-model="tab" class="d-flex flex-grow-1" style="min-height: 0;">
+      <v-window v-model="tab" class="d-flex" style="min-height: 0;">
         <!-- УСЛУГИ -->
-        <v-window-item value="services" class="window-item-full-height">
+        <v-window-item value="services" class="window-item-full-height flex-grow-1">
           <div class="d-flex align-center justify-space-between pa-2 bg-surface" style="position: sticky; top: 0; z-index: 1; background-color: rgb(var(--v-theme-surface));">
             <h3 class="text-h6">Услуги</h3>
             <v-btn color="primary" @click="openServiceDialog">
@@ -72,7 +72,7 @@
         </v-window-item>
 
         <!-- ДЕТАЛИ -->
-        <v-window-item value="details" class="window-item-full-height">
+        <v-window-item value="details" class="window-item-full-height flex-grow-1">
           <div class="d-flex align-center justify-space-between pa-2 bg-surface" style="position: sticky; top: 0; z-index: 1; background-color: rgb(var(--v-theme-surface));">
             <h3 class="text-h6">Детали</h3>
             <v-btn color="primary" @click="openDetailDialog">
@@ -112,7 +112,7 @@
         </v-window-item>
 
         <!-- ТЕГИ -->
-        <v-window-item value="tags" class="window-item-full-height">
+        <v-window-item value="tags" class="window-item-full-height flex-grow-1">
           <div class="d-flex align-center justify-space-between pa-2 bg-surface" style="position: sticky; top: 0; z-index: 1; background-color: rgb(var(--v-theme-surface));">
             <h3 class="text-h6">Теги</h3>
             <v-btn color="primary" @click="openTagDialog">
