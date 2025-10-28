@@ -30,7 +30,7 @@
         </div>
       </v-card>
 
-      <v-window v-model="tab" class="window-full-height flex-grow-1" style="min-height: 0;">
+      <v-window v-model="tab" class="d-flex flex-grow-1" style="min-height: 0;">
         <!-- УСЛУГИ -->
         <v-window-item value="services" class="window-item-full-height">
           <div class="d-flex align-center justify-space-between pa-2 bg-surface" style="position: sticky; top: 0; z-index: 1; background-color: rgb(var(--v-theme-surface));">
@@ -42,7 +42,7 @@
           </div>
           <v-divider class="my-0"></v-divider>
 
-          <div class="list-wrapper pa-2">
+          <div class="list-wrapper">
             <v-card v-for="service in filteredServices" :key="service.id" class="item-card mb-2">
               <v-card-text class="pa-3">
                 <div class="d-flex align-center">
@@ -82,7 +82,7 @@
           </div>
           <v-divider class="my-0"></v-divider>
 
-          <div class="list-wrapper pa-2">
+          <div class="list-wrapper">
             <v-card v-for="detail in filteredDetails" :key="detail.id" class="item-card mb-2">
               <v-card-text class="pa-3">
                 <div class="d-flex align-center">
@@ -122,7 +122,7 @@
           </div>
           <v-divider class="my-0"></v-divider>
 
-          <div class="list-wrapper pa-2">
+          <div class="list-wrapper">
             <v-card v-for="tag in filteredTags" :key="tag.id" class="item-card mb-2">
               <v-card-text class="pa-3">
                 <div class="d-flex align-center">
@@ -457,16 +457,20 @@ onMounted(() => {
     0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
-.window-full-height {
-  min-height: 0;
+.list-wrapper {
+  overflow-y: auto;
+  flex-grow: 1;
+  padding: 8px;
 }
 
 .window-item-full-height {
-  height: 100%;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-height: 0;
 }
 
-.window-item-full-height::-webkit-scrollbar {
+.list-wrapper::-webkit-scrollbar {
   width: 4px;
 }
 
