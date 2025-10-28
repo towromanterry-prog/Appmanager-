@@ -43,34 +43,37 @@
             </div>
             <v-divider class="my-0"></v-divider>
 
-            <v-list lines="two" bg-color="surface" class="py-0">
-              <template v-for="(service, index) in filteredServices" :key="service.id">
-                <v-list-item class="px-2 py-1 my-1" density="compact">
-                  <v-list-item-title class="font-weight-medium">{{ service.name }}</v-list-item-title>
-                  <v-list-item-subtitle class="mb-2">{{ service.defaultPrice }}₽</v-list-item-subtitle>
-
-                  <div class="tags-container mb-1">
-                    <v-chip
-                      v-for="tag in getTagsForService(service.tagIds)"
-                      :key="tag.id"
-                      :color="tag.color"
-                      size="small"
-                      class="mr-1"
-                    >
-                      {{ tag.name }}
-                    </v-chip>
-                  </div>
-
-                  <template v-slot:append>
-                    <div class="d-flex align-center">
-                      <v-btn icon="mdi-pencil" variant="text" size="small" @click="editService(service)"></v-btn>
-                      <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteService(service.id)"></v-btn>
-                    </div>
-                  </template>
-                </v-list-item>
-                <v-divider v-if="index < filteredServices.length - 1" class="mx-2"></v-divider>
-              </template>
-            </v-list>
+            <v-container fluid class="pa-2">
+              <v-row dense>
+                <v-col v-for="service in filteredServices" :key="service.id" cols="12">
+                  <v-card class="item-card">
+                    <v-card-text class="pa-3">
+                      <div class="d-flex align-center">
+                        <div class="flex-grow-1" style="min-width: 0;">
+                          <div class="font-weight-medium">{{ service.name }}</div>
+                          <div class="text-caption text-on-surface-variant">{{ service.defaultPrice }}₽</div>
+                          <div class="tags-container mt-2" v-if="service.tagIds && service.tagIds.length">
+                            <v-chip
+                              v-for="tag in getTagsForService(service.tagIds)"
+                              :key="tag.id"
+                              :color="tag.color"
+                              size="x-small"
+                              class="mr-1"
+                            >
+                              {{ tag.name }}
+                            </v-chip>
+                          </div>
+                        </div>
+                        <div class="item-actions">
+                          <v-btn icon="mdi-pencil" variant="text" size="small" @click="editService(service)"></v-btn>
+                          <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteService(service.id)"></v-btn>
+                        </div>
+                      </div>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-container>
           </v-card>
         </v-window-item>
 
@@ -86,34 +89,37 @@
             </div>
             <v-divider class="my-0"></v-divider>
 
-            <v-list lines="two" bg-color="surface" class="py-0">
-              <template v-for="(detail, index) in filteredDetails" :key="detail.id">
-                <v-list-item class="px-2 py-1 my-1" density="compact">
-                  <v-list-item-title class="font-weight-medium">{{ detail.name }}</v-list-item-title>
-                  <v-list-item-subtitle class="mb-2">{{ detail.defaultPrice }}₽</v-list-item-subtitle>
-
-                  <div class="tags-container mb-1">
-                    <v-chip
-                      v-for="tag in getTagsForDetail(detail.tagIds)"
-                      :key="tag.id"
-                      :color="tag.color"
-                      size="small"
-                      class="mr-1"
-                    >
-                      {{ tag.name }}
-                    </v-chip>
-                  </div>
-
-                  <template v-slot:append>
-                    <div class="d-flex align-center">
-                      <v-btn icon="mdi-pencil" variant="text" size="small" @click="editDetail(detail)"></v-btn>
-                      <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteDetail(detail.id)"></v-btn>
-                    </div>
-                  </template>
-                </v-list-item>
-                <v-divider v-if="index < filteredDetails.length - 1" class="mx-2"></v-divider>
-              </template>
-            </v-list>
+            <v-container fluid class="pa-2">
+              <v-row dense>
+                <v-col v-for="detail in filteredDetails" :key="detail.id" cols="12">
+                  <v-card class="item-card">
+                    <v-card-text class="pa-3">
+                      <div class="d-flex align-center">
+                        <div class="flex-grow-1" style="min-width: 0;">
+                          <div class="font-weight-medium">{{ detail.name }}</div>
+                          <div class="text-caption text-on-surface-variant">{{ detail.defaultPrice }}₽</div>
+                          <div class="tags-container mt-2" v-if="detail.tagIds && detail.tagIds.length">
+                            <v-chip
+                              v-for="tag in getTagsForDetail(detail.tagIds)"
+                              :key="tag.id"
+                              :color="tag.color"
+                              size="x-small"
+                              class="mr-1"
+                            >
+                              {{ tag.name }}
+                            </v-chip>
+                          </div>
+                        </div>
+                        <div class="item-actions">
+                          <v-btn icon="mdi-pencil" variant="text" size="small" @click="editDetail(detail)"></v-btn>
+                          <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteDetail(detail.id)"></v-btn>
+                        </div>
+                      </div>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-container>
           </v-card>
         </v-window-item>
 
@@ -129,27 +135,25 @@
             </div>
             <v-divider class="my-0"></v-divider>
 
-            <v-list bg-color="surface" class="py-0">
-              <template v-for="(tag, index) in filteredTags" :key="tag.id">
-                <v-list-item class="px-2 py-1 my-1" density="compact">
-                  <template v-slot:prepend>
-                    <v-chip
-                      :color="tag.color"
-                      size="small"
-                    >
-                      {{ tag.name }}
-                     </v-chip>
-                  </template>
-                  <template v-slot:append>
-                    <div class="d-flex align-center">
-                        <v-btn icon="mdi-pencil" variant="text" size="small" @click="editTag(tag)"></v-btn>
-                        <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteTag(tag.id)"></v-btn>
-                    </div>
-                  </template>
-                </v-list-item>
-                 <v-divider v-if="index < filteredTags.length - 1" class="mx-2"></v-divider>
-              </template>
-            </v-list>
+            <v-container fluid class="pa-2">
+              <v-row dense>
+                <v-col v-for="tag in filteredTags" :key="tag.id" cols="12">
+                  <v-card class="item-card">
+                    <v-card-text class="pa-3">
+                      <div class="d-flex align-center">
+                        <div class="flex-grow-1">
+                          <v-chip :color="tag.color" size="small">{{ tag.name }}</v-chip>
+                        </div>
+                        <div class="item-actions">
+                          <v-btn icon="mdi-pencil" variant="text" size="small" @click="editTag(tag)"></v-btn>
+                          <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteTag(tag.id)"></v-btn>
+                        </div>
+                      </div>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-container>
           </v-card>
         </v-window-item>
 
@@ -438,6 +442,20 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.item-card {
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: none;
+}
+.item-actions {
+  display: flex;
+  align-items: center;
+}
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
 .base-settings-view {
   height: calc(100vh - 68px);
   display: flex;
