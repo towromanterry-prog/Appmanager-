@@ -30,7 +30,7 @@
         </div>
       </v-card>
 
-      <v-window v-model="tab" class="d-flex" style="min-height: 0;">
+      <v-window v-model="tab" style="min-height: 0;">
         <!-- УСЛУГИ -->
         <v-window-item value="services" class="window-item-full-height flex-grow-1">
           <div class="d-flex align-center justify-space-between pa-2 bg-surface" style="position: sticky; top: 0; z-index: 1; background-color: rgb(var(--v-theme-surface));">
@@ -43,7 +43,7 @@
           <v-divider class="my-0"></v-divider>
 
           <div class="list-wrapper">
-            <v-card v-for="service in filteredServices" :key="service.id" class="item-card mb-2">
+            <v-card v-for="service in filteredServices" :key="service.id" class="item-card">
               <v-card-text class="pa-3">
                 <div class="d-flex align-center">
                   <div class="flex-grow-1" style="min-width: 0;">
@@ -83,7 +83,7 @@
           <v-divider class="my-0"></v-divider>
 
           <div class="list-wrapper">
-            <v-card v-for="detail in filteredDetails" :key="detail.id" class="item-card mb-2">
+            <v-card v-for="detail in filteredDetails" :key="detail.id" class="item-card">
               <v-card-text class="pa-3">
                 <div class="d-flex align-center">
                   <div class="flex-grow-1" style="min-width: 0;">
@@ -123,7 +123,7 @@
           <v-divider class="my-0"></v-divider>
 
           <div class="list-wrapper">
-            <v-card v-for="tag in filteredTags" :key="tag.id" class="item-card mb-2">
+            <v-card v-for="tag in filteredTags" :key="tag.id" class="item-card">
               <v-card-text class="pa-3">
                 <div class="d-flex align-center">
                   <div class="flex-grow-1">
@@ -461,6 +461,9 @@ onMounted(() => {
   overflow-y: auto;
   flex-grow: 1;
   padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .window-item-full-height {
@@ -469,6 +472,7 @@ onMounted(() => {
   flex-grow: 1;
   min-height: 0;
   width: 100%;
+  height: 100%;
 }
 
 .list-wrapper::-webkit-scrollbar {
