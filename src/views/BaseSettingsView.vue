@@ -458,10 +458,7 @@ onMounted(() => {
 }
 
 .list-wrapper {
-  overflow-y: auto;
-  flex-grow: 1;
   padding: 8px;
-  touch-action: pan-y;
 }
 
 .window-item-full-height {
@@ -471,6 +468,7 @@ onMounted(() => {
   min-height: 0;
   width: 100%;
   height: 100%;
+  overflow-y: auto;
 }
 
 .list-wrapper::-webkit-scrollbar {
