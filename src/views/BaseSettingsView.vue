@@ -488,10 +488,10 @@ onMounted(() => {
 .settings-container {
   flex-grow: 1;
   min-height: 0;
-  margin: 8px;
+  margin: 8px 0;
   padding: 8px;
   background-color: rgb(var(--v-theme-secondary));
-  border-radius: 16px;
+  border-radius: 0;
   box-shadow:
     0 10px 15px -3px rgba(0, 0, 0, 0.1),
     0 4px 6px -2px rgba(0, 0, 0, 0.05),
