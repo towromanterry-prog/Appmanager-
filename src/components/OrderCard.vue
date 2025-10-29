@@ -1,5 +1,5 @@
 <template>
-  <v-card class="order-card" @click="expanded = !expanded">
+  <v-card class="order-card" @click="expandCard">
     <!-- Основная видимая часть -->
     <v-card-text class="d-flex align-start pa-4">
       <!-- Инфо о клиенте -->
@@ -91,9 +91,9 @@
         <!-- Действия -->
         <v-card-actions class="pa-2">
           <v-btn icon="mdi-phone" variant="text" size="small" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop></v-btn>
-          <v-btn icon="mdi-message-text" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessage('sms')"></v-btn>
-          <v-btn :icon="IconWhatsapp" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessage('whatsapp')"></v-btn>
-          <v-btn :icon="IconTelegram" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessage('telegram')"></v-btn>
+          <v-btn icon="mdi-message-text" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessageWithHaptic('sms')"></v-btn>
+          <v-btn :icon="IconWhatsapp" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessageWithHaptic('whatsapp')"></v-btn>
+          <v-btn :icon="IconTelegram" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessageWithHaptic('telegram')"></v-btn>
            <v-spacer></v-spacer>
            <v-btn
               :icon="order.status === 'cancelled' ? 'mdi-restore' : 'mdi-cancel'"
@@ -102,8 +102,8 @@
               size="small"
               @click.stop="handleCancelClick"
             ></v-btn>
-           <v-btn icon="mdi-delete" color="error" variant="text" size="small" @click.stop="emit('delete', order.id)"></v-btn>
-           <v-btn icon="mdi-pencil" color="primary" variant="text" size="small" @click.stop="emit('edit', order)" :disabled="order.status === 'cancelled'"></v-btn>
+           <v-btn icon="mdi-delete" color="error" variant="text" size="small" @click.stop="deleteWithHaptic(order.id)"></v-btn>
+           <v-btn icon="mdi-pencil" color="primary" variant="text" size="small" @click.stop="editWithHaptic(order)" :disabled="order.status === 'cancelled'"></v-btn>
         </v-card-actions>
       </div>
     </v-expand-transition>
@@ -119,6 +119,7 @@ import { useTagsStore } from '@/stores/tagsStore';
 import { useServiceStore } from '@/stores/serviceStore';
 import { useDetailStore } from '@/stores/detailStore';
 import StatusIndicator from '@/components/common/StatusIndicator.vue';
+import { useHapticFeedback } from '@/composables/useHapticFeedback';
 import { useFormatDate } from '@/composables/useDateUtils';
 import { IconTelegram, IconWhatsapp } from '@iconify-prerendered/vue-simple-icons';
 
@@ -134,6 +135,7 @@ const tagsStore = useTagsStore();
 const serviceStore = useServiceStore();
 const detailStore = useDetailStore();
 const { toLongDate } = useFormatDate();
+const { triggerHapticFeedback } = useHapticFeedback();
 
 const expanded = ref(false);
 
@@ -168,7 +170,13 @@ const isOverdue = computed(() => {
   return new Date(props.order.deadline) < today && props.order.status !== 'delivered' && props.order.status !== 'cancelled';
 });
 
+const expandCard = () => {
+  triggerHapticFeedback('tap');
+  expanded.value = !expanded.value;
+};
+
 const changeOrderStatus = () => {
+  triggerHapticFeedback('tap');
   if (props.order.status === 'cancelled') return;
   const nextStatus = orderStore.calculateNextStatus(props.order.status, 'order');
   if (nextStatus !== props.order.status) {
@@ -177,6 +185,7 @@ const changeOrderStatus = () => {
 };
 
 const changeServiceStatus = (serviceIndex) => {
+    triggerHapticFeedback('tap');
     const service = props.order.services[serviceIndex];
     if (service.status === 'cancelled') return;
     const nextStatus = orderStore.calculateNextStatus(service.status, 'service');
@@ -186,6 +195,7 @@ const changeServiceStatus = (serviceIndex) => {
 };
 
 const changeDetailStatus = (detailIndex) => {
+    triggerHapticFeedback('tap');
     const detail = props.order.details[detailIndex];
     if (detail.status === 'cancelled') return;
     const nextStatus = orderStore.calculateNextStatus(detail.status, 'detail');
@@ -195,6 +205,7 @@ const changeDetailStatus = (detailIndex) => {
 };
 
 const handleCancelClick = () => {
+  triggerHapticFeedback('tap');
   if (props.order.status === 'cancelled') {
     orderStore.undoCancelOrder(props.order.id);
   } else {
@@ -240,6 +251,21 @@ const sendMessage = async (service) => {
   if (url) {
     window.open(url, '_blank');
   }
+};
+
+const sendMessageWithHaptic = (service) => {
+  triggerHapticFeedback('tap');
+  sendMessage(service);
+};
+
+const deleteWithHaptic = (orderId) => {
+  triggerHapticFeedback('tap');
+  emit('delete', orderId);
+};
+
+const editWithHaptic = (order) => {
+  triggerHapticFeedback('tap');
+  emit('edit', order);
 };
 </script>
 

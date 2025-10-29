@@ -56,7 +56,9 @@
 import { ref, watch, computed } from 'vue';
 import { useServiceStore } from '@/stores/serviceStore';
 import { useTagsStore } from '@/stores/tagsStore';
+import { useHapticFeedback } from '@/composables/useHapticFeedback';
 
+const { triggerHapticFeedback } = useHapticFeedback();
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   service: { type: Object, default: null }
@@ -105,6 +107,7 @@ const save = async () => {
   } else {
     serviceStore.addService(serviceForm.value);
   }
+  triggerHapticFeedback('important');
   emit('saved');
   closeDialog();
 };

@@ -238,8 +238,10 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useSettingsViewStore } from '@/stores/settingsViewStore';
 import { useConfirmationStore } from '@/stores/confirmationStore';
 import { useSearchStore } from '@/stores/searchStore';
+import { useHapticFeedback } from '@/composables/useHapticFeedback';
 import ServiceFormDialog from '@/components/ServiceFormDialog.vue';
 
+const { triggerHapticFeedback } = useHapticFeedback();
 const serviceStore = useServiceStore();
 const detailStore = useDetailStore();
 const tagsStore = useTagsStore();
@@ -384,6 +386,7 @@ const editService = (service) => {
 const deleteService = async (serviceId) => {
   const confirmed = await confirmationStore.open('Удаление услуги', 'Вы уверены, что хотите удалить эту услугу?');
   if (confirmed) {
+    triggerHapticFeedback('important');
     serviceStore.deleteService(serviceId);
   }
 };
@@ -409,12 +412,14 @@ const saveDetail = async () => {
   } else {
     detailStore.addDetail(detailForm.value);
   }
+  triggerHapticFeedback('important');
   detailDialog.value = false;
 };
 
 const deleteDetail = async (detailId) => {
   const confirmed = await confirmationStore.open('Удаление детали', 'Вы уверены, что хотите удалить эту деталь?');
   if (confirmed) {
+    triggerHapticFeedback('important');
     detailStore.deleteDetail(detailId);
   }
 };
@@ -440,12 +445,14 @@ const saveTag = async () => {
   } else {
     tagsStore.addTag(tagForm.value);
   }
+  triggerHapticFeedback('important');
   tagDialog.value = false;
 };
 
 const deleteTag = async (tagId) => {
   const confirmed = await confirmationStore.open('Удаление тега', 'Вы уверены, что хотите удалить этот тег?');
   if (confirmed) {
+    triggerHapticFeedback('important');
     tagsStore.deleteTag(tagId);
   }
 };

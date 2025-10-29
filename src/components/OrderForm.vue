@@ -201,6 +201,7 @@ import { useClientsStore } from '@/stores/clientsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useTagsStore } from '@/stores/tagsStore';
 import { useServiceStore } from '@/stores/serviceStore';
+import { useHapticFeedback } from '@/composables/useHapticFeedback.js';
 import { useDetailStore } from '@/stores/detailStore';
 import ServiceSelectionModal from './ServiceSelectionModal.vue';
 import DetailSelectionModal from './DetailSelectionModal.vue';
@@ -216,6 +217,7 @@ const settingsStore = useSettingsStore();
 const tagsStore = useTagsStore();
 const serviceStore = useServiceStore();
 const detailStore = useDetailStore();
+const { triggerHapticFeedback } = useHapticFeedback();
 
 const isSaving = ref(false);
 const isServiceModalOpen = ref(false);
@@ -367,6 +369,7 @@ const saveOrder = async () => {
     } else {
       await orderStore.addOrder(orderData);
     }
+    triggerHapticFeedback('important');
     clientsStore.addOrUpdateClient({
       name: form.clientName,
       lastName: form.lastName,

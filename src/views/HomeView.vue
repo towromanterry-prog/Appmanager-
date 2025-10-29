@@ -176,6 +176,7 @@ import { useTagsStore } from '@/stores/tagsStore.js';
 import { useSettingsStore } from '@/stores/settingsStore.js';
 import { useConfirmationStore } from '@/stores/confirmationStore.js';
 import { useSearchStore } from '@/stores/searchStore.js';
+import { useHapticFeedback } from '@/composables/useHapticFeedback.js';
 import { storeToRefs } from 'pinia';
 import OrderCard from '@/components/OrderCard.vue';
 import OrderForm from '@/components/OrderForm.vue';
@@ -190,6 +191,7 @@ const settingsStore = useSettingsStore();
 const { appSettings } = storeToRefs(settingsStore);
 const confirmationStore = useConfirmationStore();
 const searchStore = useSearchStore();
+const { triggerHapticFeedback } = useHapticFeedback();
 const { orders, sortBy } = storeToRefs(orderStore);
 const { searchQuery } = storeToRefs(searchStore);
 
@@ -238,6 +240,7 @@ const handleTouchEnd = () => {
   // Свайп влево, если он достаточно длинный и более горизонтальный, чем вертикальный
   if (touchEndX.value !== 0 && dx < -80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
     if (!showFullCalendar.value) {
+      triggerHapticFeedback('swipe');
       showFullCalendar.value = true;
       return;
     }
@@ -245,6 +248,7 @@ const handleTouchEnd = () => {
 
   // Свайп вправо для сброса
   if (touchEndX.value !== 0 && dx > 80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    triggerHapticFeedback('swipe');
     handleRightSwipe();
   }
 
@@ -431,18 +435,21 @@ const filteredOrders = computed(() => {
 
 
 const previousMonth = () => {
+    triggerHapticFeedback('tap');
     const newDate = new Date(currentDate.value);
     newDate.setMonth(newDate.getMonth() - 1);
     currentDate.value = newDate;
 };
 
 const nextMonth = () => {
+    triggerHapticFeedback('tap');
     const newDate = new Date(currentDate.value);
     newDate.setMonth(newDate.getMonth() + 1);
     currentDate.value = newDate;
 };
 
 const selectDate = (date) => {
+  triggerHapticFeedback('tap');
   if (selectedDate.value === date) {
     selectedDate.value = null;
   } else {
@@ -460,7 +467,7 @@ const selectDateFromFullCalendar = (date) => {
 
 const handleDayClick = (day) => {
   if (!day || !day.date) return;
-  
+  triggerHapticFeedback('tap');
   if (day.otherMonth) {
     currentDate.value = new Date(day.date + 'T00:00:00');
   }
@@ -478,10 +485,12 @@ const toggleFullCalendar = () => {
 };
 
 const closeFullCalendar = () => {
+  triggerHapticFeedback('tap');
   showFullCalendar.value = false;
 };
 
 const createOrder = () => {
+  triggerHapticFeedback('tap');
   orderToEditId.value = null;
   let deadlineToSet = todayStr;
   
@@ -511,9 +520,7 @@ const confirmDelete = async (orderId) => {
   const confirmed = await confirmationStore.open('Удалить заказ?', 'Это действие нельзя будет отменить.');
   if (confirmed) {
     orderStore.deleteOrder(orderId);
-    if (settingsStore.appSettings?.enableHapticFeedback && 'vibrate' in navigator) {
-      navigator.vibrate(50);
-    }
+    triggerHapticFeedback('important');
   }
 };
 
@@ -526,9 +533,8 @@ const closeForm = () => {
   }
 };
 const handleOrderSaved = () => {
-  if (settingsStore.appSettings?.enableHapticFeedback && 'vibrate' in navigator) {
-      navigator.vibrate([100, 50, 100]);
-  }
+  // Этот обработчик теперь не нужен, так как вибрация добавлена в OrderForm.vue
+  // triggerHapticFeedback('important');
 };
 
 const handleRightSwipe = () => {
@@ -550,10 +556,6 @@ const handleRightSwipe = () => {
 
   if (swipeRightActions.resetStatusFilter) {
     orderStore.filterStatus = [];
-  }
-
-  if (settingsStore.appSettings?.enableHapticFeedback && 'vibrate' in navigator) {
-    navigator.vibrate(50);
   }
 };
 
