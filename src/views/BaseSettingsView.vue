@@ -469,6 +469,8 @@ onMounted(() => {
   border-radius: 8px;
   border: 1px solid rgba(0,0,0,0.08);
   box-shadow: none !important;
+  width: 100%;
+  box-sizing: border-box;
 }
 .item-actions {
   display: flex;
@@ -489,7 +491,7 @@ onMounted(() => {
   flex-grow: 1;
   min-height: 0;
   margin: 8px 0;
-  padding: 8px;
+  padding: 8px 0;
   background-color: rgb(var(--v-theme-secondary));
   border-radius: 0;
   box-shadow:
@@ -501,7 +503,7 @@ onMounted(() => {
 .list-wrapper {
   overflow-y: auto;
   flex-grow: 1;
-  padding: 8px;
+  padding: 0;
 }
 
 .window-item-full-height {
