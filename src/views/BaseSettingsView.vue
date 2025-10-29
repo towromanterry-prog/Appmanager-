@@ -1,6 +1,10 @@
 <template>
   <div class="base-settings-view d-flex flex-column">
-    <div class="settings-container d-flex flex-column">
+    <div
+      class="settings-container d-flex flex-column"
+      @touchstart="handleTouchStart"
+      @touchend="handleTouchEnd"
+    >
       <v-card flat class="mb-0 flex-shrink-0">
         <div class="custom-tabs-container bg-surface">
           <div class="custom-tabs-wrapper">
@@ -259,6 +263,36 @@ const editingService = ref(null);
 const editingDetail = ref(null);
 const editingTag = ref(null);
 
+const touchstartX = ref(0);
+const touchendX = ref(0);
+const tabs = ['services', 'details', 'tags'];
+
+const handleTouchStart = (e) => {
+  touchstartX.value = e.changedTouches[0].screenX;
+};
+
+const handleTouchEnd = (e) => {
+  touchendX.value = e.changedTouches[0].screenX;
+  handleSwipe();
+};
+
+const handleSwipe = () => {
+  const threshold = 50; // минимальное расстояние для свайпа
+  if (touchendX.value < touchstartX.value - threshold) {
+    // свайп влево
+    const currentIndex = tabs.indexOf(tab.value);
+    if (currentIndex < tabs.length - 1) {
+      tab.value = tabs[currentIndex + 1];
+    }
+  } else if (touchendX.value > touchstartX.value + threshold) {
+    // свайп вправо
+    const currentIndex = tabs.indexOf(tab.value);
+    if (currentIndex > 0) {
+      tab.value = tabs[currentIndex - 1];
+    }
+  }
+};
+
 const tagColors = [
   { title: 'Синий', value: 'blue' }, { title: 'Зеленый', value: 'green' }, { title: 'Красный', value: 'red' },
   { title: 'Оранжевый', value: 'orange' }, { title: 'Фиолетовый', value: 'purple' }, { title: 'Розовый', value: 'pink' },
@@ -458,6 +492,8 @@ onMounted(() => {
 }
 
 .list-wrapper {
+  overflow-y: auto;
+  flex-grow: 1;
   padding: 8px;
 }
 
@@ -468,7 +504,6 @@ onMounted(() => {
   min-height: 0;
   width: 100%;
   height: 100%;
-  overflow-y: auto;
 }
 
 .list-wrapper::-webkit-scrollbar {
