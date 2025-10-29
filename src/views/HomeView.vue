@@ -190,7 +190,7 @@ const settingsStore = useSettingsStore();
 const { appSettings } = storeToRefs(settingsStore);
 const confirmationStore = useConfirmationStore();
 const searchStore = useSearchStore();
-const { orders } = storeToRefs(orderStore);
+const { orders, sortBy } = storeToRefs(orderStore);
 const { searchQuery } = storeToRefs(searchStore);
 
 const getStatusColor = (status) => {
@@ -283,11 +283,13 @@ const currentMonthName = computed(() => {
 });
 const weekDays = computed(() => {
   const dayNames = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+  const dateField = sortBy.value === 'deadline' ? 'deadline' : 'createDate';
+
   return Array.from({ length: 29 }, (_, i) => {
     const d = new Date();
     d.setDate(today.getDate() + i - 14);
     const ds = getLocalDateString(d);
-    const dayOrders = orders.value.filter(o => o.deadline?.startsWith(ds));
+    const dayOrders = orders.value.filter(o => o[dateField]?.startsWith(ds));
 
     const statuses = {};
     appSettings.value.miniCalendarIndicatorStatuses.forEach(status => {
@@ -315,6 +317,7 @@ const calendarWeeks = computed(() => {
     const firstDay = new Date(year, month, 1);
     const startDate = new Date(firstDay);
     startDate.setDate(firstDay.getDate() - (firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1));
+    const dateField = sortBy.value === 'deadline' ? 'deadline' : 'createDate';
 
     const weeks = [];
     for (let weekIndex = 0; weekIndex < 6; weekIndex++) {
@@ -324,7 +327,7 @@ const calendarWeeks = computed(() => {
             const dateStr = getLocalDateString(currentCalendarDate);
             const isCurrentMonth = currentCalendarDate.getMonth() === month;
 
-            const dayOrders = orders.value.filter(o => o.deadline?.startsWith(dateStr));
+            const dayOrders = orders.value.filter(o => o[dateField]?.startsWith(dateStr));
 
             const statuses = {};
             appSettings.value.fullCalendarIndicatorStatuses.forEach(status => {
@@ -398,7 +401,8 @@ const filteredOrders = computed(() => {
     ordersToDisplay = [...ordersWithTagNames.value];
     // 2. Фильтр по дате (если выбрана и нет поискового запроса)
     if (selectedDate.value) {
-      ordersToDisplay = ordersToDisplay.filter(order => order.deadline?.startsWith(selectedDate.value));
+      const dateField = sortBy.value === 'deadline' ? 'deadline' : 'createDate';
+      ordersToDisplay = ordersToDisplay.filter(order => order[dateField]?.startsWith(selectedDate.value));
     } else {
       // 3. Фильтр по статусу (если дата не выбрана и нет поискового запроса)
       if (orderStore.filterStatus.length > 0) {
