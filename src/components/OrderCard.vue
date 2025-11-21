@@ -128,12 +128,13 @@
         <div class="receipt-title">ВЫПОЛНЕННЫЕ РАБОТЫ</div>
         <div class="receipt-divider"></div>
 
-        <div>{{ order.clientName }} {{ order.lastName }}</div>
+        <div>Клиент: {{ order.clientName }} {{ order.lastName }}</div>
         <div>Тел: {{ formattedPhone }}</div>
 
         <div class="receipt-divider"></div>
 
         <div v-if="order.services && order.services.length">
+          <div class="font-weight-bold mb-1">Услуги:</div>
           <div v-for="(service, index) in order.services" :key="`rec-serv-${index}`" class="receipt-row">
             <span>{{ service.name }}</span>
             <span>{{ service.price }}₽</span>
@@ -141,6 +142,7 @@
         </div>
 
         <div v-if="order.details && order.details.length" class="mt-2">
+          <div class="font-weight-bold mb-1">{{ settingsStore.appSettings.detailsTabLabel }}:</div>
           <div v-for="(detail, index) in order.details" :key="`rec-det-${index}`" class="receipt-row">
             <span>{{ detail.name }}</span>
             <span>{{ detail.price }}₽</span>
