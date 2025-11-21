@@ -42,7 +42,7 @@
                 :label="`Телефон ${settingsStore.isFieldRequired('phone') ? '*' : ''}`"
                 :rules="settingsStore.isFieldRequired('phone') ? [rules.required] : []"
                 type="tel"
-                prefix="+"
+                prefix="+7"
               ></v-text-field>
             </v-col>
 
@@ -210,8 +210,9 @@ const props = defineProps({
   orderId: { type: [String, null], default: null },
   initialData: { type: Object, default: () => ({}) }
 });
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'saved']);
 
+const route = useRoute();
 const orderStore = useOrderStore();
 const clientsStore = useClientsStore();
 const settingsStore = useSettingsStore();
@@ -230,7 +231,7 @@ const form = reactive({
   phone: '',
   services: [],
   details: [],
-  deadline: new Date().toISOString().split('T')[0],
+  deadline: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0],
   notes: ''
 });
 
@@ -281,33 +282,30 @@ const resetForm = () => {
     phone: '', 
     services: [], 
     details: [],
-    deadline: new Date().toISOString().split('T')[0], 
+    deadline: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0],
     notes: '' 
   });
 };
 
 watch(() => form.phone, (newVal, oldVal) => {
   const digits = newVal.replace(/\D/g, '');
-  if (digits.length > 11) {
+  if (digits.length > 10) {
     form.phone = oldVal;
     return;
   }
 
   let formatted = '';
   if (digits.length > 0) {
-    formatted = digits.substring(0, 1);
+    formatted = '(' + digits.substring(0, 3);
   }
-  if (digits.length > 1) {
-    formatted += ' (' + digits.substring(1, 4);
+  if (digits.length > 3) {
+    formatted += ') ' + digits.substring(3, 6);
   }
-  if (digits.length > 4) {
-    formatted += ') ' + digits.substring(4, 7);
+  if (digits.length > 6) {
+    formatted += '-' + digits.substring(6, 8);
   }
-  if (digits.length > 7) {
-    formatted += '-' + digits.substring(7, 9);
-  }
-  if (digits.length > 9) {
-    formatted += '-' + digits.substring(9, 11);
+  if (digits.length > 8) {
+    formatted += '-' + digits.substring(8, 10);
   }
 
   if (newVal !== formatted) {
@@ -319,10 +317,22 @@ watch([() => props.orderId, () => props.initialData], ([newId, newInitialData]) 
   if (newId) {
     const order = orderStore.getOrderById(newId);
     if (order) {
+      // Если телефон уже с кодом страны, убираем его для отображения в поле с префиксом +7
+      let phone = order.phone || '';
+      const digits = phone.replace(/\D/g, '');
+
+      // Если 11 цифр и начинается с 7 или 8 - убираем первую цифру
+      if (digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'))) {
+        phone = digits.substring(1);
+      } else if (digits.length === 10) {
+        phone = digits;
+      }
+      // Форматирование применится автоматически через watcher
+
       Object.assign(form, {
         clientName: order.clientName,
         lastName: order.lastName,
-        phone: order.phone,
+        phone: phone,
         services: JSON.parse(JSON.stringify(order.services || [])),
         details: JSON.parse(JSON.stringify(order.details || [])),
         deadline: order.deadline,
@@ -337,7 +347,6 @@ watch([() => props.orderId, () => props.initialData], ([newId, newInitialData]) 
       }
       // Можно добавить обработку других полей из initialData, если потребуется
     }
-    const route = useRoute();
     if (route.query.clientName || route.query.clientPhone) {
         form.clientName = route.query.clientName;
         form.lastName = route.query.clientLastName;
@@ -350,11 +359,13 @@ const saveOrder = async () => {
   if (!isFormValid.value) return;
   
   isSaving.value = true;
+
+  const fullPhone = '+7 ' + form.phone;
   
   const orderData = {
     clientName: form.clientName,
     lastName: form.lastName,
-    phone: form.phone,
+    phone: fullPhone,
     services: form.services,
     details: form.details,
     totalAmount: totalAmount.value,
@@ -372,7 +383,7 @@ const saveOrder = async () => {
     clientsStore.addOrUpdateClient({
       name: form.clientName,
       lastName: form.lastName,
-      phone: form.phone,
+      phone: fullPhone,
       services: form.services.map(s => s.name),
     });
     close();
