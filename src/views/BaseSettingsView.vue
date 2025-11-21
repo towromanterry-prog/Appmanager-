@@ -34,7 +34,7 @@
         </div>
       </v-card>
 
-      <v-window v-model="tab" class="d-flex flex-grow-1" style="min-height: 0;">
+      <v-window v-model="tab" class="flex-grow-1" style="min-height: 0;">
         <!-- УСЛУГИ -->
         <v-window-item value="services" class="window-item-full-height flex-grow-1">
           <div class="d-flex align-center justify-space-between pa-2 bg-surface" style="position: sticky; top: 0; z-index: 1; background-color: rgb(var(--v-theme-surface));">
