@@ -61,7 +61,7 @@
               </div>
 
               <div v-if="form.services.length > 0" class="item-list">
-                <div v-for="(service, index) in servicesWithLiveTags" :key="`service-${index}`" class="item-card">
+                <div v-for="(service, index) in form.services" :key="`service-${index}`" class="item-card">
                   <div class="item-content">
                     <div class="item-title">{{ service.name }}</div>
                     <v-text-field
@@ -75,7 +75,7 @@
                     ></v-text-field>
                     <div class="tags-container">
                       <v-chip
-                        v-for="tag in getTags(service.tagIds)"
+                        v-for="tag in getServiceTags(service.id, service.tagIds)"
                         :key="tag.id"
                         :color="tag.color"
                         size="small"
@@ -109,7 +109,7 @@
               </div>
 
               <div v-if="form.details.length > 0" class="item-list">
-                <div v-for="(detail, index) in detailsWithLiveTags" :key="`detail-${index}`" class="item-card">
+                <div v-for="(detail, index) in form.details" :key="`detail-${index}`" class="item-card">
                   <div class="item-content">
                     <div class="item-title">{{ detail.name }}</div>
                     <v-text-field
@@ -123,7 +123,7 @@
                     ></v-text-field>
                      <div class="tags-container">
                       <v-chip
-                        v-for="tag in getTags(detail.tagIds)"
+                        v-for="tag in getDetailTags(detail.id, detail.tagIds)"
                         :key="tag.id"
                         :color="tag.color"
                         size="small"
@@ -257,29 +257,21 @@ const isFormValid = computed(() => {
   return true;
 });
 
-const servicesWithLiveTags = computed(() => {
-  return form.services.map(service => {
-    const liveService = serviceStore.getServiceById(service.id);
-    return {
-      ...service,
-      tagIds: liveService ? liveService.tagIds : service.tagIds || []
-    };
-  });
-});
-
-const detailsWithLiveTags = computed(() => {
-  return form.details.map(detail => {
-    const liveDetail = detailStore.getDetailById(detail.id);
-    return {
-      ...detail,
-      tagIds: liveDetail ? liveDetail.tagIds : detail.tagIds || []
-    };
-  });
-});
-
 const getTags = (tagIds) => {
   if (!tagIds) return [];
   return tagIds.map(id => tagsStore.getTagById(id)).filter(Boolean);
+};
+
+const getServiceTags = (serviceId, fallbackTagIds) => {
+  const liveService = serviceStore.getServiceById(serviceId);
+  const tagIds = liveService ? liveService.tagIds : fallbackTagIds || [];
+  return getTags(tagIds);
+};
+
+const getDetailTags = (detailId, fallbackTagIds) => {
+  const liveDetail = detailStore.getDetailById(detailId);
+  const tagIds = liveDetail ? liveDetail.tagIds : fallbackTagIds || [];
+  return getTags(tagIds);
 };
 
 const resetForm = () => {
