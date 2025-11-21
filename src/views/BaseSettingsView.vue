@@ -510,10 +510,17 @@ onMounted(() => {
   padding: 8px 0;
   background-color: rgb(var(--v-theme-secondary));
   border-radius: 0;
+  overflow: hidden;
   box-shadow:
     0 10px 15px -3px rgba(0, 0, 0, 0.1),
     0 4px 6px -2px rgba(0, 0, 0, 0.05),
     0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+:deep(.v-window__container) {
+  height: 100%;
+  min-height: 100%;
+  flex: 1;
 }
 
 .list-wrapper {
