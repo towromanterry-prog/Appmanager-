@@ -207,7 +207,8 @@ import ServiceSelectionModal from './ServiceSelectionModal.vue';
 import DetailSelectionModal from './DetailSelectionModal.vue';
 
 const props = defineProps({
-  orderId: { type: [String, null], default: null }
+  orderId: { type: [String, null], default: null },
+  initialData: { type: Object, default: () => ({}) }
 });
 const emit = defineEmits(['close']);
 
@@ -322,7 +323,7 @@ watch(() => form.phone, (newVal, oldVal) => {
   }
 });
 
-watch(() => props.orderId, (newId) => {
+watch([() => props.orderId, () => props.initialData], ([newId, newInitialData]) => {
   if (newId) {
     const order = orderStore.getOrderById(newId);
     if (order) {
@@ -338,6 +339,12 @@ watch(() => props.orderId, (newId) => {
     }
   } else {
     resetForm();
+    if (newInitialData && Object.keys(newInitialData).length > 0) {
+      if (newInitialData.deadline) {
+        form.deadline = newInitialData.deadline;
+      }
+      // Можно добавить обработку других полей из initialData, если потребуется
+    }
     const route = useRoute();
     if (route.query.clientName || route.query.clientPhone) {
         form.clientName = route.query.clientName;
@@ -345,7 +352,7 @@ watch(() => props.orderId, (newId) => {
         form.phone = route.query.clientPhone;
     }
   }
-}, { immediate: true });
+}, { immediate: true, deep: true });
 
 const saveOrder = async () => {
   if (!isFormValid.value) return;
