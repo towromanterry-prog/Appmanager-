@@ -11,6 +11,7 @@
               <span class="font-weight-bold text-truncate">{{ order.lastName }}</span>
             </div>
             <div class="text-caption text-on-surface-variant">{{ order.phone }}</div>
+            <div class="text-caption text-on-surface-variant">Создан: {{ formattedCreateDate }}</div>
           </div>
         </div>
       </div>
@@ -134,7 +135,7 @@ const templateSelectionStore = useTemplateSelectionStore();
 const tagsStore = useTagsStore();
 const serviceStore = useServiceStore();
 const detailStore = useDetailStore();
-const { toLongDate } = useFormatDate();
+const { toLongDate, toShortDate } = useFormatDate();
 const { triggerHapticFeedback } = useHapticFeedback();
 
 const expanded = ref(false);
@@ -162,6 +163,8 @@ const allTags = computed(() => {
 const totalAmount = computed(() => props.order.totalAmount || 0);
 
 const formattedDeadline = computed(() => props.order.deadline ? toLongDate(props.order.deadline) : 'Не указан');
+
+const formattedCreateDate = computed(() => props.order.createDate ? toShortDate(props.order.createDate) : '');
 
 const isOverdue = computed(() => {
   if (!props.order.deadline) return false;
