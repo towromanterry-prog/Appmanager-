@@ -267,30 +267,46 @@ const editingTag = ref(null);
 
 const touchstartX = ref(0);
 const touchendX = ref(0);
+const touchstartY = ref(0);
+const touchendY = ref(0);
 const tabs = ['services', 'details', 'tags'];
 
 const handleTouchStart = (e) => {
   touchstartX.value = e.changedTouches[0].screenX;
+  touchstartY.value = e.changedTouches[0].screenY;
 };
 
 const handleTouchEnd = (e) => {
   touchendX.value = e.changedTouches[0].screenX;
+  touchendY.value = e.changedTouches[0].screenY;
   handleSwipe();
 };
 
 const handleSwipe = () => {
   const threshold = 50; // минимальное расстояние для свайпа
-  if (touchendX.value < touchstartX.value - threshold) {
-    // свайп влево
-    const currentIndex = tabs.indexOf(tab.value);
+  const verticalThreshold = 100; // максимальное вертикальное отклонение
+
+  const diffX = touchendX.value - touchstartX.value;
+  const diffY = Math.abs(touchendY.value - touchstartY.value);
+
+  // Если вертикальный скролл больше горизонтального или превышает порог, игнорируем свайп
+  if (diffY > verticalThreshold || diffY > Math.abs(diffX)) return;
+
+  const currentIndex = tabs.indexOf(tab.value);
+
+  if (diffX < -threshold) {
+    // свайп влево (следующая вкладка)
     if (currentIndex < tabs.length - 1) {
       tab.value = tabs[currentIndex + 1];
+    } else {
+      tab.value = tabs[0]; // Цикличный переход в начало
     }
-  } else if (touchendX.value > touchstartX.value + threshold) {
-    // свайп вправо
-    const currentIndex = tabs.indexOf(tab.value);
+  } else if (diffX > threshold) {
+    // свайп вправо (предыдущая вкладка)
     if (currentIndex > 0) {
       tab.value = tabs[currentIndex - 1];
+    } else {
+      tab.value = tabs[tabs.length - 1]; // Цикличный переход в конец
     }
   }
 };
