@@ -4,6 +4,7 @@
       class="settings-container d-flex flex-column"
       @touchstart="handleTouchStart"
       @touchend="handleTouchEnd"
+      @touchcancel="handleTouchCancel"
     >
       <v-card flat class="mb-0 flex-shrink-0">
         <div class="custom-tabs-container bg-surface">
@@ -34,7 +35,7 @@
         </div>
       </v-card>
 
-      <v-window v-model="tab" class="flex-grow-1" style="min-height: 0;">
+      <v-window v-model="tab" class="flex-grow-1" style="min-height: 0;" :touch="false">
         <!-- УСЛУГИ -->
         <v-window-item value="services" class="window-item-full-height flex-grow-1">
           <div class="d-flex align-center justify-space-between pa-2 bg-surface" style="position: sticky; top: 0; z-index: 1; background-color: rgb(var(--v-theme-surface));">
@@ -269,17 +270,32 @@ const touchstartX = ref(0);
 const touchendX = ref(0);
 const touchstartY = ref(0);
 const touchendY = ref(0);
+const isSwiping = ref(false);
 const tabs = ['services', 'details', 'tags'];
 
 const handleTouchStart = (e) => {
+  // Игнорируем свайпы, начинающиеся на интерактивных элементах (кнопки, инпуты и т.д.)
+  if (e.target.closest('.v-btn, .v-input, .v-select, .v-list-item-action')) {
+    isSwiping.value = false;
+    return;
+  }
+
+  isSwiping.value = true;
   touchstartX.value = e.changedTouches[0].screenX;
   touchstartY.value = e.changedTouches[0].screenY;
 };
 
 const handleTouchEnd = (e) => {
+  if (!isSwiping.value) return;
+
   touchendX.value = e.changedTouches[0].screenX;
   touchendY.value = e.changedTouches[0].screenY;
   handleSwipe();
+  isSwiping.value = false;
+};
+
+const handleTouchCancel = () => {
+  isSwiping.value = false;
 };
 
 const handleSwipe = () => {
