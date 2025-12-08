@@ -55,9 +55,6 @@
             Войти
           </v-btn>
 
-          <div class="text-caption text-center mt-4 text-medium-emphasis">
-            Используйте: admin / admin123
-          </div>
         </v-form>
       </v-card-text>
     </v-card>
