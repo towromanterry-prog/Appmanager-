@@ -1,6 +1,6 @@
 <template>
   <v-app :theme="themeStore.theme">
-    <v-navigation-drawer v-model="drawer" temporary>
+    <v-navigation-drawer v-if="!isLoginPage" v-model="drawer" temporary>
       <v-list>
         <v-list-item
           v-for="(item, index) in menuItems"
@@ -20,7 +20,7 @@
       </template>
     </v-navigation-drawer>
 
-    <v-app-bar app color="surface" height="68" flat border>
+    <v-app-bar v-if="!isLoginPage" app color="surface" height="68" flat border>
       <v-text-field
         v-if="isSearchVisible"
         v-model="searchQuery"
@@ -167,6 +167,7 @@ const sortMenu = ref(false);
 const isHomePage = computed(() => route.name === 'home');
 const isClientsPage = computed(() => route.name === 'clients');
 const isBaseSettingsPage = computed(() => route.name === 'base-settings');
+const isLoginPage = computed(() => route.name === 'login');
 const isSearchVisible = computed(() => isHomePage.value || isClientsPage.value || isBaseSettingsPage.value);
 
 const currentTitle = computed(() => {
