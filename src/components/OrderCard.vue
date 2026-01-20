@@ -151,7 +151,7 @@
 
         <div class="receipt-divider"></div>
 
-        <div class="receipt-row font-weight-bold" style="font-size: 14px;">
+        <div class="receipt-row font-weight-bold receipt-total">
           <span>ИТОГО:</span>
           <span>{{ totalAmount }}₽</span>
         </div>
@@ -404,8 +404,12 @@ const editWithHaptic = (order) => {
   color: black;
   padding: 20px;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 12px;
+  font-size: clamp(11px, calc(12px * var(--font-scale)), 13px);
   line-height: 1.4;
+}
+
+.receipt-total {
+  font-size: 1.2em;
 }
 
 .receipt-divider {

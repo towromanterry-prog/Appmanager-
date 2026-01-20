@@ -136,7 +136,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useThemeStore } from '@/stores/themeStore.js';
 import { useServiceStore } from '@/stores/serviceStore.js';
@@ -176,6 +176,14 @@ const currentTitle = computed(() => {
 
 const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
+
+watch(
+  () => settingsStore.appSettings.fontScale,
+  (scale) => {
+    document.documentElement.style.setProperty('--font-scale', scale);
+  },
+  { immediate: true }
+);
 
 const availableStatuses = computed(() => {
   const allStatuses = [

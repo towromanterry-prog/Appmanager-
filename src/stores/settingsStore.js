@@ -68,6 +68,7 @@ export const useSettingsStore = defineStore('settings', () => {
     ],
     miniCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'],
     fullCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'],
+    fontScale: 1,
   });
   
   function loadSettings() {
@@ -111,6 +112,18 @@ export const useSettingsStore = defineStore('settings', () => {
               },
             };
           }
+
+          // Валидация fontScale
+          if (parsed.fontScale !== undefined) {
+            let scale = Number(parsed.fontScale);
+            if (Number.isFinite(scale)) {
+              scale = Math.max(0.85, Math.min(1.25, scale));
+              parsed.fontScale = scale;
+            } else {
+              delete parsed.fontScale;
+            }
+          }
+
           appSettings.value = { ...appSettings.value, ...parsed };
         } else {
           throw new Error('Stored appSettings is not an object');
@@ -186,6 +199,7 @@ export const useSettingsStore = defineStore('settings', () => {
       ],
       miniCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'],
       fullCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'],
+      fontScale: 1,
     };
     
     localStorage.removeItem('requiredFields');

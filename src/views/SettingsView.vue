@@ -428,6 +428,25 @@
             <v-expansion-panel-text>
               <v-card flat>
                 <v-card-text>
+                  <p class="text-subtitle-1 mb-2">Внешний вид</p>
+                  <v-slider
+                    v-model="settingsStore.appSettings.fontScale"
+                    min="0.85"
+                    max="1.25"
+                    step="0.05"
+                    label="Размер текста"
+                    color="primary"
+                    hide-details
+                    class="mb-4"
+                    @update:modelValue="updateAppSettings"
+                  >
+                    <template v-slot:append>
+                      <div style="width: 40px" class="text-right">
+                        {{ Math.round(settingsStore.appSettings.fontScale * 100) }}%
+                      </div>
+                    </template>
+                  </v-slider>
+
                   <v-switch
                     v-model="settingsStore.appSettings.enableHapticFeedback"
                     label="Тактильная обратная связь"

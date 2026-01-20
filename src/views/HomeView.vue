@@ -730,7 +730,7 @@ onMounted(() => {
 }
 
 .day-initial {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
   text-transform: capitalize;
   line-height: 1;
   color: rgba(var(--v-theme-on-surface), 0.7);
@@ -738,7 +738,7 @@ onMounted(() => {
 }
 
 .day-number {
-  font-size: 18px;
+  font-size: clamp(16px, calc(18px * var(--font-scale)), 22px);
   font-weight: 500;
   line-height: 1.2;
   transition: color 0.2s;
@@ -905,7 +905,7 @@ onMounted(() => {
 
 .week-day-header {
     text-align: center;
-    font-size: 13px;
+    font-size: calc(13px * var(--font-scale));
     font-weight: 500;
     padding: 4px 2px;
     display: flex;
@@ -966,7 +966,7 @@ onMounted(() => {
 }
 
 .full-calendar-day .day-number {
-    font-size: 14px;
+    font-size: calc(14px * var(--font-scale));
     font-weight: 500;
     margin-bottom: 4px;
 }
@@ -1001,7 +1001,7 @@ onMounted(() => {
     height: 68px;
   }
   .day-number {
-    font-size: 16px;
+    font-size: clamp(14px, calc(16px * var(--font-scale)), 20px);
   }
   .orders-list-container {
     padding: 8px;
