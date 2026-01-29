@@ -514,7 +514,7 @@ onMounted(() => {
   gap: 4px;
 }
 .base-settings-view {
-  height: calc(100vh - 68px);
+  height: calc(100vh - var(--app-topbar-height, 68px));
   display: flex;
   flex-direction: column;
 }

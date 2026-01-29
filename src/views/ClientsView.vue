@@ -205,7 +205,7 @@ onMounted(() => {
 
 <style scoped>
 .clients-view-wrapper {
-  height: calc(100vh - 68px);
+  height: calc(100vh - var(--app-topbar-height, 68px));
   display: flex;
   flex-direction: column;
   overflow: hidden;

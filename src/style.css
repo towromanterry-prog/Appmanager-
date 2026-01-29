@@ -20,6 +20,8 @@ body {
 html {
   overflow-y: auto;
   scrollbar-gutter: stable;
+  /* Масштабирование шрифта приложения */
+  font-size: calc(clamp(15px, 0.4vw + 14px, 16px) * var(--app-font-scale, 1));
 }
 
 ::-webkit-scrollbar {
@@ -72,3 +74,14 @@ html {
 .gap-2 { gap: 8px; }
 .gap-3 { gap: 12px; }
 .gap-4 { gap: 16px; }
+
+/*
+ * Фикс для чека: фиксированные отступы в пикселях,
+ * чтобы чек не менялся при изменении масштаба шрифта приложения.
+ */
+.receipt-container .mb-1 {
+  margin-bottom: 4px !important;
+}
+.receipt-container .mt-2 {
+  margin-top: 8px !important;
+}

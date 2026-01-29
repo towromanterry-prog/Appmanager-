@@ -254,26 +254,24 @@
           </v-expansion-panel>
         </v-expansion-panels>
 
-        <!-- Смена темы -->
+        <!-- Внешний вид -->
         <v-expansion-panels variant="accordion" class="mb-4">
           <v-expansion-panel>
             <v-expansion-panel-title>
               <v-icon class="mr-3">mdi-palette</v-icon>
-              Тема оформления
+              Внешний вид
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <v-card flat>
                 <v-card-text>
-                  <p class="text-body-2 text-medium-emphasis mb-4">
-                    Выберите цветовую схему приложения.
-                  </p>
+                  <p class="text-subtitle-2 mb-2">Тема оформления</p>
                   <v-btn-toggle
                     :model-value="themeStore.theme"
                     @update:model-value="themeStore.setTheme"
                     color="primary"
                     variant="outlined"
                     divided
-                    class="d-flex"
+                    class="d-flex mb-6"
                   >
                     <v-btn value="light" class="flex-grow-1">
                       <v-icon start>mdi-weather-sunny</v-icon>
@@ -284,6 +282,33 @@
                       Темная
                     </v-btn>
                   </v-btn-toggle>
+
+                  <v-divider class="mb-4"></v-divider>
+
+                  <div class="d-flex justify-space-between align-center mb-2">
+                    <p class="text-subtitle-2">Размер шрифта</p>
+                    <span class="text-body-2 text-primary font-weight-bold">{{ fontScalePercent }}%</span>
+                  </div>
+                  <v-slider
+                    v-model="fontScalePercent"
+                    :min="70"
+                    :max="200"
+                    :step="5"
+                    color="primary"
+                    track-color="grey-lighten-2"
+                    thumb-label
+                    hide-details
+                  >
+                    <template v-slot:prepend>
+                      <v-icon size="small">mdi-format-font-size-decrease</v-icon>
+                    </template>
+                    <template v-slot:append>
+                      <v-icon size="small">mdi-format-font-size-increase</v-icon>
+                    </template>
+                  </v-slider>
+                  <p class="text-caption text-medium-emphasis mt-2">
+                    Регулирует размер текста и элементов интерфейса.
+                  </p>
                 </v-card-text>
               </v-card>
             </v-expansion-panel-text>
@@ -606,6 +631,14 @@ const clientsStore = useClientsStore();
 const settingsStore = useSettingsStore();
 const { appSettings } = storeToRefs(settingsStore);
 const confirmationStore = useConfirmationStore();
+
+const fontScalePercent = computed({
+  get: () => Math.round((settingsStore.appSettings.fontScale || 1.0) * 100),
+  set: (value) => {
+    settingsStore.appSettings.fontScale = value / 100;
+    settingsStore.updateAppSettings(settingsStore.appSettings);
+  }
+});
 
 const showClientsManager = ref(false);
 
