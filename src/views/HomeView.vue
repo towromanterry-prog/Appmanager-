@@ -651,12 +651,12 @@ onMounted(() => {
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  margin: 8px;
-  padding: 8px;
+  margin: var(--s-2);
+  padding: var(--s-2);
   position: relative;
   z-index: 1;
   background-color: rgb(var(--v-theme-secondary));
-  border-radius: 16px;
+  border-radius: var(--r-3);
   box-shadow:
     0 10px 15px -3px rgba(0, 0, 0, 0.1),
     0 4px 6px -2px rgba(0, 0, 0, 0.05),
@@ -671,10 +671,10 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: var(--s-4);
   background-color: rgba(var(--v-theme-primary), 0.1);
-  border-radius: 8px;
-  margin-bottom: 16px;
+  border-radius: var(--r-1);
+  margin-bottom: var(--s-4);
 }
 
 .order-card-item {
@@ -695,7 +695,7 @@ onMounted(() => {
 .calendar-days-flex {
   display: flex;
   align-items: center;
-  padding: 4px 8px;
+  padding: var(--s-1) var(--s-2);
 }
 
 .calendar-day {
@@ -704,9 +704,9 @@ onMounted(() => {
   flex-direction: column;
   min-width: 56px;
   height: 72px;
-  border-radius: 16px;
+  border-radius: var(--r-3);
   cursor: pointer;
-  padding: 4px;
+  padding: var(--s-1);
   justify-content: center;
   align-items: center;
   transition: color 0.2s, background-color 0.2s;
@@ -777,7 +777,7 @@ onMounted(() => {
   justify-content: center;
   min-width: 16px;
   height: 16px;
-  border-radius: 8px;
+  border-radius: var(--r-1);
   font-size: 11px;
   font-weight: 500;
   line-height: 1;
@@ -933,7 +933,7 @@ onMounted(() => {
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    border-radius: 8px;
+    border-radius: var(--r-1);
     cursor: pointer;
     transition: background-color 0.2s;
     position: relative;

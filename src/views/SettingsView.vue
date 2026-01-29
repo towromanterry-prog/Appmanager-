@@ -799,21 +799,21 @@ const deleteTemplate = async (id) => {
 .required-fields-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  gap: var(--s-4);
 }
 
 /* Стили для секции синхронизации */
 .sync-settings {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--s-3);
 }
 
 .sync-status-row {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-1);
   transition: background-color 0.2s;
 }
 

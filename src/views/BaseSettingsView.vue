@@ -498,7 +498,7 @@ onMounted(() => {
 
 <style scoped>
 .item-card {
-  border-radius: 8px;
+  border-radius: var(--r-1);
   border: 1px solid rgba(0,0,0,0.08);
   box-shadow: none !important;
   width: 100%;
@@ -511,7 +511,7 @@ onMounted(() => {
 .tags-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--s-1);
 }
 .base-settings-view {
   height: calc(100vh - var(--app-topbar-height, 68px));
@@ -522,8 +522,8 @@ onMounted(() => {
 .settings-container {
   flex-grow: 1;
   min-height: 0;
-  margin: 8px 0;
-  padding: 8px 0;
+  margin: var(--s-2) 0;
+  padding: var(--s-2) 0;
   background-color: rgb(var(--v-theme-secondary));
   border-radius: 0;
   overflow: hidden;

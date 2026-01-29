@@ -217,12 +217,12 @@ onMounted(() => {
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  margin: 8px;
-  padding: 8px;
+  margin: var(--s-2);
+  padding: var(--s-2);
   position: relative;
   z-index: 1;
   background-color: rgb(var(--v-theme-secondary));
-  border-radius: 16px;
+  border-radius: var(--r-3);
   box-shadow:
     0 10px 15px -3px rgba(0, 0, 0, 0.1),
     0 4px 6px -2px rgba(0, 0, 0, 0.05),
@@ -252,8 +252,8 @@ onMounted(() => {
 .client-card-item {
   padding: 0;
   background-color: rgb(var(--v-theme-surface));
-  border-radius: 8px;
-  margin-bottom: 8px;
+  border-radius: var(--r-1);
+  margin-bottom: var(--s-2);
 }
 
 .client-name-line {
