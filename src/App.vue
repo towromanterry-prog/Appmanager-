@@ -20,7 +20,7 @@
       </template>
     </v-navigation-drawer>
 
-    <v-app-bar app color="surface" height="68" flat border>
+    <v-app-bar app color="surface" :height="appBarHeight" flat border>
       <v-text-field
         v-if="isSearchVisible"
         v-model="searchQuery"
@@ -136,7 +136,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useThemeStore } from '@/stores/themeStore.js';
 import { useServiceStore } from '@/stores/serviceStore.js';
@@ -176,6 +176,20 @@ const currentTitle = computed(() => {
 
 const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
+
+const appBarHeight = ref(68);
+
+const updateLayoutScale = () => {
+  const scale = settingsStore.appSettings.fontScale || 1.0;
+  // Базовая высота 68px, минимальная 56px (стандарт Material Design)
+  const newHeight = Math.max(56, Math.round(68 * scale));
+  appBarHeight.value = newHeight;
+
+  document.documentElement.style.setProperty('--app-font-scale', scale);
+  document.documentElement.style.setProperty('--app-topbar-height', `${newHeight}px`);
+};
+
+watch(() => settingsStore.appSettings.fontScale, updateLayoutScale, { immediate: true });
 
 const availableStatuses = computed(() => {
   const allStatuses = [

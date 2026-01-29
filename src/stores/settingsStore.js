@@ -20,6 +20,7 @@ export const useSettingsStore = defineStore('settings', () => {
     autoSaveFormDrafts: true,
     showCompletedOrders: true,
     compactMode: false,
+    fontScale: 1.0,
     // Настройки статусов
     additionalStatusName: 'Доп. статус',
     orderStatuses: {
@@ -149,6 +150,7 @@ export const useSettingsStore = defineStore('settings', () => {
       autoSaveFormDrafts: true,
       showCompletedOrders: true,
       compactMode: false,
+      fontScale: 1.0,
       additionalStatusName: 'Доп. статус',
       orderStatuses: {
         accepted: true,
