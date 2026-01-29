@@ -20,6 +20,7 @@ body {
 html {
   overflow-y: auto;
   scrollbar-gutter: stable;
+  font-size: calc(16px * var(--app-font-scale, 1));
 }
 
 ::-webkit-scrollbar {
