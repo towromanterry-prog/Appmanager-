@@ -22,10 +22,16 @@
                     <div class="day-initial">{{ day.initial }}</div>
                     <div class="day-number">{{ day.number }}</div>
                   </div>
-                  <div v-if="day.orderStats.total" class="day-badges">
-                    <span v-if="day.orderStats.inProgress" class="badge in-progress">{{ day.orderStats.inProgress }}</span>
-                    <span v-if="day.orderStats.completed" class="badge completed">{{ day.orderStats.completed }}</span>
-                    <span v-if="day.orderStats.delivered" class="badge delivered">{{ day.orderStats.delivered }}</span>
+                  <div v-if="day.orderStats.total > 0" class="day-badges">
+                    <v-chip
+                      v-for="(count, status) in day.orderStats.statuses"
+                      :key="status"
+                      :color="getStatusColor(status)"
+                      size="x-small"
+                      class="calendar-badge"
+                    >
+                      {{ count }}
+                    </v-chip>
                   </div>
                 </div>
               </div>
@@ -115,12 +121,18 @@
                           @click="handleDayClick(day)"
                       >
                           <div v-if="day.date || day.otherMonth" class="day-content">
-                              <div class="day-number">{{ day.number }}</div>
-                              <div v-if="day.orderStats && day.orderStats.total" class="day-badges">
-                                <span v-if="day.orderStats.inProgress" class="badge in-progress">{{ day.orderStats.inProgress }}</span>
-                                <span v-if="day.orderStats.completed" class="badge completed">{{ day.orderStats.completed }}</span>
-                                <span v-if="day.orderStats.delivered" class="badge delivered">{{ day.orderStats.delivered }}</span>
-                              </div>
+                            <div class="day-number">{{ day.number }}</div>
+                            <div v-if="day.orderStats.total > 0" class="day-badges">
+                              <v-chip
+                                v-for="(count, status) in day.orderStats.statuses"
+                                :key="status"
+                                :color="getStatusColor(status)"
+                                size="x-small"
+                                class="calendar-badge"
+                              >
+                                {{ count }}
+                              </v-chip>
+                            </div>
                           </div>
                       </div>
                   </div>
@@ -164,6 +176,7 @@ import { useTagsStore } from '@/stores/tagsStore.js';
 import { useSettingsStore } from '@/stores/settingsStore.js';
 import { useConfirmationStore } from '@/stores/confirmationStore.js';
 import { useSearchStore } from '@/stores/searchStore.js';
+import { useHapticFeedback } from '@/composables/useHapticFeedback.js';
 import { storeToRefs } from 'pinia';
 import OrderCard from '@/components/OrderCard.vue';
 import OrderForm from '@/components/OrderForm.vue';
@@ -175,10 +188,24 @@ const orderStore = useOrderStore();
 const clientsStore = useClientsStore();
 const tagsStore = useTagsStore();
 const settingsStore = useSettingsStore();
+const { appSettings } = storeToRefs(settingsStore);
 const confirmationStore = useConfirmationStore();
 const searchStore = useSearchStore();
-const { orders } = storeToRefs(orderStore);
+const { triggerHapticFeedback } = useHapticFeedback();
+const { orders, sortBy } = storeToRefs(orderStore);
 const { searchQuery } = storeToRefs(searchStore);
+
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'accepted': return 'primary';
+    case 'additional': return 'deep-purple';
+    case 'in_progress': return 'warning';
+    case 'completed': return 'info';
+    case 'delivered': return 'success';
+    case 'cancelled': return 'error';
+    default: return 'grey';
+  }
+};
 
 // -- Swipe to open Calendar --
 const touchStartX = ref(0);
@@ -213,6 +240,7 @@ const handleTouchEnd = () => {
   // Свайп влево, если он достаточно длинный и более горизонтальный, чем вертикальный
   if (touchEndX.value !== 0 && dx < -80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
     if (!showFullCalendar.value) {
+      triggerHapticFeedback('swipe');
       showFullCalendar.value = true;
       return;
     }
@@ -220,6 +248,7 @@ const handleTouchEnd = () => {
 
   // Свайп вправо для сброса
   if (touchEndX.value !== 0 && dx > 80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    triggerHapticFeedback('swipe');
     handleRightSwipe();
   }
 
@@ -258,11 +287,22 @@ const currentMonthName = computed(() => {
 });
 const weekDays = computed(() => {
   const dayNames = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+  const dateField = sortBy.value === 'deadline' ? 'deadline' : 'createDate';
+
   return Array.from({ length: 29 }, (_, i) => {
     const d = new Date();
     d.setDate(today.getDate() + i - 14);
     const ds = getLocalDateString(d);
-    const dayOrders = orders.value.filter(o => o.deadline?.startsWith(ds));
+    const dayOrders = orders.value.filter(o => o[dateField]?.startsWith(ds));
+
+    const statuses = {};
+    appSettings.value.miniCalendarIndicatorStatuses.forEach(status => {
+      const count = dayOrders.filter(o => o.status === status).length;
+      if (count > 0) {
+        statuses[status] = count;
+      }
+    });
+
     return {
       date: ds,
       initial: dayNames[d.getDay()],
@@ -270,9 +310,7 @@ const weekDays = computed(() => {
       isToday: ds === todayStr,
       orderStats: {
         total: dayOrders.length,
-        inProgress: dayOrders.filter(o => o.status === 'in_progress').length,
-        completed: dayOrders.filter(o => o.status === 'completed').length,
-        delivered: dayOrders.filter(o => o.status === 'delivered').length,
+        statuses
       }
     };
   });
@@ -283,6 +321,7 @@ const calendarWeeks = computed(() => {
     const firstDay = new Date(year, month, 1);
     const startDate = new Date(firstDay);
     startDate.setDate(firstDay.getDate() - (firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1));
+    const dateField = sortBy.value === 'deadline' ? 'deadline' : 'createDate';
 
     const weeks = [];
     for (let weekIndex = 0; weekIndex < 6; weekIndex++) {
@@ -292,7 +331,15 @@ const calendarWeeks = computed(() => {
             const dateStr = getLocalDateString(currentCalendarDate);
             const isCurrentMonth = currentCalendarDate.getMonth() === month;
 
-            const dayOrders = orders.value.filter(o => o.deadline?.startsWith(dateStr));
+            const dayOrders = orders.value.filter(o => o[dateField]?.startsWith(dateStr));
+
+            const statuses = {};
+            appSettings.value.fullCalendarIndicatorStatuses.forEach(status => {
+              const count = dayOrders.filter(o => o.status === status).length;
+              if (count > 0) {
+                statuses[status] = count;
+              }
+            });
 
             week.days.push({
                 date: dateStr,
@@ -301,9 +348,7 @@ const calendarWeeks = computed(() => {
                 otherMonth: !isCurrentMonth,
                 orderStats: {
                   total: dayOrders.length,
-                  inProgress: dayOrders.filter(o => o.status === 'in_progress').length,
-                  completed: dayOrders.filter(o => o.status === 'completed').length,
-                  delivered: dayOrders.filter(o => o.status === 'delivered').length
+                  statuses,
                 }
             });
             startDate.setDate(startDate.getDate() + 1);
@@ -360,7 +405,8 @@ const filteredOrders = computed(() => {
     ordersToDisplay = [...ordersWithTagNames.value];
     // 2. Фильтр по дате (если выбрана и нет поискового запроса)
     if (selectedDate.value) {
-      ordersToDisplay = ordersToDisplay.filter(order => order.deadline?.startsWith(selectedDate.value));
+      const dateField = sortBy.value === 'deadline' ? 'deadline' : 'createDate';
+      ordersToDisplay = ordersToDisplay.filter(order => order[dateField]?.startsWith(selectedDate.value));
     } else {
       // 3. Фильтр по статусу (если дата не выбрана и нет поискового запроса)
       if (orderStore.filterStatus.length > 0) {
@@ -389,18 +435,21 @@ const filteredOrders = computed(() => {
 
 
 const previousMonth = () => {
+    triggerHapticFeedback('tap');
     const newDate = new Date(currentDate.value);
     newDate.setMonth(newDate.getMonth() - 1);
     currentDate.value = newDate;
 };
 
 const nextMonth = () => {
+    triggerHapticFeedback('tap');
     const newDate = new Date(currentDate.value);
     newDate.setMonth(newDate.getMonth() + 1);
     currentDate.value = newDate;
 };
 
 const selectDate = (date) => {
+  triggerHapticFeedback('tap');
   if (selectedDate.value === date) {
     selectedDate.value = null;
   } else {
@@ -418,7 +467,7 @@ const selectDateFromFullCalendar = (date) => {
 
 const handleDayClick = (day) => {
   if (!day || !day.date) return;
-  
+  triggerHapticFeedback('tap');
   if (day.otherMonth) {
     currentDate.value = new Date(day.date + 'T00:00:00');
   }
@@ -436,10 +485,12 @@ const toggleFullCalendar = () => {
 };
 
 const closeFullCalendar = () => {
+  triggerHapticFeedback('tap');
   showFullCalendar.value = false;
 };
 
 const createOrder = () => {
+  triggerHapticFeedback('tap');
   orderToEditId.value = null;
   let deadlineToSet = todayStr;
   
@@ -469,9 +520,7 @@ const confirmDelete = async (orderId) => {
   const confirmed = await confirmationStore.open('Удалить заказ?', 'Это действие нельзя будет отменить.');
   if (confirmed) {
     orderStore.deleteOrder(orderId);
-    if (settingsStore.appSettings?.enableHapticFeedback && 'vibrate' in navigator) {
-      navigator.vibrate(50);
-    }
+    triggerHapticFeedback('important');
   }
 };
 
@@ -484,9 +533,8 @@ const closeForm = () => {
   }
 };
 const handleOrderSaved = () => {
-  if (settingsStore.appSettings?.enableHapticFeedback && 'vibrate' in navigator) {
-      navigator.vibrate([100, 50, 100]);
-  }
+  // Этот обработчик теперь не нужен, так как вибрация добавлена в OrderForm.vue
+  // triggerHapticFeedback('important');
 };
 
 const handleRightSwipe = () => {
@@ -508,10 +556,6 @@ const handleRightSwipe = () => {
 
   if (swipeRightActions.resetStatusFilter) {
     orderStore.filterStatus = [];
-  }
-
-  if (settingsStore.appSettings?.enableHapticFeedback && 'vibrate' in navigator) {
-    navigator.vibrate(50);
   }
 };
 
@@ -742,9 +786,12 @@ onMounted(() => {
   border: 1px solid rgba(var(--v-theme-surface), 0.8);
 }
 
-.badge.in-progress { background-color: rgb(var(--v-theme-warning)); }
-.badge.completed { background-color: rgb(var(--v-theme-info)); }
-.badge.delivered { background-color: rgb(var(--v-theme-success)); }
+.calendar-badge {
+  height: 16px !important;
+  min-width: 16px !important;
+  padding: 0 4px !important;
+  font-size: 11px;
+}
 
 .empty-state {
   display: flex;

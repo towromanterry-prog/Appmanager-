@@ -1,6 +1,6 @@
 // orderStore.js
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useSettingsStore } from './settingsStore';
 import { useConfirmationStore } from './confirmationStore';
 
@@ -13,11 +13,20 @@ export const useOrderStore = defineStore('orders', () => {
   const filterStatus = ref([]);
   const sortBy = ref('deadline');
 
+  watch(sortBy, (newSortBy) => {
+    localStorage.setItem('orders_sortBy', newSortBy);
+  });
+
   function _save() {
     localStorage.setItem('orders', JSON.stringify(orders.value));
   }
 
   function _load() {
+    const storedSortBy = localStorage.getItem('orders_sortBy');
+    if (storedSortBy) {
+      sortBy.value = storedSortBy;
+    }
+
     try {
       const stored = localStorage.getItem('orders');
       if (stored) {

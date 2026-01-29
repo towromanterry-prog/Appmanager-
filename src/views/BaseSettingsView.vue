@@ -1,7 +1,12 @@
 <template>
-  <div class="base-settings-view">
-    <div class="settings-container">
-      <v-card flat class="mb-0">
+  <div class="base-settings-view d-flex flex-column">
+    <div
+      class="settings-container d-flex flex-column"
+      @touchstart="handleTouchStart"
+      @touchend="handleTouchEnd"
+      @touchcancel="handleTouchCancel"
+    >
+      <v-card flat class="mb-0 flex-shrink-0">
         <div class="custom-tabs-container bg-surface">
           <div class="custom-tabs-wrapper">
             <div
@@ -30,127 +35,113 @@
         </div>
       </v-card>
 
-      <v-window v-model="tab" class="window-full-height">
+      <v-window v-model="tab" class="flex-grow-1" style="min-height: 0;" :touch="false">
         <!-- УСЛУГИ -->
-        <v-window-item value="services" class="window-item-full-height">
-          <v-card flat class="mt-2" bg-color="surface">
-            <div class="d-flex align-center justify-space-between pa-2 bg-surface">
-              <h3 class="text-h6">Услуги</h3>
-              <v-btn color="primary" @click="openServiceDialog">
-                <v-icon class="mr-2">mdi-plus</v-icon>
-                 Добавить услугу
-              </v-btn>
-            </div>
-            <v-divider class="my-0"></v-divider>
+        <v-window-item value="services" class="window-item-full-height flex-grow-1">
+          <div class="d-flex align-center justify-space-between pa-2 bg-surface" style="position: sticky; top: 0; z-index: 1; background-color: rgb(var(--v-theme-surface));">
+            <h3 class="text-h6">Услуги</h3>
+            <v-btn color="primary" @click="openServiceDialog">
+              <v-icon class="mr-2">mdi-plus</v-icon>
+               Добавить услугу
+            </v-btn>
+          </div>
+          <v-divider class="my-0"></v-divider>
 
-            <v-list lines="two" bg-color="surface" class="py-0">
-              <template v-for="(service, index) in filteredServices" :key="service.id">
-                <v-list-item class="px-2 py-1 my-1" density="compact">
-                  <v-list-item-title class="font-weight-medium">{{ service.name }}</v-list-item-title>
-                  <v-list-item-subtitle class="mb-2">{{ service.defaultPrice }}₽</v-list-item-subtitle>
-
-                  <div class="tags-container mb-1">
-                    <v-chip
-                      v-for="tag in getTagsForService(service.tagIds)"
-                      :key="tag.id"
-                      :color="tag.color"
-                      size="small"
-                      class="mr-1"
-                    >
-                      {{ tag.name }}
-                    </v-chip>
-                  </div>
-
-                  <template v-slot:append>
-                    <div class="d-flex align-center">
-                      <v-btn icon="mdi-pencil" variant="text" size="small" @click="editService(service)"></v-btn>
-                      <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteService(service.id)"></v-btn>
+          <div class="list-wrapper">
+            <v-card v-for="service in filteredServices" :key="service.id" class="item-card mb-2">
+              <v-card-text class="pa-3">
+                <div class="d-flex align-center">
+                  <div class="flex-grow-1" style="min-width: 0;">
+                    <div class="font-weight-medium">{{ service.name }}</div>
+                    <div class="text-caption text-on-surface-variant">{{ service.defaultPrice }}₽</div>
+                    <div class="tags-container mt-2" v-if="service.tagIds && service.tagIds.length">
+                      <v-chip
+                        v-for="tag in getTagsForService(service.tagIds)"
+                        :key="tag.id"
+                        :color="tag.color"
+                        size="x-small"
+                        class="mr-1"
+                      >
+                        {{ tag.name }}
+                      </v-chip>
                     </div>
-                  </template>
-                </v-list-item>
-                <v-divider v-if="index < filteredServices.length - 1" class="mx-2"></v-divider>
-              </template>
-            </v-list>
-          </v-card>
+                  </div>
+                  <div class="item-actions">
+                    <v-btn icon="mdi-pencil" variant="text" size="small" @click="editService(service)"></v-btn>
+                    <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteService(service.id)"></v-btn>
+                  </div>
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
         </v-window-item>
 
         <!-- ДЕТАЛИ -->
-        <v-window-item value="details" class="window-item-full-height">
-          <v-card flat class="mt-2" bg-color="surface">
-            <div class="d-flex align-center justify-space-between pa-2 bg-surface">
-              <h3 class="text-h6">Детали</h3>
-              <v-btn color="primary" @click="openDetailDialog">
-                <v-icon class="mr-2">mdi-plus</v-icon>
-                 Добавить деталь
-              </v-btn>
-            </div>
-            <v-divider class="my-0"></v-divider>
+        <v-window-item value="details" class="window-item-full-height flex-grow-1">
+          <div class="d-flex align-center justify-space-between pa-2 bg-surface" style="position: sticky; top: 0; z-index: 1; background-color: rgb(var(--v-theme-surface));">
+            <h3 class="text-h6">Детали</h3>
+            <v-btn color="primary" @click="openDetailDialog">
+              <v-icon class="mr-2">mdi-plus</v-icon>
+               Добавить деталь
+            </v-btn>
+          </div>
+          <v-divider class="my-0"></v-divider>
 
-            <v-list lines="two" bg-color="surface" class="py-0">
-              <template v-for="(detail, index) in filteredDetails" :key="detail.id">
-                <v-list-item class="px-2 py-1 my-1" density="compact">
-                  <v-list-item-title class="font-weight-medium">{{ detail.name }}</v-list-item-title>
-                  <v-list-item-subtitle class="mb-2">{{ detail.defaultPrice }}₽</v-list-item-subtitle>
-
-                  <div class="tags-container mb-1">
-                    <v-chip
-                      v-for="tag in getTagsForDetail(detail.tagIds)"
-                      :key="tag.id"
-                      :color="tag.color"
-                      size="small"
-                      class="mr-1"
-                    >
-                      {{ tag.name }}
-                    </v-chip>
-                  </div>
-
-                  <template v-slot:append>
-                    <div class="d-flex align-center">
-                      <v-btn icon="mdi-pencil" variant="text" size="small" @click="editDetail(detail)"></v-btn>
-                      <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteDetail(detail.id)"></v-btn>
+          <div class="list-wrapper">
+            <v-card v-for="detail in filteredDetails" :key="detail.id" class="item-card mb-2">
+              <v-card-text class="pa-3">
+                <div class="d-flex align-center">
+                  <div class="flex-grow-1" style="min-width: 0;">
+                    <div class="font-weight-medium">{{ detail.name }}</div>
+                    <div class="text-caption text-on-surface-variant">{{ detail.defaultPrice }}₽</div>
+                    <div class="tags-container mt-2" v-if="detail.tagIds && detail.tagIds.length">
+                      <v-chip
+                        v-for="tag in getTagsForDetail(detail.tagIds)"
+                        :key="tag.id"
+                        :color="tag.color"
+                        size="x-small"
+                        class="mr-1"
+                      >
+                        {{ tag.name }}
+                      </v-chip>
                     </div>
-                  </template>
-                </v-list-item>
-                <v-divider v-if="index < filteredDetails.length - 1" class="mx-2"></v-divider>
-              </template>
-            </v-list>
-          </v-card>
+                  </div>
+                  <div class="item-actions">
+                    <v-btn icon="mdi-pencil" variant="text" size="small" @click="editDetail(detail)"></v-btn>
+                    <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteDetail(detail.id)"></v-btn>
+                  </div>
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
         </v-window-item>
 
         <!-- ТЕГИ -->
-        <v-window-item value="tags" class="window-item-full-height">
-          <v-card flat class="mt-2" bg-color="surface">
-            <div class="d-flex align-center justify-space-between pa-2 bg-surface">
-              <h3 class="text-h6">Теги</h3>
-              <v-btn color="primary" @click="openTagDialog">
-                <v-icon class="mr-2">mdi-plus</v-icon>
-                Добавить тег
-              </v-btn>
-            </div>
-            <v-divider class="my-0"></v-divider>
+        <v-window-item value="tags" class="window-item-full-height flex-grow-1">
+          <div class="d-flex align-center justify-space-between pa-2 bg-surface" style="position: sticky; top: 0; z-index: 1; background-color: rgb(var(--v-theme-surface));">
+            <h3 class="text-h6">Теги</h3>
+            <v-btn color="primary" @click="openTagDialog">
+              <v-icon class="mr-2">mdi-plus</v-icon>
+              Добавить тег
+            </v-btn>
+          </div>
+          <v-divider class="my-0"></v-divider>
 
-            <v-list bg-color="surface" class="py-0">
-              <template v-for="(tag, index) in filteredTags" :key="tag.id">
-                <v-list-item class="px-2 py-1 my-1" density="compact">
-                  <template v-slot:prepend>
-                    <v-chip
-                      :color="tag.color"
-                      size="small"
-                    >
-                      {{ tag.name }}
-                     </v-chip>
-                  </template>
-                  <template v-slot:append>
-                    <div class="d-flex align-center">
-                        <v-btn icon="mdi-pencil" variant="text" size="small" @click="editTag(tag)"></v-btn>
-                        <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteTag(tag.id)"></v-btn>
-                    </div>
-                  </template>
-                </v-list-item>
-                 <v-divider v-if="index < filteredTags.length - 1" class="mx-2"></v-divider>
-              </template>
-            </v-list>
-          </v-card>
+          <div class="list-wrapper">
+            <v-card v-for="tag in filteredTags" :key="tag.id" class="item-card mb-2">
+              <v-card-text class="pa-3">
+                <div class="d-flex align-center">
+                  <div class="flex-grow-1">
+                    <v-chip :color="tag.color" size="small">{{ tag.name }}</v-chip>
+                  </div>
+                  <div class="item-actions">
+                    <v-btn icon="mdi-pencil" variant="text" size="small" @click="editTag(tag)"></v-btn>
+                    <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteTag(tag.id)"></v-btn>
+                  </div>
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
         </v-window-item>
 
       </v-window>
@@ -248,8 +239,10 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useSettingsViewStore } from '@/stores/settingsViewStore';
 import { useConfirmationStore } from '@/stores/confirmationStore';
 import { useSearchStore } from '@/stores/searchStore';
+import { useHapticFeedback } from '@/composables/useHapticFeedback';
 import ServiceFormDialog from '@/components/ServiceFormDialog.vue';
 
+const { triggerHapticFeedback } = useHapticFeedback();
 const serviceStore = useServiceStore();
 const detailStore = useDetailStore();
 const tagsStore = useTagsStore();
@@ -272,6 +265,67 @@ const tagForm = ref({ name: '', color: 'blue' });
 const editingService = ref(null);
 const editingDetail = ref(null);
 const editingTag = ref(null);
+
+const touchstartX = ref(0);
+const touchendX = ref(0);
+const touchstartY = ref(0);
+const touchendY = ref(0);
+const isSwiping = ref(false);
+const tabs = ['services', 'details', 'tags'];
+
+const handleTouchStart = (e) => {
+  // Игнорируем свайпы, начинающиеся на интерактивных элементах (кнопки, инпуты и т.д.)
+  if (e.target.closest('.v-btn, .v-input, .v-select, .v-list-item-action')) {
+    isSwiping.value = false;
+    return;
+  }
+
+  isSwiping.value = true;
+  touchstartX.value = e.changedTouches[0].screenX;
+  touchstartY.value = e.changedTouches[0].screenY;
+};
+
+const handleTouchEnd = (e) => {
+  if (!isSwiping.value) return;
+
+  touchendX.value = e.changedTouches[0].screenX;
+  touchendY.value = e.changedTouches[0].screenY;
+  handleSwipe();
+  isSwiping.value = false;
+};
+
+const handleTouchCancel = () => {
+  isSwiping.value = false;
+};
+
+const handleSwipe = () => {
+  const threshold = 50; // минимальное расстояние для свайпа
+  const verticalThreshold = 100; // максимальное вертикальное отклонение
+
+  const diffX = touchendX.value - touchstartX.value;
+  const diffY = Math.abs(touchendY.value - touchstartY.value);
+
+  // Если вертикальный скролл больше горизонтального или превышает порог, игнорируем свайп
+  if (diffY > verticalThreshold || diffY > Math.abs(diffX)) return;
+
+  const currentIndex = tabs.indexOf(tab.value);
+
+  if (diffX < -threshold) {
+    // свайп влево (следующая вкладка)
+    if (currentIndex < tabs.length - 1) {
+      tab.value = tabs[currentIndex + 1];
+    } else {
+      tab.value = tabs[0]; // Цикличный переход в начало
+    }
+  } else if (diffX > threshold) {
+    // свайп вправо (предыдущая вкладка)
+    if (currentIndex > 0) {
+      tab.value = tabs[currentIndex - 1];
+    } else {
+      tab.value = tabs[tabs.length - 1]; // Цикличный переход в конец
+    }
+  }
+};
 
 const tagColors = [
   { title: 'Синий', value: 'blue' }, { title: 'Зеленый', value: 'green' }, { title: 'Красный', value: 'red' },
@@ -364,6 +418,7 @@ const editService = (service) => {
 const deleteService = async (serviceId) => {
   const confirmed = await confirmationStore.open('Удаление услуги', 'Вы уверены, что хотите удалить эту услугу?');
   if (confirmed) {
+    triggerHapticFeedback('important');
     serviceStore.deleteService(serviceId);
   }
 };
@@ -389,12 +444,14 @@ const saveDetail = async () => {
   } else {
     detailStore.addDetail(detailForm.value);
   }
+  triggerHapticFeedback('important');
   detailDialog.value = false;
 };
 
 const deleteDetail = async (detailId) => {
   const confirmed = await confirmationStore.open('Удаление детали', 'Вы уверены, что хотите удалить эту деталь?');
   if (confirmed) {
+    triggerHapticFeedback('important');
     detailStore.deleteDetail(detailId);
   }
 };
@@ -420,12 +477,14 @@ const saveTag = async () => {
   } else {
     tagsStore.addTag(tagForm.value);
   }
+  triggerHapticFeedback('important');
   tagDialog.value = false;
 };
 
 const deleteTag = async (tagId) => {
   const confirmed = await confirmationStore.open('Удаление тега', 'Вы уверены, что хотите удалить этот тег?');
   if (confirmed) {
+    triggerHapticFeedback('important');
     tagsStore.deleteTag(tagId);
   }
 };
@@ -438,6 +497,22 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.item-card {
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: none !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+.item-actions {
+  display: flex;
+  align-items: center;
+}
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
 .base-settings-view {
   height: calc(100vh - 68px);
   display: flex;
@@ -447,37 +522,45 @@ onMounted(() => {
 .settings-container {
   flex-grow: 1;
   min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  margin: 8px;
-  padding: 8px;
+  margin: 8px 0;
+  padding: 8px 0;
   background-color: rgb(var(--v-theme-secondary));
-  border-radius: 16px;
+  border-radius: 0;
+  overflow: hidden;
   box-shadow:
     0 10px 15px -3px rgba(0, 0, 0, 0.1),
     0 4px 6px -2px rgba(0, 0, 0, 0.05),
     0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
-.settings-container::-webkit-scrollbar {
-  display: none;
-}
-
-.settings-container .v-card {
-  background-color: transparent !important;
-  box-shadow: none !important;
-}
-
-.window-full-height {
+:deep(.v-window__container) {
   height: 100%;
-  display: flex;
-  flex-direction: column;
+  min-height: 100%;
+  flex: 1;
+}
+
+.list-wrapper {
+  overflow-y: auto;
+  flex-grow: 1;
+  padding: 0;
 }
 
 .window-item-full-height {
-  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
   min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.list-wrapper::-webkit-scrollbar {
+  width: 4px;
+}
+
+.window-item-full-height::-webkit-scrollbar-thumb {
+  background-color: rgba(0,0,0,0.2);
+  border-radius: 2px;
 }
 
 .custom-tabs-container {

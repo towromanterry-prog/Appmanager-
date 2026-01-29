@@ -40,7 +40,7 @@
             class="burger-icon"
             @mousedown.stop
             @mouseup.stop
-            @click.stop="drawer = !drawer"
+            @click.stop="toggleDrawer"
           ></v-icon>
         </template>
 
@@ -120,7 +120,7 @@
           class="burger-icon"
           @mousedown.stop
           @mouseup.stop
-          @click.stop="drawer = !drawer"
+          @click.stop="toggleDrawer"
         ></v-icon>
         <span class="app-bar-title">{{ currentTitle }}</span>
       </div>
@@ -148,7 +148,9 @@ import { useTagsStore } from '@/stores/tagsStore.js';
 import { useSearchStore } from '@/stores/searchStore.js';
 import ConfirmationDialog from '@/components/common/ConfirmationDialog.vue';
 import TemplateSelectionDialog from '@/components/TemplateSelectionDialog.vue';
+import { useHapticFeedback } from '@/composables/useHapticFeedback.js';
 
+const { triggerHapticFeedback } = useHapticFeedback();
 const router = useRouter();
 const route = useRoute();
 const searchStore = useSearchStore();
@@ -211,7 +213,13 @@ const serviceStore = useServiceStore();
 const clientsStore = useClientsStore();
 const tagsStore = useTagsStore();
 
+const toggleDrawer = () => {
+  triggerHapticFeedback('tap');
+  drawer.value = !drawer.value;
+};
+
 const goToRoute = (routeName) => {
+  triggerHapticFeedback('tap');
   router.push({ name: routeName });
   drawer.value = false;
 };
