@@ -180,7 +180,8 @@ const settingsStore = useSettingsStore();
 const appBarHeight = ref(68);
 
 const updateLayoutScale = () => {
-  const scale = settingsStore.appSettings.fontScale || 1.0;
+  const scaleRaw = Number(settingsStore.appSettings.fontScale);
+  const scale = Number.isFinite(scaleRaw) ? Math.min(2, Math.max(0.7, scaleRaw)) : 1;
   // Базовая высота 68px, минимальная 56px (стандарт Material Design)
   const newHeight = Math.max(56, Math.round(68 * scale));
   appBarHeight.value = newHeight;
