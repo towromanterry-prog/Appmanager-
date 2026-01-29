@@ -186,7 +186,7 @@ const updateLayoutScale = () => {
   const newHeight = Math.max(56, Math.round(68 * scale));
   appBarHeight.value = newHeight;
 
-  document.documentElement.style.setProperty('--app-font-scale', scale);
+  document.documentElement.style.setProperty('--app-font-scale', String(scale));
   document.documentElement.style.setProperty('--app-topbar-height', `${newHeight}px`);
 };
 
