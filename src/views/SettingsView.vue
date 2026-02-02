@@ -36,7 +36,6 @@
             ></v-btn>
           </v-card-text>
         </v-card>
-        <v-expansion-panels variant="accordion" class="mb-4">
           
         <!-- Настройки обязательных полей -->
         <v-expansion-panels variant="accordion" class="mb-4">
