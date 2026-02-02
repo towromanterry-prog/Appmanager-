@@ -1,42 +1,97 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import {
+  doc, setDoc, onSnapshot
+} from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/firebase';
+
+// -----------------------------
+// Helpers
+// -----------------------------
+function isPlainObject(v) {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+
+/**
+ * Deep merge: source overrides target, но вложенные plain-objects мерджатся.
+ * Arrays и примитивы заменяются целиком.
+ */
+function deepMerge(target, source) {
+  if (!isPlainObject(target) || !isPlainObject(source)) return source;
+  const out = { ...target };
+  for (const [k, v] of Object.entries(source)) {
+    if (isPlainObject(v) && isPlainObject(out[k])) out[k] = deepMerge(out[k], v);
+    else out[k] = v;
+  }
+  return out;
+}
+
+function safeJsonParse(str) {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return null;
+  }
+}
 
 export const useSettingsStore = defineStore('settings', () => {
   // === Значения по умолчанию ===
   const defaultAppSettings = {
-    // Статусы
-    orderStatuses: { accepted: true, in_progress: true, completed: true, delivered: true },
-    serviceStatuses: { accepted: true, in_progress: true, completed: true },
-    detailStatuses: { accepted: true, in_progress: true, completed: true },
+    // Настройки статусов
     additionalStatusName: 'Ждет запчасти',
-    defaultOrderStatus: 'accepted',
-    
-    // Синхронизация статусов (оставляем логику, даже если UI скрыт)
-    syncServiceToOrderStatus: { completed: true },
-    syncOrderToServiceStatus: { 
-      completed: { enabled: true, confirm: true },
-      in_progress: { enabled: false, confirm: false }
+    orderStatuses: {
+      accepted: true,
+      additional: true,
+      in_progress: true,
+      completed: true,
+      delivered: true
     },
-    
-    // UI и Тексты
+    serviceStatuses: {
+      accepted: true,
+      additional: true,
+      in_progress: true,
+      completed: true
+    },
+    detailStatuses: {
+      accepted: true,
+      additional: true,
+      in_progress: true,
+      completed: true
+    },
+    defaultOrderStatus: 'accepted',
     baseFontSize: 16,
+    // Если ВСЕ услуги/детали перешли в указанный статус — поднимаем статус заказа
+    syncServiceToOrderStatus: {
+      additional: true,
+      in_progress: true,
+      completed: true
+    },
+    // Если меняем статус заказа — поднимаем услуги/детали (опционально с подтверждением)
+    syncOrderToServiceStatus: {
+      additional: { enabled: false, confirm: true },
+      in_progress: { enabled: true, confirm: true },
+      completed: { enabled: true, confirm: false }
+    },
+    messageTemplates: [],
     detailsTabLabel: 'Детали',
     orderFormLastNameLabel: 'Фамилия',
     
-    // Индикаторы календаря
-    miniCalendarIndicatorStatuses: ['in_progress'],
-    fullCalendarIndicatorStatuses: ['in_progress', 'deadline'],
-    
-    // Поведение
     showCompletedOrders: true,
+    compactMode: false,
+    swipeRightActions: {
+      resetMiniCalendar: true,
+      closeFullCalendar: true,
+      clearSearch: true,
+      resetStatusFilter: true
+    },
+
+    // Индикаторы календаря (до 3)
+    miniCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'],
+    fullCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'],
     enableHapticFeedback: true,
     enablePullToRefresh: true,
-    
-    // Шаблоны сообщений
-    messageTemplates: [],
+    autoSaveFormDrafts: true
   };
 
   const defaultRequiredFields = {
@@ -53,7 +108,37 @@ export const useSettingsStore = defineStore('settings', () => {
   const appSettings = ref({ ...defaultAppSettings });
   const requiredFields = ref({ ...defaultRequiredFields });
   const user = ref(null);
+  let isInitialized = false;
   let unsubscribe = null;
+
+  // === Нормализация и миграции ===
+
+  function normalizeAppSettings(settings) {
+    const s = { ...settings };
+
+    // 1) Миграция старого формата: syncOrderToServiceStatus = 'none' | 'auto' | 'confirm'
+    if (typeof s.syncOrderToServiceStatus === 'string') {
+      const oldMode = s.syncOrderToServiceStatus;
+      s.syncOrderToServiceStatus = {
+        additional: { enabled: oldMode !== 'none', confirm: oldMode === 'confirm' },
+        in_progress: { enabled: oldMode !== 'none', confirm: oldMode === 'confirm' },
+        completed: { enabled: oldMode !== 'none', confirm: oldMode === 'confirm' }
+      };
+    }
+
+    // 2) Гарантируем наличие всех ключей статусов (и что accepted всегда включен)
+    const merged = deepMerge(defaultAppSettings, s);
+    merged.orderStatuses.accepted = true;
+    merged.serviceStatuses.accepted = true;
+    merged.detailStatuses.accepted = true;
+
+    // 3) Подстраховка типов
+    if (typeof merged.additionalStatusName !== 'string' || !merged.additionalStatusName.trim()) {
+      merged.additionalStatusName = defaultAppSettings.additionalStatusName;
+    }
+
+    return merged;
+  }
 
   // === Логика сохранения ===
   
@@ -74,39 +159,48 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  // 3. Общая функция обновления
   function updateAppSettings(newSettings) {
-    appSettings.value = newSettings;
+    // Принимаем как полный объект, так и patch
+    const next = isPlainObject(newSettings)
+      ? deepMerge(appSettings.value, newSettings)
+      : appSettings.value;
+
+    appSettings.value = normalizeAppSettings(next);
     saveToLocalStorage();
-    saveToFirebase();
+    saveToFirebase(); // <-- Отправляем в облако
   }
 
   function updateRequiredFields(newFields) {
-    requiredFields.value = newFields;
+    requiredFields.value = deepMerge(requiredFields.value, newFields);
     saveToLocalStorage();
-    saveToFirebase();
+    saveToFirebase(); // <-- Отправляем в облако
   }
 
   // === Инициализация ===
-  function init() {
-    const storedSettings = localStorage.getItem('appSettings');
-    const storedFields = localStorage.getItem('requiredFields');
+  function loadSettings() {
+    if (isInitialized) return;
+    isInitialized = true;
 
-    if (storedSettings) {
-      const parsed = JSON.parse(storedSettings);
-      // Чистим от старых удаленных ключей
-      const cleanSettings = { ...defaultAppSettings };
-      Object.keys(defaultAppSettings).forEach(key => {
-        if (parsed[key] !== undefined) {
-          cleanSettings[key] = parsed[key];
-        }
-      });
-      appSettings.value = cleanSettings;
-    }
-    
-    if (storedFields) {
-      requiredFields.value = { ...defaultRequiredFields, ...JSON.parse(storedFields) };
+    // 1) Сначала грузим из LocalStorage (чтобы было быстро)
+    const storedSettingsRaw = localStorage.getItem('appSettings');
+    const storedFieldsRaw = localStorage.getItem('requiredFields');
+    const storedSettings = storedSettingsRaw ? safeJsonParse(storedSettingsRaw) : null;
+    const storedFields = storedFieldsRaw ? safeJsonParse(storedFieldsRaw) : null;
+
+    if (storedSettings && isPlainObject(storedSettings)) {
+      appSettings.value = normalizeAppSettings(storedSettings);
+    } else {
+      appSettings.value = { ...defaultAppSettings };
     }
 
+    if (storedFields && isPlainObject(storedFields)) {
+      requiredFields.value = deepMerge(defaultRequiredFields, storedFields);
+    } else {
+      requiredFields.value = { ...defaultRequiredFields };
+    }
+
+    // 2) Потом подключаемся к Firebase
     onAuthStateChanged(auth, (currentUser) => {
       user.value = currentUser;
       if (currentUser) {
@@ -123,18 +217,13 @@ export const useSettingsStore = defineStore('settings', () => {
     unsubscribe = onSnapshot(doc(db, 'users', userId, 'settings', 'general'), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
+        // Если в облаке есть настройки — принимаем их (они главнее)
         if (data.appSettings) {
-          const merged = { ...appSettings.value };
-          Object.keys(defaultAppSettings).forEach(key => {
-            if (data.appSettings[key] !== undefined) {
-              merged[key] = data.appSettings[key];
-            }
-          });
-          appSettings.value = merged;
-          localStorage.setItem('appSettings', JSON.stringify(appSettings.value));
+          appSettings.value = normalizeAppSettings(deepMerge(appSettings.value, data.appSettings));
+          localStorage.setItem('appSettings', JSON.stringify(appSettings.value)); // Обновляем локальный кэш
         }
         if (data.requiredFields) {
-          requiredFields.value = { ...requiredFields.value, ...data.requiredFields };
+          requiredFields.value = deepMerge(requiredFields.value, data.requiredFields);
           localStorage.setItem('requiredFields', JSON.stringify(requiredFields.value));
         }
       }
@@ -172,11 +261,13 @@ export const useSettingsStore = defineStore('settings', () => {
     saveToFirebase();
   }
 
-  init();
+  // Авто-инициализация (и при этом сохраняем совместимость с App.vue, где вызывается loadSettings())
+  loadSettings();
 
   return {
     appSettings,
     requiredFields,
+    loadSettings,
     updateAppSettings,
     updateRequiredFields,
     addMessageTemplate,

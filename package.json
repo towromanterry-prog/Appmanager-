@@ -12,6 +12,7 @@
     "@iconify-prerendered/vue-simple-icons": "^0.28.1754804480",
     "@mdi/font": "^7.4.47",
     "date-fns": "^2.30.0",
+    "firebase": "^12.8.0",
     "fuse.js": "^7.1.0",
     "html2canvas": "^1.4.1",
     "pinia": "^2.1.7",
