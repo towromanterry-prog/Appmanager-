@@ -245,6 +245,7 @@ const filteredOrders = computed(() => {
 const getStatusLabel = (status) => {
   const map = {
     'in_progress': 'В работе',
+    'additional': settingsStore.appSettings.additionalStatusName || 'Доп. статус',
     'additional': 'Ждет',
     'accepted': 'Принят',
     'completed': 'Готов',
