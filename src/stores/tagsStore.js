@@ -1,68 +1,69 @@
-// stores/tagsStore.js
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-
-const defaultTags = [
-  { id: 1, name: 'Срочно', color: 'red' },
-  { id: 2, name: 'VIP', color: 'purple' },
-  { id: 3, name: 'Простое', color: 'green' },
-  { id: 4, name: 'Сложное', color: 'orange' },
-];
+import { 
+  collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy 
+} from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '@/firebase';
 
 export const useTagsStore = defineStore('tags', () => {
   const tags = ref([]);
+  const user = ref(null);
+  let unsubscribe = null;
 
-function loadTags() {
-  try {
-    const stored = localStorage.getItem('tags');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      // Дополнительная валидация - проверяем что это массив
-      if (Array.isArray(parsed)) {
-        tags.value = parsed;
+  // Инициализация
+  function init() {
+    onAuthStateChanged(auth, (currentUser) => {
+      user.value = currentUser;
+      if (currentUser) {
+        subscribeToUserTags(currentUser.uid);
       } else {
-        throw new Error('Stored tags is not an array');
+        tags.value = [];
+        if (unsubscribe) unsubscribe();
       }
-    } else {
-      tags.value = [...defaultTags];
-    }
-  } catch (error) {
-    console.error('Ошибка загрузки tags из localStorage:', error);
-    tags.value = [...defaultTags];
-    // Очищаем поврежденные данные
-    localStorage.removeItem('tags');
-  }
-}
-
-  function saveTags() {
-    localStorage.setItem('tags', JSON.stringify(tags.value));
+    });
   }
 
-  function addTag(tagData) {
-    const newTag = {
-      id: Date.now(),
-      name: tagData.name,
-      color: tagData.color || 'blue'
-    };
-    tags.value.push(newTag);
-    saveTags();
-    return newTag;
+  function subscribeToUserTags(userId) {
+    if (unsubscribe) unsubscribe();
+    // Сортируем теги по имени
+    const q = query(collection(db, 'users', userId, 'tags'), orderBy('name'));
+
+    unsubscribe = onSnapshot(q, (snapshot) => {
+      tags.value = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    });
   }
 
-  function updateTag(id, tagData) {
-    const tagToUpdate = tags.value.find(t => t.id === id);
-    if (tagToUpdate) {
-      tagToUpdate.name = tagData.name;
-      tagToUpdate.color = tagData.color;
-      saveTags();
+  async function addTag(tag) {
+    if (!user.value) return;
+    try {
+      await addDoc(collection(db, 'users', user.value.uid, 'tags'), {
+        name: tag.name,
+        color: tag.color || '#grey', // Дефолтный цвет
+      });
+    } catch (e) {
+      console.error("Ошибка добавления тега:", e);
     }
   }
 
-  function deleteTag(id) {
-    const index = tags.value.findIndex(t => t.id === id);
-    if (index !== -1) {
-      tags.value.splice(index, 1);
-      saveTags();
+  async function updateTag(id, tagData) {
+    if (!user.value) return;
+    try {
+      await updateDoc(doc(db, 'users', user.value.uid, 'tags', id), tagData);
+    } catch (e) {
+      console.error("Ошибка обновления тега:", e);
+    }
+  }
+
+  async function deleteTag(id) {
+    if (!user.value) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.value.uid, 'tags', id));
+    } catch (e) {
+      console.error("Ошибка удаления тега:", e);
     }
   }
 
@@ -70,10 +71,10 @@ function loadTags() {
     return tags.value.find(t => t.id === id);
   }
 
+  init();
+
   return {
     tags,
-    loadTags,
-    saveTags,
     addTag,
     updateTag,
     deleteTag,
