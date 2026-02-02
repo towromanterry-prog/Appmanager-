@@ -1,42 +1,42 @@
 import { defineStore } from 'pinia';
-import { ref, watch } from 'vue';
-import { 
-  doc, setDoc, onSnapshot 
-} from 'firebase/firestore';
+import { ref } from 'vue';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/firebase';
 
 export const useSettingsStore = defineStore('settings', () => {
   // === Значения по умолчанию ===
   const defaultAppSettings = {
+    // Статусы
     orderStatuses: { accepted: true, in_progress: true, completed: true, delivered: true },
     serviceStatuses: { accepted: true, in_progress: true, completed: true },
     detailStatuses: { accepted: true, in_progress: true, completed: true },
     additionalStatusName: 'Ждет запчасти',
     defaultOrderStatus: 'accepted',
-    baseFontSize: 16,
+    
+    // Синхронизация статусов
     syncServiceToOrderStatus: { completed: true },
     syncOrderToServiceStatus: { 
       completed: { enabled: true, confirm: true },
       in_progress: { enabled: false, confirm: false }
     },
-    messageTemplates: [],
+    
+    // UI и Тексты
+    baseFontSize: 16,
     detailsTabLabel: 'Детали',
     orderFormLastNameLabel: 'Фамилия',
-    // UI настройки (можно не синхронизировать, но удобно)
-    compactMode: false,
-    showCompletedOrders: true,
-    swipeRightActions: {
-      resetMiniCalendar: true,
-      closeFullCalendar: true,
-      clearSearch: true,
-      resetStatusFilter: true
-    },
+    
+    // Индикаторы календаря
     miniCalendarIndicatorStatuses: ['in_progress'],
     fullCalendarIndicatorStatuses: ['in_progress', 'deadline'],
+    
+    // Поведение
+    showCompletedOrders: true,
     enableHapticFeedback: true,
     enablePullToRefresh: true,
-    autoSaveFormDrafts: true
+    
+    // Шаблоны сообщений
+    messageTemplates: [],
   };
 
   const defaultRequiredFields = {
@@ -57,17 +57,14 @@ export const useSettingsStore = defineStore('settings', () => {
 
   // === Логика сохранения ===
   
-  // 1. Сохраняем в localStorage (всегда, как кэш)
   function saveToLocalStorage() {
     localStorage.setItem('appSettings', JSON.stringify(appSettings.value));
     localStorage.setItem('requiredFields', JSON.stringify(requiredFields.value));
   }
 
-  // 2. Сохраняем в Firebase (если залогинены)
   async function saveToFirebase() {
     if (!user.value) return;
     try {
-      // Сохраняем всё в один документ 'settings'
       await setDoc(doc(db, 'users', user.value.uid, 'settings', 'general'), {
         appSettings: appSettings.value,
         requiredFields: requiredFields.value
@@ -77,34 +74,43 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
-  // 3. Общая функция обновления
   function updateAppSettings(newSettings) {
     appSettings.value = newSettings;
     saveToLocalStorage();
-    saveToFirebase(); // <-- Отправляем в облако
+    saveToFirebase();
   }
 
   function updateRequiredFields(newFields) {
     requiredFields.value = newFields;
     saveToLocalStorage();
-    saveToFirebase(); // <-- Отправляем в облако
+    saveToFirebase();
   }
 
   // === Инициализация ===
   function init() {
-    // Сначала грузим из LocalStorage (чтобы было быстро)
     const storedSettings = localStorage.getItem('appSettings');
     const storedFields = localStorage.getItem('requiredFields');
 
     if (storedSettings) {
-      // Merge с дефолтными, чтобы новые поля не ломали старые настройки
-      appSettings.value = { ...defaultAppSettings, ...JSON.parse(storedSettings) };
+      // Merge с дефолтными, убирая удаленные ключи (если они были в кэше)
+      const parsed = JSON.parse(storedSettings);
+      // Очистка от мусора (compactMode и т.д.)
+      const cleanSettings = { ...defaultAppSettings };
+      
+      // Переносим только существующие в default ключи
+      Object.keys(defaultAppSettings).forEach(key => {
+        if (parsed[key] !== undefined) {
+          cleanSettings[key] = parsed[key];
+        }
+      });
+      
+      appSettings.value = cleanSettings;
     }
+    
     if (storedFields) {
       requiredFields.value = { ...defaultRequiredFields, ...JSON.parse(storedFields) };
     }
 
-    // Потом подключаемся к Firebase
     onAuthStateChanged(auth, (currentUser) => {
       user.value = currentUser;
       if (currentUser) {
@@ -118,14 +124,19 @@ export const useSettingsStore = defineStore('settings', () => {
   function subscribeToUserSettings(userId) {
     if (unsubscribe) unsubscribe();
     
-    // Слушаем документ users/{uid}/settings/general
     unsubscribe = onSnapshot(doc(db, 'users', userId, 'settings', 'general'), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        // Если в облаке есть настройки — принимаем их (они главнее)
         if (data.appSettings) {
-          appSettings.value = { ...appSettings.value, ...data.appSettings };
-          localStorage.setItem('appSettings', JSON.stringify(appSettings.value)); // Обновляем локальный кэш
+          // Мержим аккуратно, чтобы не вернуть мусор из облака, если он там был
+          const merged = { ...appSettings.value };
+          Object.keys(defaultAppSettings).forEach(key => {
+            if (data.appSettings[key] !== undefined) {
+              merged[key] = data.appSettings[key];
+            }
+          });
+          appSettings.value = merged;
+          localStorage.setItem('appSettings', JSON.stringify(appSettings.value));
         }
         if (data.requiredFields) {
           requiredFields.value = { ...requiredFields.value, ...data.requiredFields };
@@ -135,7 +146,7 @@ export const useSettingsStore = defineStore('settings', () => {
     });
   }
 
-  // Методы для работы с шаблонами (они часть appSettings)
+  // === Методы ===
   function addMessageTemplate(text) {
     const newTemplate = { id: Date.now(), text };
     appSettings.value.messageTemplates.push(newTemplate);
@@ -153,6 +164,11 @@ export const useSettingsStore = defineStore('settings', () => {
   function deleteMessageTemplate(id) {
     appSettings.value.messageTemplates = appSettings.value.messageTemplates.filter(t => t.id !== id);
     updateAppSettings(appSettings.value);
+  }
+  
+  // Хелпер для проверки обязательности поля
+  function isFieldRequired(fieldName) {
+    return requiredFields.value[fieldName] === true;
   }
 
   function resetSettings() {
@@ -172,6 +188,7 @@ export const useSettingsStore = defineStore('settings', () => {
     addMessageTemplate,
     updateMessageTemplate,
     deleteMessageTemplate,
+    isFieldRequired,
     resetSettings
   };
 });
