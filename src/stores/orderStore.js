@@ -1,8 +1,22 @@
-// orderStore.js
+// src/stores/orderStore.js
 import { defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import { useSettingsStore } from './settingsStore';
 import { useConfirmationStore } from './confirmationStore';
+
+// === FIREBASE IMPORTS ===
+import { 
+  collection, 
+  onSnapshot, 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  query, 
+  orderBy 
+} from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '@/firebase';
+// ========================
 
 const ORDER_STATUS_FLOW = ['accepted', 'additional', 'in_progress', 'completed', 'delivered'];
 const SERVICE_STATUS_FLOW = ['accepted', 'additional', 'in_progress', 'completed'];
@@ -12,47 +26,63 @@ export const useOrderStore = defineStore('orders', () => {
   const orders = ref([]);
   const filterStatus = ref([]);
   const sortBy = ref('deadline');
+  
+  const loading = ref(false);
+  const user = ref(null);
+  let unsubscribe = null;
+
+  // === 1. ИНИЦИАЛИЗАЦИЯ (Вместо _load) ===
+  function init() {
+    // Восстанавливаем настройку сортировки локально
+    const storedSortBy = localStorage.getItem('orders_sortBy');
+    if (storedSortBy) sortBy.value = storedSortBy;
+
+    onAuthStateChanged(auth, (currentUser) => {
+      user.value = currentUser;
+      if (currentUser) {
+        subscribeToUserOrders(currentUser.uid);
+      } else {
+        orders.value = [];
+        if (unsubscribe) unsubscribe();
+      }
+    });
+  }
+
+  function subscribeToUserOrders(userId) {
+    if (unsubscribe) unsubscribe();
+    loading.value = true;
+
+    // Сортируем по дате создания, чтобы список не скакал
+    const q = query(collection(db, 'users', userId, 'orders'), orderBy('createDate', 'desc'));
+
+    unsubscribe = onSnapshot(q, (snapshot) => {
+      orders.value = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      loading.value = false;
+    }, (error) => {
+      console.error("Ошибка получения заказов:", error);
+      loading.value = false;
+    });
+  }
 
   watch(sortBy, (newSortBy) => {
     localStorage.setItem('orders_sortBy', newSortBy);
   });
 
-  function _save() {
-    localStorage.setItem('orders', JSON.stringify(orders.value));
-  }
-
-  function _load() {
-    const storedSortBy = localStorage.getItem('orders_sortBy');
-    if (storedSortBy) {
-      sortBy.value = storedSortBy;
-    }
-
+  // === 2. ГЛАВНАЯ ФУНКЦИЯ СОХРАНЕНИЯ ===
+  // Заменяет старый _save(). Сохраняет конкретный заказ в облако.
+  async function saveOrderToFirebase(order) {
+    if (!user.value || !order || !order.id) return;
+    
+    // Создаем глубокую копию, чтобы убрать реактивность Vue перед отправкой
+    const orderData = JSON.parse(JSON.stringify(order));
+    
     try {
-      const stored = localStorage.getItem('orders');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          orders.value = parsed.map(o => ({
-            ...o,
-            status: o.status || 'accepted',
-            createDate: o.createDate || new Date().toISOString(),
-            services: (o.services || []).map(s => ({
-              ...s,
-              status: s.status || 'accepted'
-            })),
-            details: (o.details || []).map(d => ({
-              ...d,
-              status: d.status || 'accepted'
-            }))
-          }));
-        } else {
-          throw new Error('Stored orders is not an array');
-        }
-      }
-    } catch (error) {
-      console.error('Ошибка загрузки orders из localStorage:', error);
-      orders.value = [];
-      localStorage.removeItem('orders');
+      await setDoc(doc(db, 'users', user.value.uid, 'orders', order.id), orderData);
+    } catch (e) {
+      console.error("Ошибка сохранения заказа:", e);
     }
   }
 
@@ -60,11 +90,17 @@ export const useOrderStore = defineStore('orders', () => {
     orders.value.find(o => o.id === id)
   );
 
-  function addOrder(orderData) {
+  // === 3. ДЕЙСТВИЯ (ACTIONS) ===
+
+  async function addOrder(orderData) {
+    if (!user.value) return;
+
     const settingsStore = useSettingsStore();
+    const id = Date.now().toString(); // Генерируем ID здесь
+    
     const newOrder = {
       ...orderData,
-      id: Date.now().toString(),
+      id: id,
       status: settingsStore.appSettings.defaultOrderStatus || 'accepted',
       createDate: new Date().toISOString(),
       services: (orderData.services || []).map(s => ({
@@ -77,16 +113,20 @@ export const useOrderStore = defineStore('orders', () => {
       })),
       lastName: orderData.lastName || ''
     };
-    orders.value.push(newOrder);
-    _save();
+
+    // Просто сохраняем в базу. onSnapshot сам добавит его в orders.value
+    await saveOrderToFirebase(newOrder);
     return newOrder;
   }
 
-  function updateOrder(id, orderData) {
+  async function updateOrder(id, orderData) {
+    // Находим локальную копию, чтобы не ломать логику ссылок
     const index = orders.value.findIndex(o => o.id === id);
     if (index !== -1) {
       const originalOrder = orders.value[index];
-      orders.value[index] = {
+      
+      // Обновляем объект
+      const updatedOrder = {
         ...originalOrder,
         ...orderData,
         id: originalOrder.id,
@@ -102,17 +142,22 @@ export const useOrderStore = defineStore('orders', () => {
         })),
         lastName: orderData.lastName || ''
       };
-      _save();
+
+      // Отправляем в базу
+      await saveOrderToFirebase(updatedOrder);
     }
   }
 
-  function deleteOrder(id) {
-    const index = orders.value.findIndex(o => o.id === id);
-    if (index !== -1) {
-      orders.value.splice(index, 1);
-      _save();
+  async function deleteOrder(id) {
+    if (!user.value) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.value.uid, 'orders', id));
+    } catch (e) {
+      console.error("Ошибка удаления заказа:", e);
     }
   }
+
+  // === 4. ЛОГИКА СТАТУСОВ (Осталась без изменений, только сохранение) ===
 
   function getStatusText(status) {
     const settingsStore = useSettingsStore();
@@ -127,12 +172,13 @@ export const useOrderStore = defineStore('orders', () => {
     return statusMap[status] || status;
   }
 
+  // Вспомогательные функции синхронизации (Без изменений)
   function _syncOrderStatusFromItems(order) {
     const settingsStore = useSettingsStore();
     const allItems = [...(order.services || []), ...(order.details || [])];
     if (allItems.length === 0) return;
 
-    const itemFlow = SERVICE_STATUS_FLOW; // Assuming services and details share the same flow
+    const itemFlow = SERVICE_STATUS_FLOW; 
     const syncSettings = settingsStore.appSettings.syncServiceToOrderStatus;
 
     const orderStatusSettings = settingsStore.appSettings.orderStatuses;
@@ -173,14 +219,12 @@ export const useOrderStore = defineStore('orders', () => {
       return;
     }
 
-    // --- Prepare services for update ---
     const servicesToUpdate = (order.services || []).filter(item => {
       const isStatusConfigured = settingsStore.appSettings.serviceStatuses[newStatus];
       const canUpdate = SERVICE_STATUS_FLOW.indexOf(item.status) < SERVICE_STATUS_FLOW.indexOf(newStatus);
       return isStatusConfigured && canUpdate;
     });
 
-    // --- Prepare details for update ---
     const detailsToUpdate = (order.details || []).filter(item => {
       const isStatusConfigured = settingsStore.appSettings.detailStatuses[newStatus];
       const canUpdate = DETAIL_STATUS_FLOW.indexOf(item.status) < DETAIL_STATUS_FLOW.indexOf(newStatus);
@@ -211,6 +255,7 @@ export const useOrderStore = defineStore('orders', () => {
     }
   }
 
+  // Главная функция обновления статуса
   async function updateStatus(orderId, newStatus, itemType = 'order', itemIndex = -1) {
     const order = orders.value.find(o => o.id === orderId);
     if (!order) return;
@@ -250,6 +295,7 @@ export const useOrderStore = defineStore('orders', () => {
       if (!confirmed) return;
     }
 
+    // Применяем изменения к локальному объекту
     if (isService) {
       order.services[itemIndex].status = newStatus;
       _syncOrderStatusFromServices(order);
@@ -261,7 +307,8 @@ export const useOrderStore = defineStore('orders', () => {
       await _syncItemsStatusFromOrderUnified(order, newStatus);
     }
 
-    _save();
+    // СОХРАНЯЕМ В FIREBASE
+    await saveOrderToFirebase(order);
   }
 
   function calculateNextStatus(currentStatus, itemType = 'order') {
@@ -280,23 +327,14 @@ export const useOrderStore = defineStore('orders', () => {
     }
 
     const currentIndex = flow.indexOf(currentStatus);
-    if (currentIndex === -1) {
-      return currentStatus;
-    }
+    if (currentIndex === -1) return currentStatus;
 
-    // Find the next active status in the sequence.
     for (let i = currentIndex + 1; i < flow.length; i++) {
       const nextStatus = flow[i];
-      if (activeStatuses[nextStatus]) {
-        return nextStatus;
-      }
+      if (activeStatuses[nextStatus]) return nextStatus;
     }
 
-    // If no subsequent active status is found, loop back to the first status.
-    if (activeStatuses[flow[0]]) {
-      return flow[0];
-    }
-
+    if (activeStatuses[flow[0]]) return flow[0];
     return currentStatus;
   }
 
@@ -316,16 +354,11 @@ export const useOrderStore = defineStore('orders', () => {
     }
 
     const currentIndex = flow.indexOf(currentStatus);
-    if (currentIndex <= 0) {
-      return currentStatus;
-    }
+    if (currentIndex <= 0) return currentStatus;
 
-    // Find the previous active status in the sequence.
     for (let i = currentIndex - 1; i >= 0; i--) {
       const prevStatus = flow[i];
-      if (activeStatuses[prevStatus]) {
-        return prevStatus;
-      }
+      if (activeStatuses[prevStatus]) return prevStatus;
     }
 
     return currentStatus;
@@ -348,7 +381,8 @@ export const useOrderStore = defineStore('orders', () => {
     order.status = 'cancelled';
     order.services.forEach(s => s.status = 'cancelled');
     order.details.forEach(d => d.status = 'cancelled');
-    _save();
+    
+    await saveOrderToFirebase(order);
   }
 
   async function undoCancelOrder(orderId) {
@@ -370,21 +404,33 @@ export const useOrderStore = defineStore('orders', () => {
       detail.status = cachedState.detailStatuses[index] || 'accepted';
     });
 
+    // Удаляем кэш из объекта перед сохранением, или оставляем null
     delete order.cachedState;
-    _save();
+    
+    await saveOrderToFirebase(order);
   }
 
-  function updateServicePricesInActiveOrders(serviceId, newPrice) {
-    orders.value.forEach(order => {
-      if (['accepted', 'additional', 'in_progress'].includes(order.status)) {
-        order.services.forEach(service => {
-          if (service.id === serviceId) {
-            service.price = newPrice;
-          }
-        });
+  async function updateServicePricesInActiveOrders(serviceId, newPrice) {
+    // В Firestore нет массового обновления "одним запросом" для разных документов.
+    // Нужно пройтись по всем активным заказам.
+    
+    const activeOrders = orders.value.filter(o => 
+      ['accepted', 'additional', 'in_progress'].includes(o.status)
+    );
+
+    for (const order of activeOrders) {
+      let changed = false;
+      order.services.forEach(service => {
+        if (service.id === serviceId) {
+          service.price = newPrice;
+          changed = true;
+        }
+      });
+      
+      if (changed) {
+        await saveOrderToFirebase(order);
       }
-    });
-    _save();
+    }
   }
 
   const ordersByDate = computed(() => (date) => {
@@ -417,12 +463,17 @@ export const useOrderStore = defineStore('orders', () => {
     return stats;
   }
 
+  // Запуск инициализации
+  init();
+
   return {
     orders,
     filterStatus,
     sortBy,
-    load: _load,
-    _load,
+    loading,
+    user,
+    // load больше не нужен, но для совместимости оставим пустышку или ссылку на init
+    load: init, 
     addOrder,
     updateOrder,
     deleteOrder,
