@@ -6,7 +6,7 @@
         <h1 class="text-h5 font-weight-medium">Настройки приложения</h1>
       </v-card-title>
       <v-card-text class="pa-0">
-        <v-card-text class="pa-0"> <v-card flat class="mb-4 bg-primary-lighten-5 rounded-0">
+        <v-card flat class="mb-4 bg-primary-lighten-5 rounded-0">
           <v-card-text class="d-flex align-center justify-space-between py-3">
             <div v-if="serviceStore.user">
               <div class="text-caption text-medium-emphasis">Аккаунт</div>
