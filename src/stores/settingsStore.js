@@ -5,44 +5,45 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/firebase';
 
 export const useSettingsStore = defineStore('settings', () => {
-  // === Значения по умолчанию ===
+  // === Значения по умолчанию (СТРОГО КАК БЫЛО) ===
   const defaultAppSettings = {
-    // === СТАТУСЫ (Раздельные конфиги) ===
+    // 1. Статусы (Раздельные настройки для каждого типа сущности)
     orderStatuses: { accepted: true, additional: true, in_progress: true, completed: true, delivered: true },
     serviceStatuses: { accepted: true, additional: true, in_progress: true, completed: true },
     detailStatuses: { accepted: true, additional: true, in_progress: true, completed: true },
-    additionalStatusName: 'Ждет запчасти',
+    
+    additionalStatusName: 'Доп. статус',
     defaultOrderStatus: 'accepted',
     
-    // === СИНХРОНИЗАЦИЯ (Важная логика) ===
-    // Если все услуги перешли в статус X -> меняем статус заказа
+    // 2. Синхронизация (Сложная структура)
+    // Услуги -> Заказ (просто boolean)
     syncServiceToOrderStatus: { 
       additional: true,
       in_progress: true, 
       completed: true 
     },
-    // Если статус заказа меняется -> меняем услуги (с подтверждением или без)
+    // Заказ -> Услуги (объект с подтверждением)
     syncOrderToServiceStatus: { 
       additional: { enabled: false, confirm: true },
       in_progress: { enabled: true, confirm: true },
-      completed: { enabled: true, confirm: false } // Например, при завершении заказа услуги завершаются автоматом
+      completed: { enabled: true, confirm: false } 
     },
     
-    // === UI и Тексты ===
+    // 3. UI и Тексты
     baseFontSize: 16,
     detailsTabLabel: 'Детали',
     orderFormLastNameLabel: 'Фамилия',
     
-    // === КАЛЕНДАРЬ (Индикаторы) ===
-    miniCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'], // Макс 3
-    fullCalendarIndicatorStatuses: ['in_progress', 'deadline'], // Макс 3
+    // 4. Индикаторы календаря (Массивы строк)
+    miniCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'],
+    fullCalendarIndicatorStatuses: ['in_progress', 'deadline'],
     
-    // === ПОВЕДЕНИЕ ===
+    // 5. Поведение
     showCompletedOrders: true,
     enableHapticFeedback: true,
     enablePullToRefresh: true,
     
-    // === ШАБЛОНЫ ===
+    // 6. Шаблоны
     messageTemplates: [],
   };
 
@@ -62,7 +63,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const user = ref(null);
   let unsubscribe = null;
 
-  // === Логика сохранения (без изменений) ===
+  // === Логика сохранения ===
   function saveToLocalStorage() {
     localStorage.setItem('appSettings', JSON.stringify(appSettings.value));
     localStorage.setItem('requiredFields', JSON.stringify(requiredFields.value));
@@ -92,21 +93,38 @@ export const useSettingsStore = defineStore('settings', () => {
     saveToFirebase();
   }
 
-  // === Инициализация ===
+  // === Инициализация (с миграцией старых данных если нужно) ===
   function init() {
     const storedSettings = localStorage.getItem('appSettings');
     const storedFields = localStorage.getItem('requiredFields');
 
     if (storedSettings) {
-      const parsed = JSON.parse(storedSettings);
-      const cleanSettings = { ...defaultAppSettings };
-      // Восстанавливаем только существующие ключи, сохраняя структуру объектов
-      Object.keys(defaultAppSettings).forEach(key => {
-        if (parsed[key] !== undefined) {
-          cleanSettings[key] = parsed[key];
+      try {
+        const parsed = JSON.parse(storedSettings);
+        
+        // Восстановление структуры syncOrderToServiceStatus если она была повреждена или старого формата
+        // (Обязательно проверяем, является ли значение объектом с полем enabled)
+        if (parsed.syncOrderToServiceStatus) {
+           // Простая проверка целостности
+           const checkKey = 'completed';
+           if (typeof parsed.syncOrderToServiceStatus[checkKey] !== 'object') {
+             // Если структура битая, сбрасываем секцию синхронизации на дефолт
+             parsed.syncOrderToServiceStatus = defaultAppSettings.syncOrderToServiceStatus;
+           }
         }
-      });
-      appSettings.value = cleanSettings;
+
+        // Merge аккуратный
+        const cleanSettings = { ...defaultAppSettings };
+        Object.keys(defaultAppSettings).forEach(key => {
+          if (parsed[key] !== undefined) {
+            cleanSettings[key] = parsed[key];
+          }
+        });
+        appSettings.value = cleanSettings;
+      } catch (e) {
+        console.error("Error parsing settings", e);
+        appSettings.value = { ...defaultAppSettings };
+      }
     }
     
     if (storedFields) {
