@@ -1,86 +1,125 @@
-// clientsStore.js
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+// Импортируем Firebase
+import { 
+  collection, 
+  onSnapshot, 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  query, 
+  orderBy 
+} from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '@/firebase';
 
 export const useClientsStore = defineStore('clients', () => {
   const clients = ref([]);
-  const sortBy = ref('name');
-  
-function loadClients() {
-  try {
-    const stored = localStorage.getItem('clientsDatabase');
-    if (stored) {
-      let parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) {
-        // Простая миграция для добавления lastName
-        parsed = parsed.map(client => {
-          if (client.name && !client.lastName) {
-            const nameParts = client.name.split(' ');
-            client.lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-            client.name = nameParts[0] || '';
-          }
-          return client;
-        });
-        clients.value = parsed;
+  const loading = ref(false);
+  const user = ref(null);
+  let unsubscribe = null;
+
+  // === 1. Инициализация и синхронизация ===
+  function init() {
+    onAuthStateChanged(auth, (currentUser) => {
+      user.value = currentUser;
+      if (currentUser) {
+        subscribeToUserClients(currentUser.uid);
       } else {
-        throw new Error('Stored clients is not an array');
+        clients.value = [];
+        if (unsubscribe) unsubscribe();
       }
-    }
-  } catch (error) {
-    console.error('Ошибка загрузки clients из localStorage:', error);
-    clients.value = [];
-    localStorage.removeItem('clientsDatabase');
+    });
   }
-}
-  
-  function saveClients() {
-    localStorage.setItem('clientsDatabase', JSON.stringify(clients.value));
+
+  function subscribeToUserClients(userId) {
+    if (unsubscribe) unsubscribe();
+    loading.value = true;
+
+    // Сортируем по имени, чтобы список был красивым
+    const q = query(collection(db, 'users', userId, 'clients'), orderBy('name'));
+
+    // onSnapshot автоматически кэширует данные локально и обновляет их из облака
+    unsubscribe = onSnapshot(q, (snapshot) => {
+      clients.value = snapshot.docs.map(doc => ({
+        id: doc.id, // ID документа (в нашем случае это будет телефон)
+        ...doc.data()
+      }));
+      loading.value = false;
+    }, (error) => {
+      console.error("Ошибка синхронизации клиентов:", error);
+      loading.value = false;
+    });
   }
-  
-  function addOrUpdateClient(clientData) {
+
+  // === 2. Добавление или Обновление (Умная логика) ===
+  async function addOrUpdateClient(clientData) {
+    if (!user.value) return;
+
+    // Извлекаем данные
     const { name, lastName = '', phone, services = [], notes = '' } = clientData;
     
-    const existingIndex = clients.value.findIndex(c => c.phone === phone);
+    // Ищем, есть ли такой клиент уже в нашем загруженном списке
+    // Используем phone как уникальный ключ
+    const existingClient = clients.value.find(c => c.phone === phone);
+
+    // Подготовка новых данных
+    // Если клиент был, берем его старые счетчики, иначе начинаем с нуля
+    const totalOrders = existingClient ? (existingClient.totalOrders || 0) + 1 : 1;
     
+    // Логика истории (последние 10 заказов)
+    const newHistoryEntry = { 
+      date: new Date().toISOString(), 
+      services: services 
+    };
+    
+    let history = [];
+    if (existingClient && Array.isArray(existingClient.history)) {
+      history = [...existingClient.history, newHistoryEntry].slice(-10);
+    } else {
+      history = [newHistoryEntry];
+    }
+
     const clientRecord = {
-      id: phone,
       name,
       lastName,
       phone,
       lastOrderDate: new Date().toISOString(),
-      totalOrders: existingIndex >= 0 ? clients.value[existingIndex].totalOrders + 1 : 1,
-      favoriteServices: services,
-      notes,
-      history: existingIndex >= 0 ? 
-        [...clients.value[existingIndex].history, { date: new Date().toISOString(), services }].slice(-10) :
-        [{ date: new Date().toISOString(), services }]
+      totalOrders,
+      favoriteServices: services, // Обновляем любимые услуги последними
+      notes: notes || (existingClient ? existingClient.notes : ''), // Не стираем заметки, если новые пустые
+      history
     };
-    
-    if (existingIndex >= 0) {
-      // Обновляем запись, сохраняя некоторые старые значения
-      const oldRecord = clients.value[existingIndex];
-      clients.value[existingIndex] = {
-        ...oldRecord,
-        ...clientRecord,
-        totalOrders: oldRecord.totalOrders + 1,
-        history: [...oldRecord.history, { date: new Date().toISOString(), services }].slice(-10)
-      };
-    } else {
-      clients.value.push(clientRecord);
+
+    try {
+      // ИСПОЛЬЗУЕМ setDoc и phone как ID документа
+      // Это гарантирует, что в базе не будет дублей по телефону
+      await setDoc(doc(db, 'users', user.value.uid, 'clients', phone), clientRecord, { merge: true });
+    } catch (e) {
+      console.error("Ошибка сохранения клиента:", e);
     }
-    
-    saveClients();
   }
-  
-  // Поиск клиентов для автокомплита
+
+  // === 3. Удаление ===
+  async function deleteClient(phone) {
+    if (!user.value) return;
+    try {
+      // Удаляем по ID (который является телефоном)
+      await deleteDoc(doc(db, 'users', user.value.uid, 'clients', phone));
+    } catch (e) {
+      console.error("Ошибка удаления клиента:", e);
+    }
+  }
+
+  // === 4. Геттеры и Поиск (Оставляем как было, работает с локальным массивом) ===
   const searchClients = computed(() => (query) => {
     if (!query || query.length < 2) return [];
     
     const lowerQuery = query.toLowerCase();
     return clients.value
       .filter(client => 
-        client.name.toLowerCase().includes(lowerQuery) ||
-        client.phone.includes(query)
+        (client.name && client.name.toLowerCase().includes(lowerQuery)) ||
+        (client.phone && client.phone.includes(query))
       )
       .sort((a, b) => new Date(b.lastOrderDate) - new Date(a.lastOrderDate))
       .slice(0, 10);
@@ -91,20 +130,12 @@ function loadClients() {
   }
   
   function getClientByName(name) {
-    return clients.value.find(c => c.name.toLowerCase() === name.toLowerCase());
-  }
-  
-  function deleteClient(phone) {
-    const index = clients.value.findIndex(c => c.phone === phone);
-    if (index >= 0) {
-      clients.value.splice(index, 1);
-      saveClients();
-    }
+    return clients.value.find(c => c.name && c.name.toLowerCase() === name.toLowerCase());
   }
   
   function getTopClients(limit = 10) {
     return [...clients.value]
-      .sort((a, b) => b.totalOrders - a.totalOrders)
+      .sort((a, b) => (b.totalOrders || 0) - (a.totalOrders || 0))
       .slice(0, limit);
   }
   
@@ -113,16 +144,20 @@ function loadClients() {
       .sort((a, b) => new Date(b.lastOrderDate) - new Date(a.lastOrderDate))
       .slice(0, limit);
   }
-  
+
+  // Запуск при создании стора
+  init();
+
   return {
     clients,
-    sortBy,
-    loadClients,
+    loading,
+    user,
+    // loadClients больше не нужен, init делает это сам
     addOrUpdateClient,
+    deleteClient,
     searchClients,
     getClientByPhone,
     getClientByName,
-    deleteClient,
     getTopClients,
     getRecentClients
   };
