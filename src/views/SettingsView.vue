@@ -5,6 +5,7 @@
         <v-icon size="28" class="mr-3">mdi-tune</v-icon>
         <h1 class="text-h5 font-weight-medium">Настройки приложения</h1>
       </v-card-title>
+
       <v-card-text class="pa-0">
         <v-card flat class="mb-4 bg-primary-lighten-5 rounded-0">
           <v-card-text class="d-flex align-center justify-space-between py-3">
@@ -29,15 +30,14 @@
             <v-btn 
               v-else 
               variant="text" 
-              color="error"
+              color="error" 
               size="small"
               icon="mdi-logout"
               @click="logout"
             ></v-btn>
           </v-card-text>
         </v-card>
-          
-        <!-- Настройки обязательных полей -->
+
         <v-expansion-panels variant="accordion" class="mb-4">
           <v-expansion-panel>
             <v-expansion-panel-title>
@@ -124,7 +124,6 @@
           </v-expansion-panel>
         </v-expansion-panels>
 
-        <!-- Управление статусами -->
         <v-expansion-panels variant="accordion" class="mb-4">
           <v-expansion-panel>
             <v-expansion-panel-title>
@@ -179,7 +178,6 @@
                   <v-divider class="my-4"></v-divider>
                   <p class="text-subtitle-1 mb-2">Синхронизация статусов</p>
 
-                  <!-- Синхронизация услуг и деталей → заказ -->
                   <p class="text-body-2 mb-3">Автоматически менять статус заказа, если ВСЕ услуги и {{ settingsStore.appSettings.detailsTabLabel.toLowerCase() }} перешли в статус:</p>
                   <div class="sync-settings mb-4">
                     <div 
@@ -199,7 +197,6 @@
                     </div>
                   </div>
 
-                  <!-- Синхронизация заказ → услуги и детали -->
                   <v-divider class="my-4"></v-divider>
                   <p class="text-body-2 mb-3">Синхронизировать услуги и {{ settingsStore.appSettings.detailsTabLabel.toLowerCase() }} при смене статуса заказа:</p>
                   <div class="sync-settings">
@@ -284,7 +281,6 @@
           </v-expansion-panel>
         </v-expansion-panels>
 
-        <!-- Смена темы -->
         <v-expansion-panels variant="accordion" class="mb-4">
           <v-expansion-panel>
             <v-expansion-panel-title>
@@ -320,7 +316,6 @@
           </v-expansion-panel>
         </v-expansion-panels>
 
-        <!-- FAQ -->
         <v-expansion-panels variant="accordion" class="mb-4">
           <v-expansion-panel>
             <v-expansion-panel-title>
@@ -349,7 +344,6 @@
           </v-expansion-panel>
         </v-expansion-panels>
 
-        <!-- Управление клиентами -->
         <v-expansion-panels variant="accordion" class="mb-4">
           <v-expansion-panel>
             <v-expansion-panel-title>
@@ -408,7 +402,6 @@
           </v-expansion-panel>
         </v-expansion-panels>
 
-        <!-- Шаблоны сообщений -->
         <v-expansion-panels variant="accordion" class="mb-4">
           <v-expansion-panel>
             <v-expansion-panel-title>
@@ -448,7 +441,6 @@
           </v-expansion-panel>
         </v-expansion-panels>
 
-        <!-- Дополнительные настройки -->
         <v-expansion-panels variant="accordion">
           <v-expansion-panel>
             <v-expansion-panel-title>
@@ -557,7 +549,6 @@
       </v-card-text>
     </v-card>
 
-    <!-- Диалог управления клиентами -->
     <v-dialog v-model="showClientsManager" max-width="800">
       <v-card>
         <v-card-title>Управление клиентами</v-card-title>
@@ -587,7 +578,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Диалог редактирования шаблона -->
     <v-dialog v-model="templateDialog.show" max-width="500">
       <v-card>
         <v-card-title class="d-flex justify-space-between align-center">
@@ -631,11 +621,18 @@ import { useClientsStore } from '@/stores/clientsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useConfirmationStore } from '@/stores/confirmationStore';
 
+// === FIREBASE AUTH ===
+import { signInWithPopup, signOut } from 'firebase/auth';
+import { auth, googleProvider } from '@/firebase';
+import { useServiceStore } from '@/stores/serviceStore';
+// =====================
+
 const themeStore = useThemeStore();
 const clientsStore = useClientsStore();
 const settingsStore = useSettingsStore();
 const { appSettings } = storeToRefs(settingsStore);
 const confirmationStore = useConfirmationStore();
+const serviceStore = useServiceStore(); // Инициализация стора услуг
 
 const showClientsManager = ref(false);
 
@@ -645,6 +642,24 @@ const templateDialog = ref({
   id: null,
   text: '',
 });
+
+// === ЛОГИКА ВХОДА/ВЫХОДА ===
+const login = async () => {
+  try {
+    await signInWithPopup(auth, googleProvider);
+  } catch (e) {
+    console.error("Ошибка входа:", e);
+  }
+};
+
+const logout = async () => {
+  try {
+    await signOut(auth);
+  } catch (e) {
+    console.error("Ошибка выхода:", e);
+  }
+};
+// ===========================
 
 const orderStatusLabels = computed(() => ({
   accepted: 'Принят',
@@ -783,21 +798,6 @@ const deleteTemplate = async (id) => {
   );
   if (confirmed) {
     settingsStore.deleteMessageTemplate(id);
-  }
-};
-  const login = async () => {
-  try {
-    await signInWithPopup(auth, googleProvider);
-  } catch (e) {
-    console.error("Ошибка входа:", e);
-  }
-};
-
-const logout = async () => {
-  try {
-    await signOut(auth);
-  } catch (e) {
-    console.error("Ошибка выхода:", e);
   }
 };
 </script>
