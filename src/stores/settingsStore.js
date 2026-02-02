@@ -14,6 +14,7 @@ export const useSettingsStore = defineStore('settings', () => {
     detailStatuses: { accepted: true, in_progress: true, completed: true },
     additionalStatusName: 'Ждет запчасти',
     defaultOrderStatus: 'accepted',
+    baseFontSize: 16,
     syncServiceToOrderStatus: { completed: true },
     syncOrderToServiceStatus: { 
       completed: { enabled: true, confirm: true },
