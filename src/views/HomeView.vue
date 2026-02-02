@@ -136,12 +136,14 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useOrderStore } from '@/stores/orderStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { storeToRefs } from 'pinia';
 import OrderCard from '@/components/OrderCard.vue';
 import OrderForm from '@/components/OrderForm.vue';
 import { useHapticFeedback } from '@/composables/useHapticFeedback';
 
 const orderStore = useOrderStore();
+const settingsStore = useSettingsStore();
 const { orders } = storeToRefs(orderStore);
 const { triggerHapticFeedback } = useHapticFeedback();
 
