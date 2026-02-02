@@ -5,33 +5,39 @@
         <v-icon size="28" class="mr-3">mdi-tune</v-icon>
         <h1 class="text-h5 font-weight-medium">Настройки приложения</h1>
       </v-card-title>
-        <v-card flat class="mb-4 bg-primary-lighten-5">
-  <v-card-text class="d-flex align-center justify-space-between">
-    <div v-if="serviceStore.user">
-      <div class="text-subtitle-2">Вы вошли как:</div>
-      <div class="text-body-2 font-weight-bold">{{ serviceStore.user.displayName || serviceStore.user.email }}</div>
-    </div>
-    <div v-else class="text-subtitle-2">Синхронизация отключена</div>
-
-    <v-btn 
-      v-if="!serviceStore.user" 
-      color="primary" 
-      prepend-icon="mdi-google"
-      @click="login"
-    >
-      Войти
-    </v-btn>
-    <v-btn 
-      v-else 
-      variant="text" 
-      color="error"
-      @click="logout"
-    >
-      Выйти
-    </v-btn>
-  </v-card-text>
-</v-card>
       <v-card-text class="pa-0">
+        <v-card-text class="pa-0"> <v-card flat class="mb-4 bg-primary-lighten-5 rounded-0">
+          <v-card-text class="d-flex align-center justify-space-between py-3">
+            <div v-if="serviceStore.user">
+              <div class="text-caption text-medium-emphasis">Аккаунт</div>
+              <div class="text-body-2 font-weight-bold">{{ serviceStore.user.displayName || serviceStore.user.email }}</div>
+            </div>
+            <div v-else>
+              <div class="text-body-2">Синхронизация</div>
+              <div class="text-caption text-medium-emphasis">Войдите для сохранения</div>
+            </div>
+
+            <v-btn 
+              v-if="!serviceStore.user" 
+              color="primary" 
+              size="small"
+              prepend-icon="mdi-google"
+              @click="login"
+            >
+              Войти
+            </v-btn>
+            <v-btn 
+              v-else 
+              variant="text" 
+              color="error"
+              size="small"
+              icon="mdi-logout"
+              @click="logout"
+            ></v-btn>
+          </v-card-text>
+        </v-card>
+        <v-expansion-panels variant="accordion" class="mb-4">
+          
         <!-- Настройки обязательных полей -->
         <v-expansion-panels variant="accordion" class="mb-4">
           <v-expansion-panel>
