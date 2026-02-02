@@ -26,18 +26,14 @@
       <v-card flat class="mb-6 rounded-xl overflow-hidden settings-group">
         <v-list lines="one" class="pa-0">
           <v-list-item @click="router.push('/base-settings')" link>
-            <template v-slot:prepend>
-              <div class="icon-box bg-blue-lighten-4 text-blue"><v-icon>mdi-book-open-page-variant</v-icon></div>
-            </template>
+            <template v-slot:prepend><div class="icon-box bg-blue-lighten-4 text-blue"><v-icon>mdi-book-open-page-variant</v-icon></div></template>
             <v-list-item-title>Справочники</v-list-item-title>
             <v-list-item-subtitle>Услуги, детали, теги</v-list-item-subtitle>
             <template v-slot:append><v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon></template>
           </v-list-item>
           <v-divider class="ml-14"></v-divider>
           <v-list-item @click="showClientsManager = true" link>
-             <template v-slot:prepend>
-              <div class="icon-box bg-purple-lighten-4 text-purple"><v-icon>mdi-account-group</v-icon></div>
-            </template>
+             <template v-slot:prepend><div class="icon-box bg-purple-lighten-4 text-purple"><v-icon>mdi-account-group</v-icon></div></template>
             <v-list-item-title>База клиентов</v-list-item-title>
              <v-list-item-subtitle>{{ clientsStore.clients.length }} записей</v-list-item-subtitle>
             <template v-slot:append><v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon></template>
@@ -49,49 +45,40 @@
       <v-card flat class="mb-6 rounded-xl overflow-hidden settings-group">
         <v-list lines="one" class="pa-0">
           <v-list-item @click="dialogs.requiredFields = true" link>
-            <template v-slot:prepend>
-              <div class="icon-box bg-orange-lighten-4 text-orange"><v-icon>mdi-form-select</v-icon></div>
-            </template>
+            <template v-slot:prepend><div class="icon-box bg-orange-lighten-4 text-orange"><v-icon>mdi-form-select</v-icon></div></template>
             <v-list-item-title>Обязательные поля</v-list-item-title>
             <template v-slot:append><v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon></template>
           </v-list-item>
           <v-divider class="ml-14"></v-divider>
           <v-list-item @click="dialogs.statuses = true" link>
-            <template v-slot:prepend>
-              <div class="icon-box bg-green-lighten-4 text-green"><v-icon>mdi-swap-horizontal-bold</v-icon></div>
-            </template>
-            <v-list-item-title>Статусы и Синхронизация</v-list-item-title>
+            <template v-slot:prepend><div class="icon-box bg-green-lighten-4 text-green"><v-icon>mdi-swap-horizontal-bold</v-icon></div></template>
+            <v-list-item-title>Статусы и Этапы</v-list-item-title>
+             <v-list-item-subtitle>Настройка воронки</v-list-item-subtitle>
             <template v-slot:append><v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon></template>
           </v-list-item>
           <v-divider class="ml-14"></v-divider>
           <v-list-item @click="dialogs.templates = true" link>
-            <template v-slot:prepend>
-              <div class="icon-box bg-teal-lighten-4 text-teal"><v-icon>mdi-message-text-outline</v-icon></div>
-            </template>
+            <template v-slot:prepend><div class="icon-box bg-teal-lighten-4 text-teal"><v-icon>mdi-message-text-outline</v-icon></div></template>
             <v-list-item-title>Шаблоны сообщений</v-list-item-title>
             <template v-slot:append><v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon></template>
           </v-list-item>
         </v-list>
       </v-card>
 
-      <p class="text-caption text-medium-emphasis ml-4 mb-2 font-weight-bold text-uppercase">Интерфейс</p>
+      <p class="text-caption text-medium-emphasis ml-4 mb-2 font-weight-bold text-uppercase">Приложение</p>
       <v-card flat class="mb-6 rounded-xl overflow-hidden settings-group">
         <v-list lines="one" class="pa-0">
            <v-list-item @click="dialogs.calendar = true" link>
-            <template v-slot:prepend>
-              <div class="icon-box bg-indigo-lighten-4 text-indigo"><v-icon>mdi-calendar-month</v-icon></div>
-            </template>
+            <template v-slot:prepend><div class="icon-box bg-indigo-lighten-4 text-indigo"><v-icon>mdi-calendar-month</v-icon></div></template>
             <v-list-item-title>Календарь</v-list-item-title>
-            <v-list-item-subtitle>Настройка индикаторов</v-list-item-subtitle>
+            <v-list-item-subtitle>Индикаторы</v-list-item-subtitle>
             <template v-slot:append><v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon></template>
           </v-list-item>
           
           <v-divider class="ml-14"></v-divider>
 
           <v-list-item>
-            <template v-slot:prepend>
-               <div class="icon-box bg-grey-lighten-3 text-grey-darken-3"><v-icon>mdi-theme-light-dark</v-icon></div>
-            </template>
+            <template v-slot:prepend><div class="icon-box bg-grey-lighten-3 text-grey-darken-3"><v-icon>mdi-theme-light-dark</v-icon></div></template>
             <v-list-item-title>Темная тема</v-list-item-title>
             <template v-slot:append>
                <v-switch :model-value="themeStore.theme === 'dark'" @update:model-value="toggleTheme" color="primary" hide-details density="compact" inset></v-switch>
@@ -101,9 +88,7 @@
            <v-divider class="ml-14"></v-divider>
 
            <v-list-item>
-            <template v-slot:prepend>
-               <div class="icon-box bg-yellow-lighten-4 text-orange-darken-4"><v-icon>mdi-eye-check-outline</v-icon></div>
-            </template>
+            <template v-slot:prepend><div class="icon-box bg-yellow-lighten-4 text-orange-darken-4"><v-icon>mdi-eye-check-outline</v-icon></div></template>
             <v-list-item-title>Показывать выполненные</v-list-item-title>
             <template v-slot:append>
                <v-switch v-model="settingsStore.appSettings.showCompletedOrders" @change="updateAppSettings" color="primary" hide-details density="compact" inset></v-switch>
@@ -111,10 +96,9 @@
           </v-list-item>
 
           <v-divider class="ml-14"></v-divider>
+
           <v-list-item>
-            <template v-slot:prepend>
-               <div class="icon-box bg-red-lighten-4 text-red"><v-icon>mdi-vibrate</v-icon></div>
-            </template>
+            <template v-slot:prepend><div class="icon-box bg-red-lighten-4 text-red"><v-icon>mdi-vibrate</v-icon></div></template>
             <v-list-item-title>Вибрация</v-list-item-title>
             <template v-slot:append>
                <v-switch v-model="settingsStore.appSettings.enableHapticFeedback" @change="updateAppSettings" color="primary" hide-details density="compact" inset></v-switch>
@@ -122,22 +106,18 @@
           </v-list-item>
 
            <v-divider class="ml-14"></v-divider>
-          <v-list-item>
-            <template v-slot:prepend>
-               <div class="icon-box bg-cyan-lighten-4 text-cyan"><v-icon>mdi-refresh</v-icon></div>
-            </template>
+
+           <v-list-item>
+            <template v-slot:prepend><div class="icon-box bg-cyan-lighten-4 text-cyan"><v-icon>mdi-refresh</v-icon></div></template>
             <v-list-item-title>Pull to Refresh</v-list-item-title>
             <template v-slot:append>
                <v-switch v-model="settingsStore.appSettings.enablePullToRefresh" @change="updateAppSettings" color="primary" hide-details density="compact" inset></v-switch>
             </template>
           </v-list-item>
-
         </v-list>
       </v-card>
 
-       <v-btn block variant="text" color="error" class="mb-8" @click="resetAllSettings">
-         Сбросить настройки
-       </v-btn>
+       <v-btn block variant="text" color="error" class="mb-8" @click="resetAllSettings">Сбросить настройки</v-btn>
     </v-container>
 
     <v-dialog v-model="dialogs.statuses" fullscreen transition="dialog-bottom-transition">
@@ -158,44 +138,41 @@
               <v-text-field
                 v-model="settingsStore.appSettings.additionalStatusName"
                 label="Название доп. статуса"
-                variant="outlined"
-                density="comfortable"
-                hide-details
-                class="mb-6"
+                variant="outlined" density="comfortable" hide-details class="mb-6"
                 @update:modelValue="updateAppSettings"
               ></v-text-field>
 
               <div class="mb-6">
-                <p class="text-caption font-weight-bold mb-2">ДЛЯ ЗАКАЗОВ</p>
+                <p class="text-caption font-weight-bold mb-2 text-uppercase text-medium-emphasis">Для заказов</p>
                 <div class="d-flex flex-wrap gap-2">
                    <v-chip v-for="(label, key) in orderStatusLabels" :key="key" filter
                      variant="outlined" :model-value="settingsStore.appSettings.orderStatuses[key]"
                      @click="toggleStatus('orderStatuses', key)" :disabled="key === 'accepted'"
-                     color="primary" label>
+                     color="primary" label size="large" class="px-4">
                      {{ label }}
                    </v-chip>
                 </div>
               </div>
 
               <div class="mb-6">
-                <p class="text-caption font-weight-bold mb-2">ДЛЯ УСЛУГ</p>
+                <p class="text-caption font-weight-bold mb-2 text-uppercase text-medium-emphasis">Для услуг</p>
                 <div class="d-flex flex-wrap gap-2">
                    <v-chip v-for="(label, key) in serviceStatusLabels" :key="key" filter
                      variant="outlined" :model-value="settingsStore.appSettings.serviceStatuses[key]"
                      @click="toggleStatus('serviceStatuses', key)" :disabled="key === 'accepted'"
-                     color="primary" label>
+                     color="primary" label size="large" class="px-4">
                      {{ label }}
                    </v-chip>
                 </div>
               </div>
 
               <div class="mb-6">
-                <p class="text-caption font-weight-bold mb-2">ДЛЯ "{{ settingsStore.appSettings.detailsTabLabel.toUpperCase() }}"</p>
+                <p class="text-caption font-weight-bold mb-2 text-uppercase text-medium-emphasis">Для "{{ settingsStore.appSettings.detailsTabLabel }}"</p>
                 <div class="d-flex flex-wrap gap-2">
                    <v-chip v-for="(label, key) in detailStatusLabels" :key="key" filter
                      variant="outlined" :model-value="settingsStore.appSettings.detailStatuses[key]"
                      @click="toggleStatus('detailStatuses', key)" :disabled="key === 'accepted'"
-                     color="primary" label>
+                     color="primary" label size="large" class="px-4">
                      {{ label }}
                    </v-chip>
                 </div>
@@ -203,46 +180,48 @@
             </v-window-item>
 
             <v-window-item value="sync">
-               <v-card flat class="bg-surface rounded-lg pa-3 mb-4 border">
+               <v-card flat class="bg-surface rounded-lg pa-4 mb-4 border">
                  <div class="text-subtitle-2 font-weight-bold mb-2">Услуги → Заказ</div>
                  <p class="text-caption text-medium-emphasis mb-3">
                    Автоматически переводить заказ в статус, когда ВСЕ услуги и детали перешли в него.
                  </p>
-                 <div v-for="(label, key) in syncableServiceStatuses" :key="key" class="d-flex align-center py-1">
+                 <div v-for="(label, key) in syncableServiceStatuses" :key="key" class="d-flex align-center justify-space-between py-2 border-bottom">
+                    <span class="text-body-2">{{ label }}</span>
                     <v-checkbox-btn 
                       v-model="settingsStore.appSettings.syncServiceToOrderStatus[key]"
                       color="primary"
                       @change="updateAppSettings"
                       :disabled="!settingsStore.appSettings.orderStatuses[key]"
                     ></v-checkbox-btn>
-                    <span class="text-body-2 ml-2">{{ label }}</span>
                  </div>
                </v-card>
 
-               <v-card flat class="bg-surface rounded-lg pa-3 border">
+               <v-card flat class="bg-surface rounded-lg pa-4 border">
                  <div class="text-subtitle-2 font-weight-bold mb-2">Заказ → Услуги</div>
                  <p class="text-caption text-medium-emphasis mb-3">
                    При смене статуса заказа предлагать сменить статус всех услуг.
                  </p>
-                 <div v-for="(label, key) in syncableOrderStatuses" :key="key" class="mb-3">
-                    <div class="d-flex align-center">
+                 
+                 <div v-for="(label, key) in syncableOrderStatuses" :key="key" class="mb-4">
+                    <div class="d-flex align-center justify-space-between">
+                       <span class="text-body-2 font-weight-bold">{{ label }}</span>
                        <v-switch
                          v-model="settingsStore.appSettings.syncOrderToServiceStatus[key].enabled"
                          color="primary"
-                         hide-details density="compact"
+                         hide-details density="compact" inset
                          @change="updateAppSettings"
                          :disabled="!settingsStore.appSettings.serviceStatuses[key]"
                        ></v-switch>
-                       <span class="text-body-2 font-weight-bold ml-2">{{ label }}</span>
                     </div>
-                    <div class="ml-12 mt-1" v-if="settingsStore.appSettings.syncOrderToServiceStatus[key].enabled">
+                    
+                    <div class="ml-0 mt-2 d-flex align-center" v-if="settingsStore.appSettings.syncOrderToServiceStatus[key].enabled">
                        <v-checkbox-btn 
                          v-model="settingsStore.appSettings.syncOrderToServiceStatus[key].confirm"
                          color="secondary"
                          density="compact"
                          @change="updateAppSettings"
                        ></v-checkbox-btn>
-                       <span class="text-caption">Спрашивать подтверждение</span>
+                       <span class="text-caption text-medium-emphasis ml-2">Спрашивать подтверждение</span>
                     </div>
                  </div>
                </v-card>
@@ -263,7 +242,7 @@
              Выберите, какие статусы будут отображаться точками. Максимум 3.
            </p>
 
-           <v-card flat class="bg-surface rounded-xl pa-4 mb-4">
+           <v-card flat class="bg-surface rounded-xl pa-4 mb-4 border">
              <div class="text-subtitle-2 font-weight-bold mb-3">Мини-календарь</div>
              <div class="d-flex flex-wrap gap-2">
                <v-chip
@@ -273,15 +252,14 @@
                  :model-value="settingsStore.appSettings.miniCalendarIndicatorStatuses.includes(status.key)"
                  @click="toggleCalendarIndicator('mini', status.key)"
                  :disabled="!settingsStore.appSettings.miniCalendarIndicatorStatuses.includes(status.key) && settingsStore.appSettings.miniCalendarIndicatorStatuses.length >= 3"
-                 color="primary"
-                 label
+                 color="primary" label
                >
                  {{ status.label }}
                </v-chip>
              </div>
            </v-card>
 
-           <v-card flat class="bg-surface rounded-xl pa-4">
+           <v-card flat class="bg-surface rounded-xl pa-4 border">
              <div class="text-subtitle-2 font-weight-bold mb-3">Полный календарь</div>
              <div class="d-flex flex-wrap gap-2">
                <v-chip
@@ -291,8 +269,7 @@
                  :model-value="settingsStore.appSettings.fullCalendarIndicatorStatuses.includes(status.key)"
                  @click="toggleCalendarIndicator('full', status.key)"
                  :disabled="!settingsStore.appSettings.fullCalendarIndicatorStatuses.includes(status.key) && settingsStore.appSettings.fullCalendarIndicatorStatuses.length >= 3"
-                 color="secondary"
-                 label
+                 color="secondary" label
                >
                  {{ status.label }}
                </v-chip>
@@ -309,7 +286,7 @@
           <v-toolbar-title class="text-body-1 font-weight-bold">Обязательные поля</v-toolbar-title>
         </v-toolbar>
         <v-card-text>
-          <v-card flat class="rounded-xl overflow-hidden mb-6">
+          <v-card flat class="rounded-xl overflow-hidden mb-6 border">
              <v-list lines="one">
                 <v-list-item v-for="(label, key) in requiredFieldsMap" :key="key">
                    <v-list-item-title>{{ label }}</v-list-item-title>
@@ -320,7 +297,7 @@
              </v-list>
           </v-card>
           
-          <v-card flat class="rounded-xl pa-4">
+          <v-card flat class="rounded-xl pa-4 border">
             <v-text-field
                 v-model="settingsStore.appSettings.orderFormLastNameLabel"
                 label="Название поля 'Фамилия'"
@@ -349,7 +326,7 @@
         </v-toolbar>
         <v-card-text class="pa-0">
           <v-list v-if="settingsStore.appSettings.messageTemplates.length" class="bg-transparent">
-             <v-card flat class="rounded-xl overflow-hidden mx-4 mt-4">
+             <v-card flat class="rounded-xl overflow-hidden mx-4 mt-4 border">
               <v-list lines="two">
                 <template v-for="(template, index) in settingsStore.appSettings.messageTemplates" :key="template.id">
                    <v-list-item @click="openTemplateDialog(template)">
@@ -391,7 +368,7 @@
         </v-toolbar>
         <v-card-text class="pa-0">
            <v-list class="bg-transparent">
-             <v-card flat class="rounded-xl overflow-hidden mx-4 mt-4">
+             <v-card flat class="rounded-xl overflow-hidden mx-4 mt-4 border">
                 <v-list-item v-for="(client, index) in clientsStore.getRecentClients(50)" :key="client.id">
                    <v-list-item-title>{{ client.name }} {{ client.lastName }}</v-list-item-title>
                    <v-list-item-subtitle>{{ client.phone }}</v-list-item-subtitle>
@@ -457,6 +434,7 @@ const requiredFieldsMap = computed(() => ({
   notes: 'Заметки'
 }));
 
+// Метки статусов
 const orderStatusLabels = computed(() => ({
   accepted: 'Принят',
   additional: settingsStore.appSettings.additionalStatusName,
@@ -465,7 +443,6 @@ const orderStatusLabels = computed(() => ({
   delivered: 'Сдан',
 }));
 
-// Важно: Этих компютедов не было в прошлом "упрощенном" ответе
 const serviceStatusLabels = computed(() => ({
   accepted: 'Принят',
   additional: settingsStore.appSettings.additionalStatusName,
@@ -480,6 +457,7 @@ const detailStatusLabels = computed(() => ({
   completed: 'Выполнено',
 }));
 
+// Статусы для синхронизации
 const syncableServiceStatuses = computed(() => ({
   additional: settingsStore.appSettings.additionalStatusName,
   in_progress: 'В работе',
@@ -492,6 +470,7 @@ const syncableOrderStatuses = computed(() => ({
   completed: 'Выполнено',
 }));
 
+// Активные статусы (для календаря)
 const activeOrderStatuses = computed(() => {
   return Object.entries(orderStatusLabels.value)
     .filter(([key]) => appSettings.value.orderStatuses[key])
@@ -508,10 +487,12 @@ const updateRequiredFields = () => settingsStore.updateRequiredFields(settingsSt
 // Умный тоггл статусов с указанием категории
 const toggleStatus = (category, key) => {
   if (key === 'accepted') return;
+  // Прямое изменение реактивного объекта Pinia
   settingsStore.appSettings[category][key] = !settingsStore.appSettings[category][key];
   updateAppSettings();
 };
 
+// Тоггл индикаторов календаря с лимитом
 const toggleCalendarIndicator = (type, key) => {
   const list = type === 'mini' 
     ? settingsStore.appSettings.miniCalendarIndicatorStatuses 
@@ -597,4 +578,6 @@ const resetAllSettings = async () => {
 }
 .gap-2 { gap: 8px; }
 .border { border: 1px solid rgba(var(--v-border-color), 0.12); }
+.border-bottom { border-bottom: 1px solid rgba(var(--v-border-color), 0.12); }
+.border-bottom:last-child { border-bottom: none; }
 </style>
