@@ -14,7 +14,7 @@ export const useSettingsStore = defineStore('settings', () => {
     additionalStatusName: 'Ждет запчасти',
     defaultOrderStatus: 'accepted',
     
-    // Синхронизация статусов
+    // Синхронизация статусов (оставляем логику, даже если UI скрыт)
     syncServiceToOrderStatus: { completed: true },
     syncOrderToServiceStatus: { 
       completed: { enabled: true, confirm: true },
@@ -92,18 +92,14 @@ export const useSettingsStore = defineStore('settings', () => {
     const storedFields = localStorage.getItem('requiredFields');
 
     if (storedSettings) {
-      // Merge с дефолтными, убирая удаленные ключи (если они были в кэше)
       const parsed = JSON.parse(storedSettings);
-      // Очистка от мусора (compactMode и т.д.)
+      // Чистим от старых удаленных ключей
       const cleanSettings = { ...defaultAppSettings };
-      
-      // Переносим только существующие в default ключи
       Object.keys(defaultAppSettings).forEach(key => {
         if (parsed[key] !== undefined) {
           cleanSettings[key] = parsed[key];
         }
       });
-      
       appSettings.value = cleanSettings;
     }
     
@@ -128,7 +124,6 @@ export const useSettingsStore = defineStore('settings', () => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (data.appSettings) {
-          // Мержим аккуратно, чтобы не вернуть мусор из облака, если он там был
           const merged = { ...appSettings.value };
           Object.keys(defaultAppSettings).forEach(key => {
             if (data.appSettings[key] !== undefined) {
@@ -166,7 +161,6 @@ export const useSettingsStore = defineStore('settings', () => {
     updateAppSettings(appSettings.value);
   }
   
-  // Хелпер для проверки обязательности поля
   function isFieldRequired(fieldName) {
     return requiredFields.value[fieldName] === true;
   }
