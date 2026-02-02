@@ -1,4 +1,31 @@
 <template>
+  <v-card flat class="mb-4 bg-primary-lighten-5">
+  <v-card-text class="d-flex align-center justify-space-between">
+    <div v-if="serviceStore.user">
+      <div class="text-subtitle-2">Вы вошли как:</div>
+      <div class="text-body-2 font-weight-bold">{{ serviceStore.user.displayName || serviceStore.user.email }}</div>
+    </div>
+    <div v-else class="text-subtitle-2">Синхронизация отключена</div>
+
+    <v-btn 
+      v-if="!serviceStore.user" 
+      color="primary" 
+      prepend-icon="mdi-google"
+      @click="login"
+    >
+      Войти
+    </v-btn>
+    <v-btn 
+      v-else 
+      variant="text" 
+      color="error"
+      @click="logout"
+    >
+      Выйти
+    </v-btn>
+  </v-card-text>
+</v-card>
+  
   <v-container class="settings-container">
     <v-card flat>
       <v-card-title class="d-flex align-center pa-6">
