@@ -1,10 +1,71 @@
 <template>
   <v-app :theme="themeStore.theme" class="app-root">
+    
     <v-app-bar app color="surface" flat density="comfortable" class="app-bar-minimal">
       <div class="d-flex align-center px-4 w-100">
-        <span class="text-h6 font-weight-bold">{{ currentTitle }}</span>
-        <v-spacer></v-spacer>
-        </div>
+        
+        <v-scale-transition mode="out-in">
+          <div v-if="showSearch" class="d-flex align-center flex-grow-1 w-100">
+            <v-text-field
+              v-model="searchStore.searchQuery"
+              placeholder="Поиск..."
+              variant="plain"
+              density="compact"
+              hide-details
+              autofocus
+              class="search-input"
+              clearable
+              @click:clear="closeSearch"
+            >
+              <template v-slot:prepend-inner>
+                <v-icon color="primary">mdi-magnify</v-icon>
+              </template>
+            </v-text-field>
+            <v-btn icon="mdi-close" variant="text" size="small" @click="closeSearch"></v-btn>
+          </div>
+
+          <div v-else class="d-flex align-center flex-grow-1 w-100">
+            <span class="text-h6 font-weight-bold">{{ currentTitle }}</span>
+            <v-spacer></v-spacer>
+            
+            <v-btn 
+              v-if="isSearchPage" 
+              icon="mdi-magnify" 
+              variant="text" 
+              @click="openSearch"
+            ></v-btn>
+
+            <v-menu
+              v-if="showSortMenu"
+              v-model="sortMenu"
+              location="bottom end"
+              :close-on-content-click="false"
+            >
+              <template v-slot:activator="{ props }">
+                <v-btn icon="mdi-sort-variant" variant="text" v-bind="props"></v-btn>
+              </template>
+              <v-card min-width="250" class="rounded-xl">
+                 <div v-if="isHomePage">
+                    <v-list dense>
+                      <v-list-subheader class="text-caption font-weight-bold">СТАТУС</v-list-subheader>
+                      <v-list-item
+                        v-for="status in availableStatuses"
+                        :key="status.value"
+                        @click="toggleStatusFilter(status.value)"
+                        density="compact"
+                      >
+                        <template v-slot:prepend>
+                          <v-checkbox-btn :model-value="orderStore.filterStatus.includes(status.value)"></v-checkbox-btn>
+                        </template>
+                        <v-list-item-title class="text-body-2">{{ status.text }}</v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+                 </div>
+              </v-card>
+            </v-menu>
+          </div>
+        </v-scale-transition>
+      </div>
     </v-app-bar>
 
     <v-main class="app-main">
@@ -20,7 +81,7 @@
       bg-color="surface"
       color="primary"
       grow
-      class="app-bottom-nav"
+      class="app-bottom-nav safe-area-fix"
       elevation="0"
     >
       <v-btn value="home" to="/">
@@ -45,38 +106,88 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { useThemeStore } from '@/stores/themeStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useOrderStore } from '@/stores/orderStore';
+import { useSearchStore } from '@/stores/searchStore';
 import { useServiceStore } from '@/stores/serviceStore';
 import { useClientsStore } from '@/stores/clientsStore';
 import { useTagsStore } from '@/stores/tagsStore';
-import { useOrderStore } from '@/stores/orderStore'; // Нужно для init
 import ConfirmationDialog from '@/components/common/ConfirmationDialog.vue';
 import TemplateSelectionDialog from '@/components/TemplateSelectionDialog.vue';
 
 const themeStore = useThemeStore();
 const settingsStore = useSettingsStore();
+const orderStore = useOrderStore();
+const searchStore = useSearchStore();
 const route = useRoute();
 
-// Инициализация сторов (Firebase listeners)
+// Инициализация
 useServiceStore();
 useClientsStore();
 useTagsStore();
 useOrderStore(); 
 
 const activeTab = ref('home');
+const sortMenu = ref(false);
+const showSearch = ref(false);
+
+const isHomePage = computed(() => route.name === 'home');
+const isSearchPage = computed(() => ['home', 'clients', 'base-settings'].includes(route.name));
+const showSortMenu = computed(() => isHomePage.value);
 
 const currentTitle = computed(() => {
-  if (route.name === 'home') return 'Заказы';
+  if (route.name === 'home') return 'Мои заказы';
   if (route.name === 'clients') return 'Клиенты';
   if (route.name === 'settings') return 'Настройки';
-  return 'AppManager';
+  if (route.name === 'base-settings') return 'Справочники';
+  return '';
 });
 
-// === ЛОГИКА МАСШТАБИРОВАНИЯ (REM) ===
-// Следим за настройкой и меняем root font-size
+// Логика поиска
+const openSearch = () => {
+  showSearch.value = true;
+};
+
+const closeSearch = () => {
+  showSearch.value = false;
+  searchStore.setSearchQuery('');
+};
+
+// Если ушли со страницы поиска - сбрасываем
+watch(() => route.name, () => {
+  showSearch.value = false;
+  searchStore.setSearchQuery('');
+});
+
+// Статусы для фильтра
+const availableStatuses = computed(() => {
+  const allStatuses = [
+    { value: 'accepted', text: orderStore.getStatusText('accepted') },
+    { value: 'additional', text: orderStore.getStatusText('additional') },
+    { value: 'in_progress', text: orderStore.getStatusText('in_progress') },
+    { value: 'completed', text: orderStore.getStatusText('completed') },
+    { value: 'delivered', text: orderStore.getStatusText('delivered') },
+    { value: 'cancelled', text: orderStore.getStatusText('cancelled') }
+  ];
+  return allStatuses.filter(s => {
+    if (s.value === 'cancelled') return true;
+    return settingsStore.appSettings.orderStatuses?.[s.value];
+  });
+});
+
+const toggleStatusFilter = (statusValue) => {
+  const index = orderStore.filterStatus.indexOf(statusValue);
+  if (index === -1) {
+    orderStore.filterStatus.push(statusValue);
+  } else {
+    orderStore.filterStatus.splice(index, 1);
+  }
+};
+
+// Масштабирование
 watch(() => settingsStore.appSettings.baseFontSize, (newSize) => {
   if (newSize) {
     document.documentElement.style.fontSize = `${newSize}px`;
@@ -97,33 +208,38 @@ onMounted(() => {
 </script>
 
 <style>
-/* Глобальные настройки */
 :root {
-  --app-base-font-size: 16px; /* Значение по умолчанию */
+  --app-base-font-size: 16px;
+  /* Резервный отступ, если env() не сработает (например на старых Android планшетах) */
+  --safe-area-bottom: env(safe-area-inset-bottom, 16px); 
 }
 
 html {
   font-size: var(--app-base-font-size);
-  /* Запрещаем выделение текста для "нативного" ощущения */
-  -webkit-user-select: none;
-  user-select: none; 
 }
 
-body {
-  background-color: rgb(var(--v-theme-background));
-  overscroll-behavior-y: none; /* Убираем эффект резинки на iOS */
-}
-
-/* Сброс Vuetify */
 .v-application {
-  font-size: 1rem !important;
+  font-size: 1rem !important; 
 }
 
-/* Тонкая линия навигации */
-.app-bottom-nav {
+/* === Фикс нижней панели === */
+.app-bottom-nav.safe-area-fix {
   border-top: 1px solid rgba(var(--v-border-color), 0.08);
+  /* Высота = стандартные 56px + отступ снизу */
+  height: calc(56px + var(--safe-area-bottom) + 8px) !important;
+  /* Внутренний отступ, чтобы иконки не прилипали к низу */
+  padding-bottom: calc(var(--safe-area-bottom) + 8px) !important;
 }
+
+/* Шапка */
 .app-bar-minimal {
   border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+/* Поле поиска в шапке */
+.search-input .v-field__input {
+  font-size: 1.1rem;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 </style>
