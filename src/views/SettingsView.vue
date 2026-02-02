@@ -782,6 +782,21 @@ const deleteTemplate = async (id) => {
     settingsStore.deleteMessageTemplate(id);
   }
 };
+  const login = async () => {
+  try {
+    await signInWithPopup(auth, googleProvider);
+  } catch (e) {
+    console.error("Ошибка входа:", e);
+  }
+};
+
+const logout = async () => {
+  try {
+    await signOut(auth);
+  } catch (e) {
+    console.error("Ошибка выхода:", e);
+  }
+};
 </script>
 
 <style scoped>
