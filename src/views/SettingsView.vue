@@ -1,5 +1,11 @@
 <template>
-  <v-card flat class="mb-4 bg-primary-lighten-5">
+  <v-container class="settings-container">
+    <v-card flat>
+      <v-card-title class="d-flex align-center pa-6">
+        <v-icon size="28" class="mr-3">mdi-tune</v-icon>
+        <h1 class="text-h5 font-weight-medium">Настройки приложения</h1>
+      </v-card-title>
+        <v-card flat class="mb-4 bg-primary-lighten-5">
   <v-card-text class="d-flex align-center justify-space-between">
     <div v-if="serviceStore.user">
       <div class="text-subtitle-2">Вы вошли как:</div>
@@ -25,14 +31,6 @@
     </v-btn>
   </v-card-text>
 </v-card>
-  
-  <v-container class="settings-container">
-    <v-card flat>
-      <v-card-title class="d-flex align-center pa-6">
-        <v-icon size="28" class="mr-3">mdi-tune</v-icon>
-        <h1 class="text-h5 font-weight-medium">Настройки приложения</h1>
-      </v-card-title>
-
       <v-card-text class="pa-0">
         <!-- Настройки обязательных полей -->
         <v-expansion-panels variant="accordion" class="mb-4">
