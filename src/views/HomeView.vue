@@ -162,7 +162,6 @@ const { triggerHapticFeedback } = useHapticFeedback();
 const indicatorStatuses = computed(
   () => settingsStore.appSettings.fullCalendarIndicatorStatuses || []
 );
-const activeOrderStatuses = computed(() => settingsStore.appSettings.orderStatuses || {});
 const showCompletedOrders = computed(() => settingsStore.appSettings.showCompletedOrders);
 
 // Состояние
@@ -192,6 +191,30 @@ const formatDateShort = (dateStr) => {
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 };
 
+const normalizeStatus = (status) => (status ?? '').trim();
+
+const toDateObject = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  if (typeof value === 'object' && typeof value.toDate === 'function') {
+    return value.toDate();
+  }
+  if (typeof value === 'object' && typeof value.seconds === 'number') {
+    return new Date(value.seconds * 1000);
+  }
+  return null;
+};
+
+const getOrderDateKey = (order) => {
+  const dateValue = order.deadline ?? order.createDate;
+  const date = toDateObject(dateValue);
+  return date ? getLocalDateString(date) : null;
+};
+
 // Данные для календаря
 const currentYear = computed(() => currentDate.value.getFullYear());
 const currentMonthName = computed(() => 
@@ -202,9 +225,10 @@ const currentMonthName = computed(() =>
 const flatCalendarDays = computed(() => {
   const year = currentDate.value.getFullYear();
   const month = currentDate.value.getMonth();
-  const indicatorStatusList = indicatorStatuses.value;
+  const indicatorStatusList = indicatorStatuses.value
+    .map((status) => normalizeStatus(status))
+    .filter(Boolean);
   const indicatorStatusSet = new Set(indicatorStatusList);
-  const activeStatuses = activeOrderStatuses.value;
   
   // Первое число месяца
   const firstDayOfMonth = new Date(year, month, 1);
@@ -227,16 +251,15 @@ const flatCalendarDays = computed(() => {
     
     // Статистика заказов на этот день
     // Ищем заказы по deadline (или createDate)
-    const dayOrders = orders.value.filter(o => {
-       const oDate = o.deadline ? o.deadline.split('T')[0] : o.createDate.split('T')[0];
-       return oDate === dateStr;
-    });
+    const dayOrders = orders.value.filter((order) => getOrderDateKey(order) === dateStr);
 
-    const indicatorOrders = dayOrders.filter(
-      (order) => indicatorStatusSet.has(order.status) && activeStatuses[order.status]
-    );
+    const indicatorOrders = dayOrders.filter((order) => {
+      const status = normalizeStatus(order.status);
+      return indicatorStatusSet.has(status);
+    });
     const statusCounts = indicatorOrders.reduce((acc, order) => {
-      acc[order.status] = (acc[order.status] || 0) + 1;
+      const status = normalizeStatus(order.status);
+      acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {});
     const statuses = {};
@@ -262,22 +285,24 @@ const filteredOrders = computed(() => {
   
   if (!showCompletedOrders.value) {
     const hiddenStatuses = new Set(['completed', 'cancelled']);
-    list = list.filter((order) => !hiddenStatuses.has(order.status));
+    list = list.filter((order) => !hiddenStatuses.has(normalizeStatus(order.status)));
   }
 
   if (selectedDate.value) {
-    list = list.filter(o => {
-      const oDate = o.deadline ? o.deadline.split('T')[0] : o.createDate.split('T')[0];
-      return oDate === selectedDate.value;
-    });
+    list = list.filter((order) => getOrderDateKey(order) === selectedDate.value);
   }
   
   // Сортировка: Ближайшие сверху
-  return list.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+  return list.sort((a, b) => {
+    const aDate = toDateObject(a.deadline) ?? toDateObject(a.createDate);
+    const bDate = toDateObject(b.deadline) ?? toDateObject(b.createDate);
+    return (aDate?.getTime() ?? 0) - (bDate?.getTime() ?? 0);
+  });
 });
 
 // Методы
 const getStatusLabel = (status) => {
+  const normalizedStatus = normalizeStatus(status);
   const map = {
     'in_progress': 'В работе',
     'additional': settingsStore.appSettings.additionalStatusName || 'Доп. статус',
@@ -285,7 +310,7 @@ const getStatusLabel = (status) => {
     'completed': 'Готов',
     'delivered': 'Сдан'
   };
-  return map[status] || status;
+  return map[normalizedStatus] || normalizedStatus;
 };
 
 const handleDayClick = (day) => {
