@@ -39,24 +39,6 @@
         </v-card-text>
       </v-card>
 
-      <!-- Справочники -->
-      <v-card flat class="mb-4 rounded-0">
-        <v-card-text class="d-flex align-center justify-space-between py-3">
-          <div>
-            <div class="text-caption text-medium-emphasis">Справочники</div>
-            <div class="text-body-2 font-weight-bold">Услуги, детали, теги</div>
-          </div>
-          <v-btn
-            color="primary"
-            variant="tonal"
-            size="small"
-            to="/base-settings"
-          >
-            Открыть
-          </v-btn>
-        </v-card-text>
-      </v-card>
-
       <!-- Параметры (аккордеон) -->
       <v-expansion-panels variant="accordion" class="mb-4">
         <!-- Обязательные поля -->
