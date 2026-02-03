@@ -389,8 +389,8 @@ export const useOrderStore = defineStore('orders', () => {
     };
     
     order.status = 'cancelled';
-    order.services.forEach(s => s.status = 'cancelled');
-    order.details.forEach(d => d.status = 'cancelled');
+    (order.services || []).forEach(s => s.status = 'cancelled');
+    (order.details || []).forEach(d => d.status = 'cancelled');
     
     await saveOrderToFirebase(order);
   }
