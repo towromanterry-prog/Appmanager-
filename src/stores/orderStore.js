@@ -389,8 +389,8 @@ export const useOrderStore = defineStore('orders', () => {
     };
     
     order.status = 'cancelled';
-    (order.services || []).forEach(s => s.status = 'cancelled');
-    (order.details || []).forEach(d => d.status = 'cancelled');
+    services.forEach(s => s.status = 'cancelled');
+    details.forEach(d => d.status = 'cancelled');
     
     await saveOrderToFirebase(order);
   }
@@ -437,7 +437,7 @@ export const useOrderStore = defineStore('orders', () => {
 
     for (const order of activeOrders) {
       let changed = false;
-      order.services.forEach(service => {
+      (order.services || []).forEach(service => {
         if (service.id === serviceId) {
           service.price = newPrice;
           changed = true;
