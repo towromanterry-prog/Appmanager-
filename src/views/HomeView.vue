@@ -158,7 +158,7 @@ import { useHapticFeedback } from '@/composables/useHapticFeedback';
 const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
 const { orders, loading, user } = storeToRefs(orderStore);
-const { calendarIndicatorStatuses } = storeToRefs(settingsStore);
+const { calendarIndicatorStatuses, appSettings } = storeToRefs(settingsStore);
 const { triggerHapticFeedback } = useHapticFeedback();
 
 // Состояние
@@ -259,6 +259,10 @@ const filteredOrders = computed(() => {
       const oDate = o.deadline ? o.deadline.split('T')[0] : o.createDate.split('T')[0];
       return oDate === selectedDate.value;
     });
+  }
+
+  if (!appSettings.value.showCompletedOrders) {
+    list = list.filter(order => order.status !== 'completed' && order.status !== 'delivered');
   }
   
   // Сортировка: Ближайшие сверху

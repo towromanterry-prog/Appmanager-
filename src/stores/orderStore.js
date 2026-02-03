@@ -1,6 +1,6 @@
 // src/stores/orderStore.js
 import { defineStore } from 'pinia';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onScopeDispose } from 'vue';
 import { useSettingsStore } from './settingsStore';
 import { useConfirmationStore } from './confirmationStore';
 
@@ -30,6 +30,7 @@ export const useOrderStore = defineStore('orders', () => {
   const loading = ref(false);
   const user = ref(null);
   let unsubscribe = null;
+  let authUnsubscribe = null;
 
   // === 1. ИНИЦИАЛИЗАЦИЯ (Вместо _load) ===
   function init() {
@@ -37,13 +38,18 @@ export const useOrderStore = defineStore('orders', () => {
     const storedSortBy = localStorage.getItem('orders_sortBy');
     if (storedSortBy) sortBy.value = storedSortBy;
 
-    onAuthStateChanged(auth, (currentUser) => {
+    if (authUnsubscribe) return;
+
+    authUnsubscribe = onAuthStateChanged(auth, (currentUser) => {
       user.value = currentUser;
       if (currentUser) {
         subscribeToUserOrders(currentUser.uid);
       } else {
         orders.value = [];
-        if (unsubscribe) unsubscribe();
+        if (unsubscribe) {
+          unsubscribe();
+          unsubscribe = null;
+        }
       }
     });
   }
@@ -462,6 +468,17 @@ export const useOrderStore = defineStore('orders', () => {
     });
     return stats;
   }
+
+  onScopeDispose(() => {
+    if (unsubscribe) {
+      unsubscribe();
+      unsubscribe = null;
+    }
+    if (authUnsubscribe) {
+      authUnsubscribe();
+      authUnsubscribe = null;
+    }
+  });
 
   // Запуск инициализации
   init();
