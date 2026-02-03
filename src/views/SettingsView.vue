@@ -279,50 +279,22 @@
                 <v-divider class="my-4" />
                 <p class="text-subtitle-1 mb-2">Индикаторы календаря</p>
                 <p class="text-body-2 mb-4">
-                  Выберите до 3-х статусов заказов, которые будут отображаться
-                  точками в календаре.
+                  Выберите статусы заказов, которые будут отображаться точками в календаре.
                 </p>
 
-                <v-row>
-                  <v-col cols="12" md="6">
-                    <p class="text-caption text-medium-emphasis mb-2">Мини-календарь</p>
-                    <div class="d-flex flex-column ga-2">
-                      <v-checkbox
-                        v-for="(label, key) in orderStatusLabels"
-                        :key="key"
-                        v-model="settingsStore.appSettings.miniCalendarIndicatorStatuses"
-                        :label="label"
-                        :value="key"
-                        :disabled="
-                          !settingsStore.appSettings.miniCalendarIndicatorStatuses.includes(key) &&
-                          settingsStore.appSettings.miniCalendarIndicatorStatuses.length >= 3
-                        "
-                        color="primary"
-                        hide-details
-                        @change="updateAppSettings"
-                      />
-                    </div>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <p class="text-caption text-medium-emphasis mb-2">Полный календарь</p>
-                    <div class="d-flex flex-column ga-2">
-                      <v-checkbox
-                        v-for="(label, key) in orderStatusLabels"
-                        :key="key"
-                        v-model="settingsStore.appSettings.fullCalendarIndicatorStatuses"
-                        :label="label"
-                        :value="key"
-                        :disabled="
-                          !settingsStore.appSettings.fullCalendarIndicatorStatuses.includes(key) &&
-                          settingsStore.appSettings.fullCalendarIndicatorStatuses.length >= 3
-                        "
-                        color="primary"
-                        hide-details
-                        @change="updateAppSettings"
-                      />
-                    </div>
-                  </v-col>
-                </v-row>
+                <p class="text-caption text-medium-emphasis mb-2">Полный календарь</p>
+                <div class="d-flex flex-column ga-2">
+                  <v-checkbox
+                    v-for="(label, key) in orderStatusLabels"
+                    :key="key"
+                    v-model="settingsStore.appSettings.fullCalendarIndicatorStatuses"
+                    :label="label"
+                    :value="key"
+                    color="primary"
+                    hide-details
+                    @change="updateAppSettings"
+                  />
+                </div>
               </v-card-text>
             </v-card>
           </v-expansion-panel-text>

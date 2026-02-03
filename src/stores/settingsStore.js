@@ -84,8 +84,7 @@ export const useSettingsStore = defineStore('settings', () => {
     detailsTabLabel: 'Детали',
     orderFormLastNameLabel: 'Фамилия',
 
-    // Индикаторы календаря (до 3)
-    miniCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'],
+    // Индикаторы календаря
     fullCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered']
   };
 
@@ -110,7 +109,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const DEPRECATED_KEYS = new Set([
     'compactMode',
     'autoSaveFormDrafts',
-    'swipeRightActions'
+    'swipeRightActions',
+    'miniCalendarIndicatorStatuses'
   ]);
 
   function normalizeAppSettings(input) {
@@ -150,14 +150,13 @@ export const useSettingsStore = defineStore('settings', () => {
       merged.orderFormLastNameLabel = defaultAppSettings.orderFormLastNameLabel;
     }
 
-    // Индикаторы: уникально, максимум 3, только активные статусы
+    // Индикаторы: уникально, только активные статусы
     const normalizeIndicators = (arr) => {
       if (!Array.isArray(arr)) return [];
       const uniq = [...new Set(arr)];
       // Фильтруем, оставляя только те, что включены в orderStatuses
-      return uniq.filter((k) => merged.orderStatuses[k]).slice(0, 3);
+      return uniq.filter((k) => merged.orderStatuses[k]);
     };
-    merged.miniCalendarIndicatorStatuses = normalizeIndicators(merged.miniCalendarIndicatorStatuses);
     merged.fullCalendarIndicatorStatuses = normalizeIndicators(merged.fullCalendarIndicatorStatuses);
 
     return merged;
