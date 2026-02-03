@@ -373,9 +373,10 @@ export const useOrderStore = defineStore('orders', () => {
     if (!confirmed) return;
     
     order.cachedState = {
+      v: 2,
       orderStatus: order.status,
-      serviceStatuses: order.services.map(s => s.status),
-      detailStatuses: order.details.map(d => d.status)
+      services: (order.services || []).map(s => ({ id: s.id, status: s.status })),
+      details: (order.details || []).map(d => ({ id: d.id, status: d.status }))
     };
     
     order.status = 'cancelled';
@@ -396,13 +397,31 @@ export const useOrderStore = defineStore('orders', () => {
     const confirmed = await confirmationStore.open('Восстановление заказа', 'Вы уверены, что хотите восстановить этот заказ?');
     if (!confirmed) return;
 
-    order.status = cachedState.orderStatus;
-    order.services.forEach((service, index) => {
-      service.status = cachedState.serviceStatuses[index] || 'accepted';
-    });
-    order.details.forEach((detail, index) => {
-      detail.status = cachedState.detailStatuses[index] || 'accepted';
-    });
+    const restoreStatuses = (items, cachedItems, legacyStatuses) => {
+      if (Array.isArray(cachedItems)) {
+        const statusMap = new Map(cachedItems.map(item => [item.id, item.status]));
+        items.forEach((item, index) => {
+          const status = statusMap.get(item.id) ?? legacyStatuses?.[index];
+          item.status = status || 'accepted';
+        });
+        return;
+      }
+
+      if (Array.isArray(legacyStatuses)) {
+        items.forEach((item, index) => {
+          item.status = legacyStatuses[index] || 'accepted';
+        });
+        return;
+      }
+
+      items.forEach((item) => {
+        item.status = 'accepted';
+      });
+    };
+
+    order.status = cachedState.orderStatus || 'accepted';
+    restoreStatuses(order.services || [], cachedState.services, cachedState.serviceStatuses);
+    restoreStatuses(order.details || [], cachedState.details, cachedState.detailStatuses);
 
     // Удаляем кэш из объекта перед сохранением, или оставляем null
     delete order.cachedState;

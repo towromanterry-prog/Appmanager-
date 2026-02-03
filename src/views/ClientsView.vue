@@ -176,12 +176,21 @@ const viewClientHistory = (client) => {
 };
 
 const createOrderForClient = (client) => {
+  const digits = (client.phone || '').replace(/\D/g, '');
+  let normalizedPhone = digits;
+  if (digits.length >= 11 && (digits.startsWith('7') || digits.startsWith('8'))) {
+    normalizedPhone = digits.slice(1);
+  }
+  if (normalizedPhone.length > 10) {
+    normalizedPhone = normalizedPhone.slice(-10);
+  }
   router.push({
-    name: 'order-new',
+    name: 'home',
     query: {
+      newOrder: '1',
       clientName: client.name,
       clientLastName: client.lastName,
-      clientPhone: client.phone
+      clientPhone: normalizedPhone
     }
   });
 };

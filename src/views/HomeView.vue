@@ -376,6 +376,25 @@ const handleTouchEnd = (e) => {
 };
 
 watch(
+  () => route.query.newOrder,
+  (flag) => {
+    if (!flag) return;
+    const deadline = selectedDate.value || getLocalDateString(new Date());
+    orderToEditId.value = null;
+    initialOrderData.value = {
+      deadline,
+      clientName: route.query.clientName || '',
+      lastName: route.query.clientLastName || '',
+      phone: route.query.clientPhone || ''
+    };
+    showOrderForm.value = true;
+    const { newOrder, clientName, clientLastName, clientPhone, ...rest } = route.query;
+    router.replace({ query: rest });
+  },
+  { immediate: true }
+);
+
+watch(
   () => route.query.editOrderId,
   (orderId) => {
     if (!orderId) return;

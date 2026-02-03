@@ -150,12 +150,21 @@ export const useSettingsStore = defineStore('settings', () => {
       merged.orderFormLastNameLabel = defaultAppSettings.orderFormLastNameLabel;
     }
 
-    // Индикаторы: уникально, только активные статусы
+    // Индикаторы: уникально, только известные статусы
     const normalizeIndicators = (arr) => {
       if (!Array.isArray(arr)) return [];
-      const uniq = [...new Set(arr)];
-      // Фильтруем, оставляя только те, что включены в orderStatuses
-      return uniq.filter((k) => merged.orderStatuses[k]);
+      const allowed = new Set([
+        'accepted',
+        'additional',
+        'in_progress',
+        'completed',
+        'delivered',
+        'cancelled'
+      ]);
+      const normalized = arr
+        .map((value) => (typeof value === 'string' ? value.trim() : ''))
+        .filter((value) => allowed.has(value));
+      return [...new Set(normalized)];
     };
     merged.fullCalendarIndicatorStatuses = normalizeIndicators(merged.fullCalendarIndicatorStatuses);
 
