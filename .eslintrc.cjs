@@ -3,11 +3,23 @@ module.exports = {
   env: {
     browser: true,
     node: true,
-    es2021: true
+    es2022: true,
   },
+  extends: [
+    'eslint:recommended',
+    'plugin:vue/vue3-recommended',
+  ],
   parserOptions: {
     ecmaVersion: 'latest',
-    sourceType: 'module'
+    sourceType: 'module',
   },
-  extends: ['eslint:recommended']
+  rules: {
+    // В Vite/Vue проектах это часто мешает на старте
+    'vue/multi-word-component-names': 'off',
+  },
+  ignorePatterns: [
+    'dist/',
+    'node_modules/',
+    'coverage/',
+  ],
 };

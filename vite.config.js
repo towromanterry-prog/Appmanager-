@@ -16,13 +16,14 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
-  build: {
-    // Включаем минификацию CSS для продакшн-сборки
-    cssMinify: true,
-  },
   test: {
     environment: 'jsdom',
     globals: true,
-    clearMocks: true
+    clearMocks: true,
+    include: ['src/**/*.spec.js', 'src/**/*.test.js'],
+  },
+  build: {
+    // Включаем минификацию CSS для продакшн-сборки
+    cssMinify: true,
   }
 });
