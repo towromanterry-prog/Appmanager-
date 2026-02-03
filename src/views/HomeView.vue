@@ -353,6 +353,11 @@ const confirmDeleteOrder = async (orderId) => {
   );
   if (!confirmed) return;
   await orderStore.deleteOrder(orderId);
+  if (orderToEditId.value === orderId) {
+    showOrderForm.value = false;
+    orderToEditId.value = null;
+    initialOrderData.value = {};
+  }
 };
 
 const nextMonth = () => currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() + 1));
