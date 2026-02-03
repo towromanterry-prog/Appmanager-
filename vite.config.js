@@ -19,5 +19,10 @@ export default defineConfig({
   build: {
     // Включаем минификацию CSS для продакшн-сборки
     cssMinify: true,
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    clearMocks: true
   }
 });

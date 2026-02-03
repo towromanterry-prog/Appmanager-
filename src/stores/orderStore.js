@@ -372,11 +372,20 @@ export const useOrderStore = defineStore('orders', () => {
     const confirmed = await confirmationStore.open('Отмена заказа', 'Вы уверены, что хотите отменить этот заказ?');
     if (!confirmed) return;
     
+    const services = order.services || [];
+    const details = order.details || [];
+    const servicesCache = services.map((service) => ({ id: service.id, status: service.status }));
+    const detailsCache = details.map((detail) => ({ id: detail.id, status: detail.status }));
+    const hasServiceWithoutId = services.some((service) => !service.id);
+    const hasDetailWithoutId = details.some((detail) => !detail.id);
+
     order.cachedState = {
       v: 2,
       orderStatus: order.status,
-      services: (order.services || []).map(s => ({ id: s.id, status: s.status })),
-      details: (order.details || []).map(d => ({ id: d.id, status: d.status }))
+      services: servicesCache,
+      details: detailsCache,
+      ...(hasServiceWithoutId ? { serviceStatuses: services.map((service) => service.status) } : {}),
+      ...(hasDetailWithoutId ? { detailStatuses: details.map((detail) => detail.status) } : {})
     };
     
     order.status = 'cancelled';
@@ -398,24 +407,13 @@ export const useOrderStore = defineStore('orders', () => {
     if (!confirmed) return;
 
     const restoreStatuses = (items, cachedItems, legacyStatuses) => {
-      if (Array.isArray(cachedItems)) {
-        const statusMap = new Map(cachedItems.map(item => [item.id, item.status]));
-        items.forEach((item, index) => {
-          const status = statusMap.get(item.id) ?? legacyStatuses?.[index];
-          item.status = status || 'accepted';
-        });
-        return;
-      }
-
-      if (Array.isArray(legacyStatuses)) {
-        items.forEach((item, index) => {
-          item.status = legacyStatuses[index] || 'accepted';
-        });
-        return;
-      }
-
-      items.forEach((item) => {
-        item.status = 'accepted';
+      const cachedList = Array.isArray(cachedItems) ? cachedItems : [];
+      const statusMap = new Map(cachedList.map((item) => [item.id, item.status]));
+      items.forEach((item, index) => {
+        const statusById = item?.id ? statusMap.get(item.id) : undefined;
+        const statusByIndex = cachedList[index]?.status;
+        const status = statusById ?? statusByIndex ?? legacyStatuses?.[index];
+        item.status = status || 'accepted';
       });
     };
 

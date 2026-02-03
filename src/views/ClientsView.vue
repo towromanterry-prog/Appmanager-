@@ -188,8 +188,8 @@ const createOrderForClient = (client) => {
     name: 'home',
     query: {
       newOrder: '1',
-      clientName: client.name,
-      clientLastName: client.lastName,
+      clientName: client?.name || '',
+      clientLastName: client?.lastName || '',
       clientPhone: normalizedPhone
     }
   });

@@ -5,7 +5,6 @@ import {
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/firebase';
-import { useOrderStore } from './orderStore';
 
 export const useDetailStore = defineStore('details', () => {
   const details = ref([]);
@@ -67,7 +66,6 @@ export const useDetailStore = defineStore('details', () => {
       });
 
       // Обновляем цены в активных заказах (сохраняем вашу старую логику)
-      const orderStore = useOrderStore();
       // Тут нужно будет добавить метод updateDetailPricesInActiveOrders в orderStore,
       // если его там нет (по аналогии с услугами). 
       // Но если критично, можно пока пропустить.

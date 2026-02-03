@@ -394,7 +394,7 @@ const saveOrder = async () => {
       lastName: form.lastName,
       phone: fullPhone,
       services: form.services.map(s => s.name),
-    });
+    }, { registerOrder: !isEditing.value });
     close();
   } catch(e) {
     console.error("Ошибка сохранения заказа", e)

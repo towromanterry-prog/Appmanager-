@@ -305,6 +305,10 @@ const filteredOrders = computed(() => {
   if (selectedDate.value) {
     list = list.filter((order) => getOrderDateKey(order) === selectedDate.value);
   }
+
+  if (orderStore.filterStatus.length) {
+    list = list.filter((order) => orderStore.filterStatus.includes(normalizeStatus(order.status)));
+  }
   
   // Сортировка: Ближайшие сверху
   return list.sort((a, b) => {
@@ -378,14 +382,15 @@ const handleTouchEnd = (e) => {
 watch(
   () => route.query.newOrder,
   (flag) => {
-    if (!flag) return;
+    const normalizedFlag = Array.isArray(flag) ? flag[0] : flag;
+    if (!normalizedFlag) return;
     const deadline = selectedDate.value || getLocalDateString(new Date());
     orderToEditId.value = null;
     initialOrderData.value = {
       deadline,
-      clientName: route.query.clientName || '',
-      lastName: route.query.clientLastName || '',
-      phone: route.query.clientPhone || ''
+      clientName: (Array.isArray(route.query.clientName) ? route.query.clientName[0] : route.query.clientName) || '',
+      lastName: (Array.isArray(route.query.clientLastName) ? route.query.clientLastName[0] : route.query.clientLastName) || '',
+      phone: (Array.isArray(route.query.clientPhone) ? route.query.clientPhone[0] : route.query.clientPhone) || ''
     };
     showOrderForm.value = true;
     const { newOrder, clientName, clientLastName, clientPhone, ...rest } = route.query;

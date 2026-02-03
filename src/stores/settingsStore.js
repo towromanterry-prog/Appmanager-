@@ -163,7 +163,7 @@ export const useSettingsStore = defineStore('settings', () => {
       ]);
       const normalized = arr
         .map((value) => (typeof value === 'string' ? value.trim() : ''))
-        .filter((value) => allowed.has(value));
+        .filter((value) => value && allowed.has(value));
       return [...new Set(normalized)];
     };
     merged.fullCalendarIndicatorStatuses = normalizeIndicators(merged.fullCalendarIndicatorStatuses);
