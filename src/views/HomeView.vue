@@ -292,7 +292,7 @@ const filteredOrders = computed(() => {
   let list = [...orders.value];
   
   if (!showCompletedOrders.value) {
-    const hiddenStatuses = new Set(['completed', 'cancelled']);
+    const hiddenStatuses = new Set(['delivered', 'cancelled']);
     list = list.filter((order) => !hiddenStatuses.has(normalizeStatus(order.status)));
   }
 
