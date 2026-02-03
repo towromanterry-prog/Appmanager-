@@ -163,6 +163,7 @@ const indicatorStatuses = computed(
   () => settingsStore.appSettings.fullCalendarIndicatorStatuses || []
 );
 const activeOrderStatuses = computed(() => settingsStore.appSettings.orderStatuses || {});
+const showCompletedOrders = computed(() => settingsStore.appSettings.showCompletedOrders);
 
 // Состояние
 const showFullCalendar = ref(false);
@@ -259,6 +260,11 @@ const flatCalendarDays = computed(() => {
 const filteredOrders = computed(() => {
   let list = [...orders.value];
   
+  if (!showCompletedOrders.value) {
+    const hiddenStatuses = new Set(['completed', 'cancelled']);
+    list = list.filter((order) => !hiddenStatuses.has(order.status));
+  }
+
   if (selectedDate.value) {
     list = list.filter(o => {
       const oDate = o.deadline ? o.deadline.split('T')[0] : o.createDate.split('T')[0];
