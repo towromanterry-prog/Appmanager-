@@ -209,11 +209,19 @@ const toDateObject = (value) => {
   return null;
 };
 
-const getOrderDateKey = (order) => {
-  const dateValue = order.deadline ?? order.createDate;
-  const date = toDateObject(dateValue);
+const toDateKey = (value) => {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed;
+    }
+  }
+  const date = toDateObject(value);
   return date ? getLocalDateString(date) : null;
 };
+
+const getOrderDateKey = (order) => toDateKey(order.deadline ?? order.createDate);
 
 // Данные для календаря
 const currentYear = computed(() => currentDate.value.getFullYear());
