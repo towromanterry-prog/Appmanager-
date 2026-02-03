@@ -106,7 +106,7 @@
           >
             <div class="day-number">{{ day.number }}</div>
             
-            <div class="status-stack" v-if="day.date">
+            <div class="status-stack" v-if="day.date && day.hasIndicators">
               <div 
                 v-for="(count, status) in day.orderStats.statuses" 
                 :key="status"
@@ -213,6 +213,11 @@ const flatCalendarDays = computed(() => {
   const days = [];
   const todayStr = getLocalDateString(new Date());
 
+  const allowedStatuses = Array.isArray(calendarIndicatorStatuses.value)
+    ? calendarIndicatorStatuses.value.filter(Boolean)
+    : [];
+  const allowedStatusSet = new Set(allowedStatuses);
+
   for (let i = 0; i < 42; i++) {
     const d = new Date(startDate);
     d.setDate(startDate.getDate() + i);
@@ -226,21 +231,20 @@ const flatCalendarDays = computed(() => {
     });
 
     const statuses = {};
-    const allowedStatuses = Array.isArray(calendarIndicatorStatuses.value)
-      ? calendarIndicatorStatuses.value
-      : [];
-
-    allowedStatuses.forEach(st => {
-      const count = dayOrders.filter(o => o.status === st).length;
-      if (count > 0) statuses[st] = count;
-    });
+    if (allowedStatusSet.size > 0) {
+      dayOrders.forEach(order => {
+        if (!allowedStatusSet.has(order.status)) return;
+        statuses[order.status] = (statuses[order.status] || 0) + 1;
+      });
+    }
 
     days.push({
       date: dateStr,
       number: d.getDate(),
       isToday: dateStr === todayStr,
       otherMonth: d.getMonth() !== month,
-      orderStats: { total: dayOrders.length, statuses }
+      orderStats: { total: dayOrders.length, statuses },
+      hasIndicators: Object.keys(statuses).length > 0
     });
   }
   return days;
