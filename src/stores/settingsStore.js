@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import {
-  doc, setDoc, onSnapshot
-} from 'firebase/firestore';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/firebase';
 
@@ -13,10 +11,6 @@ function isPlainObject(v) {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 
-/**
- * Deep merge: source overrides target, но вложенные plain-objects мерджатся.
- * Arrays и примитивы заменяются целиком.
- */
 function deepMerge(target, source) {
   if (!isPlainObject(target) || !isPlainObject(source)) return source;
   const out = { ...target };
@@ -59,39 +53,40 @@ export const useSettingsStore = defineStore('settings', () => {
       in_progress: true,
       completed: true
     },
+
+    // Статус по умолчанию
     defaultOrderStatus: 'accepted',
+
+    // Система шрифтов
     baseFontSize: 16,
-    // Если ВСЕ услуги/детали перешли в указанный статус — поднимаем статус заказа
+
+    // Синхронизация статусов
     syncServiceToOrderStatus: {
       additional: true,
       in_progress: true,
       completed: true
     },
-    // Если меняем статус заказа — поднимаем услуги/детали (опционально с подтверждением)
     syncOrderToServiceStatus: {
       additional: { enabled: false, confirm: true },
       in_progress: { enabled: true, confirm: true },
       completed: { enabled: true, confirm: false }
     },
+
+    // Шаблоны сообщений
     messageTemplates: [],
+
+    // Визуальные настройки
+    showCompletedOrders: true,
+    enableHapticFeedback: true,
+    enablePullToRefresh: true,
+
+    // Названия в UI
     detailsTabLabel: 'Детали',
     orderFormLastNameLabel: 'Фамилия',
-    
-    showCompletedOrders: true,
-    compactMode: false,
-    swipeRightActions: {
-      resetMiniCalendar: true,
-      closeFullCalendar: true,
-      clearSearch: true,
-      resetStatusFilter: true
-    },
 
     // Индикаторы календаря (до 3)
     miniCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'],
-    fullCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered'],
-    enableHapticFeedback: true,
-    enablePullToRefresh: true,
-    autoSaveFormDrafts: true
+    fullCalendarIndicatorStatuses: ['in_progress', 'completed', 'delivered']
   };
 
   const defaultRequiredFields = {
@@ -108,15 +103,25 @@ export const useSettingsStore = defineStore('settings', () => {
   const appSettings = ref({ ...defaultAppSettings });
   const requiredFields = ref({ ...defaultRequiredFields });
   const user = ref(null);
+
   let isInitialized = false;
   let unsubscribe = null;
 
-  // === Нормализация и миграции ===
+  const DEPRECATED_KEYS = new Set([
+    'compactMode',
+    'autoSaveFormDrafts',
+    'swipeRightActions'
+  ]);
 
-  function normalizeAppSettings(settings) {
-    const s = { ...settings };
+  function normalizeAppSettings(input) {
+    const s = isPlainObject(input) ? { ...input } : {};
 
-    // 1) Миграция старого формата: syncOrderToServiceStatus = 'none' | 'auto' | 'confirm'
+    // Убираем мусор из старых версий
+    for (const k of DEPRECATED_KEYS) {
+      if (k in s) delete s[k];
+    }
+
+    // Миграция старого формата syncOrderToServiceStatus: 'none' | 'auto' | 'confirm'
     if (typeof s.syncOrderToServiceStatus === 'string') {
       const oldMode = s.syncOrderToServiceStatus;
       s.syncOrderToServiceStatus = {
@@ -126,22 +131,39 @@ export const useSettingsStore = defineStore('settings', () => {
       };
     }
 
-    // 2) Гарантируем наличие всех ключей статусов (и что accepted всегда включен)
+    // Домердживаем с дефолтами, чтобы новые поля не терялись
     const merged = deepMerge(defaultAppSettings, s);
+
+    // accepted всегда доступен
     merged.orderStatuses.accepted = true;
     merged.serviceStatuses.accepted = true;
     merged.detailStatuses.accepted = true;
 
-    // 3) Подстраховка типов
+    // Подстраховки по строкам
     if (typeof merged.additionalStatusName !== 'string' || !merged.additionalStatusName.trim()) {
       merged.additionalStatusName = defaultAppSettings.additionalStatusName;
     }
+    if (typeof merged.detailsTabLabel !== 'string' || !merged.detailsTabLabel.trim()) {
+      merged.detailsTabLabel = defaultAppSettings.detailsTabLabel;
+    }
+    if (typeof merged.orderFormLastNameLabel !== 'string' || !merged.orderFormLastNameLabel.trim()) {
+      merged.orderFormLastNameLabel = defaultAppSettings.orderFormLastNameLabel;
+    }
+
+    // Индикаторы: уникально, максимум 3, только активные статусы
+    const normalizeIndicators = (arr) => {
+      if (!Array.isArray(arr)) return [];
+      const uniq = [...new Set(arr)];
+      // Фильтруем, оставляя только те, что включены в orderStatuses
+      return uniq.filter((k) => merged.orderStatuses[k]).slice(0, 3);
+    };
+    merged.miniCalendarIndicatorStatuses = normalizeIndicators(merged.miniCalendarIndicatorStatuses);
+    merged.fullCalendarIndicatorStatuses = normalizeIndicators(merged.fullCalendarIndicatorStatuses);
 
     return merged;
   }
 
-  // === Логика сохранения ===
-  
+  // === Save ===
   function saveToLocalStorage() {
     localStorage.setItem('appSettings', JSON.stringify(appSettings.value));
     localStorage.setItem('requiredFields', JSON.stringify(requiredFields.value));
@@ -149,109 +171,110 @@ export const useSettingsStore = defineStore('settings', () => {
 
   async function saveToFirebase() {
     if (!user.value) return;
+
     try {
-      await setDoc(doc(db, 'users', user.value.uid, 'settings', 'general'), {
-        appSettings: appSettings.value,
-        requiredFields: requiredFields.value
-      });
+      await setDoc(
+        doc(db, 'users', user.value.uid, 'settings', 'general'),
+        {
+          appSettings: appSettings.value,
+          requiredFields: requiredFields.value
+        },
+        { merge: true }
+      );
     } catch (e) {
-      console.error("Ошибка сохранения настроек в облако:", e);
+      console.error('Ошибка сохранения настроек в облако:', e);
     }
   }
 
-  // 3. Общая функция обновления
-  function updateAppSettings(newSettings) {
-    // Принимаем как полный объект, так и patch
-    const next = isPlainObject(newSettings)
-      ? deepMerge(appSettings.value, newSettings)
-      : appSettings.value;
-
+  // === Update ===
+  function updateAppSettings(patch) {
+    const next = isPlainObject(patch) ? deepMerge(appSettings.value, patch) : appSettings.value;
     appSettings.value = normalizeAppSettings(next);
     saveToLocalStorage();
-    saveToFirebase(); // <-- Отправляем в облако
+    saveToFirebase();
   }
 
-  function updateRequiredFields(newFields) {
-    requiredFields.value = deepMerge(requiredFields.value, newFields);
+  function updateRequiredFields(patch) {
+    requiredFields.value = isPlainObject(patch)
+      ? deepMerge(requiredFields.value, patch)
+      : requiredFields.value;
     saveToLocalStorage();
-    saveToFirebase(); // <-- Отправляем в облако
+    saveToFirebase();
   }
 
-  // === Инициализация ===
+  // === Init ===
   function loadSettings() {
     if (isInitialized) return;
     isInitialized = true;
 
-    // 1) Сначала грузим из LocalStorage (чтобы было быстро)
-    const storedSettingsRaw = localStorage.getItem('appSettings');
-    const storedFieldsRaw = localStorage.getItem('requiredFields');
-    const storedSettings = storedSettingsRaw ? safeJsonParse(storedSettingsRaw) : null;
-    const storedFields = storedFieldsRaw ? safeJsonParse(storedFieldsRaw) : null;
+    // 1) Локальный кэш
+    const storedSettings = safeJsonParse(localStorage.getItem('appSettings') || '');
+    const storedFields = safeJsonParse(localStorage.getItem('requiredFields') || '');
 
-    if (storedSettings && isPlainObject(storedSettings)) {
-      appSettings.value = normalizeAppSettings(storedSettings);
-    } else {
-      appSettings.value = { ...defaultAppSettings };
-    }
+    appSettings.value = normalizeAppSettings(storedSettings || defaultAppSettings);
 
-    if (storedFields && isPlainObject(storedFields)) {
-      requiredFields.value = deepMerge(defaultRequiredFields, storedFields);
-    } else {
-      requiredFields.value = { ...defaultRequiredFields };
-    }
+    requiredFields.value = isPlainObject(storedFields)
+      ? deepMerge(defaultRequiredFields, storedFields)
+      : { ...defaultRequiredFields };
 
-    // 2) Потом подключаемся к Firebase
+    // 2) Firebase (если залогинились)
     onAuthStateChanged(auth, (currentUser) => {
       user.value = currentUser;
+
       if (currentUser) {
         subscribeToUserSettings(currentUser.uid);
       } else {
         if (unsubscribe) unsubscribe();
+        unsubscribe = null;
       }
     });
   }
 
   function subscribeToUserSettings(userId) {
     if (unsubscribe) unsubscribe();
-    
-    unsubscribe = onSnapshot(doc(db, 'users', userId, 'settings', 'general'), (docSnap) => {
-      if (docSnap.exists()) {
+
+    unsubscribe = onSnapshot(
+      doc(db, 'users', userId, 'settings', 'general'),
+      (docSnap) => {
+        if (!docSnap.exists()) return;
+
         const data = docSnap.data();
-        // Если в облаке есть настройки — принимаем их (они главнее)
-        if (data.appSettings) {
+
+        if (data?.appSettings && isPlainObject(data.appSettings)) {
           appSettings.value = normalizeAppSettings(deepMerge(appSettings.value, data.appSettings));
-          localStorage.setItem('appSettings', JSON.stringify(appSettings.value)); // Обновляем локальный кэш
         }
-        if (data.requiredFields) {
+
+        if (data?.requiredFields && isPlainObject(data.requiredFields)) {
           requiredFields.value = deepMerge(requiredFields.value, data.requiredFields);
-          localStorage.setItem('requiredFields', JSON.stringify(requiredFields.value));
         }
+
+        saveToLocalStorage();
+      },
+      (error) => {
+        console.error('Ошибка синхронизации настроек:', error);
       }
-    });
+    );
   }
 
-  // === Методы ===
+  // === Message templates ===
   function addMessageTemplate(text) {
     const newTemplate = { id: Date.now(), text };
-    appSettings.value.messageTemplates.push(newTemplate);
-    updateAppSettings(appSettings.value);
+    const next = {
+      messageTemplates: [...(appSettings.value.messageTemplates || []), newTemplate]
+    };
+    updateAppSettings(next);
   }
 
   function updateMessageTemplate(id, text) {
-    const index = appSettings.value.messageTemplates.findIndex(t => t.id === id);
-    if (index !== -1) {
-      appSettings.value.messageTemplates[index].text = text;
-      updateAppSettings(appSettings.value);
-    }
+    const nextList = (appSettings.value.messageTemplates || []).map((t) =>
+      t.id === id ? { ...t, text } : t
+    );
+    updateAppSettings({ messageTemplates: nextList });
   }
 
   function deleteMessageTemplate(id) {
-    appSettings.value.messageTemplates = appSettings.value.messageTemplates.filter(t => t.id !== id);
-    updateAppSettings(appSettings.value);
-  }
-  
-  function isFieldRequired(fieldName) {
-    return requiredFields.value[fieldName] === true;
+    const nextList = (appSettings.value.messageTemplates || []).filter((t) => t.id !== id);
+    updateAppSettings({ messageTemplates: nextList });
   }
 
   function resetSettings() {
@@ -261,7 +284,11 @@ export const useSettingsStore = defineStore('settings', () => {
     saveToFirebase();
   }
 
-  // Авто-инициализация (и при этом сохраняем совместимость с App.vue, где вызывается loadSettings())
+  function isFieldRequired(fieldName) {
+    return requiredFields.value[fieldName] === true;
+  }
+
+  // Авто-инициализация
   loadSettings();
 
   return {
@@ -273,7 +300,7 @@ export const useSettingsStore = defineStore('settings', () => {
     addMessageTemplate,
     updateMessageTemplate,
     deleteMessageTemplate,
-    isFieldRequired,
-    resetSettings
+    resetSettings,
+    isFieldRequired
   };
 });
