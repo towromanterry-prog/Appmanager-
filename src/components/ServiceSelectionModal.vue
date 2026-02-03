@@ -43,7 +43,7 @@
               :value="service.id"
               @click="toggleService(service)"
             >
-              <template v-slot:prepend="{ isSelected: isSlotSelected }">
+              <template v-slot:prepend>
                 <v-list-item-action start>
                   <v-checkbox-btn :model-value="isSelected(service)"></v-checkbox-btn>
                 </v-list-item-action>

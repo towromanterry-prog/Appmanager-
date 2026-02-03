@@ -199,6 +199,14 @@ const formatDateShort = (dateStr) => {
 
 const normalizeStatus = (status) => (status ?? '').trim();
 
+const clearQueryParams = (keys) => {
+  const query = { ...route.query };
+  keys.forEach((key) => {
+    delete query[key];
+  });
+  router.replace({ query });
+};
+
 const toDateObject = (value) => {
   if (!value) return null;
   if (value instanceof Date) return value;
@@ -393,8 +401,7 @@ watch(
       phone: (Array.isArray(route.query.clientPhone) ? route.query.clientPhone[0] : route.query.clientPhone) || ''
     };
     showOrderForm.value = true;
-    const { newOrder, clientName, clientLastName, clientPhone, ...rest } = route.query;
-    router.replace({ query: rest });
+    clearQueryParams(['newOrder', 'clientName', 'clientLastName', 'clientPhone']);
   },
   { immediate: true }
 );
@@ -406,8 +413,7 @@ watch(
     orderToEditId.value = Array.isArray(orderId) ? orderId[0] : orderId;
     initialOrderData.value = {};
     showOrderForm.value = true;
-    const { editOrderId, ...rest } = route.query;
-    router.replace({ query: rest });
+    clearQueryParams(['editOrderId']);
   },
   { immediate: true }
 );
