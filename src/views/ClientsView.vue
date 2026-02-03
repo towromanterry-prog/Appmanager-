@@ -1,7 +1,18 @@
 <template>
   <div class="clients-view-wrapper">
     <div class="clients-list-container">
-        <div v-if="!sortedClients.length" class="empty-state">
+        <div v-if="!isLoggedIn" class="empty-state">
+          <v-icon size="48">mdi-lock-outline</v-icon>
+          <h3 class="mt-4">Нужен вход</h3>
+          <p>Войдите, чтобы работать со списком клиентов.</p>
+          <v-btn class="mt-4" color="primary" to="/settings">Перейти в настройки</v-btn>
+        </div>
+        <div v-else-if="loading && !clients.length" class="empty-state">
+          <v-icon size="48">mdi-timer-sand</v-icon>
+          <h3 class="mt-4">Загрузка...</h3>
+          <p>Список клиентов загружается.</p>
+        </div>
+        <div v-else-if="!sortedClients.length" class="empty-state">
           <v-icon size="48">mdi-account-search-outline</v-icon>
           <h3 class="mt-4">Клиенты не найдены</h3>
           <p>Попробуйте изменить поисковый запрос или добавьте нового клиента.</p>
@@ -114,11 +125,12 @@ const clientsStore = useClientsStore();
 const searchStore = useSearchStore();
 const confirmationStore = useConfirmationStore();
 
-const { clients, sortBy } = storeToRefs(clientsStore);
+const { clients, sortBy, loading, user } = storeToRefs(clientsStore);
 const { searchQuery } = storeToRefs(searchStore);
 
 const historyDialog = ref(false);
 const selectedClient = ref(null);
+const isLoggedIn = computed(() => Boolean(user.value));
 
 const fuse = computed(() => {
   const options = {
@@ -165,9 +177,8 @@ const viewClientHistory = (client) => {
 
 const createOrderForClient = (client) => {
   router.push({
-    name: 'home',
+    name: 'order-new',
     query: {
-      action: 'create',
       clientName: client.name,
       clientLastName: client.lastName,
       clientPhone: client.phone
@@ -205,7 +216,7 @@ onMounted(() => {
 
 <style scoped>
 .clients-view-wrapper {
-  height: calc(100vh - 68px);
+  height: calc(100vh - var(--app-topbar-height, 68px));
   display: flex;
   flex-direction: column;
   overflow: hidden;

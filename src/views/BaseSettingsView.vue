@@ -1,6 +1,22 @@
 <template>
   <div class="base-settings-view d-flex flex-column">
+    <div v-if="!isLoggedIn" class="empty-state">
+      <v-icon size="64" color="surface-variant" class="mb-4">mdi-lock-outline</v-icon>
+      <div class="text-h6 text-medium-emphasis">Нужен вход</div>
+      <div class="text-body-2 text-disabled mt-2">
+        Войдите, чтобы управлять справочниками.
+      </div>
+      <v-btn class="mt-4" color="primary" to="/settings">Перейти в настройки</v-btn>
+    </div>
+
+    <div v-else-if="isLoading && isEmpty" class="empty-state">
+      <v-icon size="64" color="surface-variant" class="mb-4">mdi-timer-sand</v-icon>
+      <div class="text-h6 text-medium-emphasis">Загрузка...</div>
+      <div class="text-body-2 text-disabled mt-2">Подготавливаем справочники.</div>
+    </div>
+
     <div
+      v-else
       class="settings-container d-flex flex-column"
       @touchstart="handleTouchStart"
       @touchend="handleTouchEnd"
@@ -147,83 +163,85 @@
       </v-window>
     </div>
 
-    <!-- ДИАЛОГ УСЛУГИ -->
-    <ServiceFormDialog
-      v-model="serviceDialog"
-      :service="editingService"
-      @saved="serviceStore.loadServices()"
-    />
+    <template v-if="isLoggedIn">
+      <!-- ДИАЛОГ УСЛУГИ -->
+      <ServiceFormDialog
+        v-model="serviceDialog"
+        :service="editingService"
+        @saved="serviceStore.loadServices()"
+      />
 
-    <!-- ДИАЛОГ ДЕТАЛИ -->
-    <v-dialog v-model="detailDialog" max-width="500">
-      <v-card>
-        <v-card-title>{{ editingDetail ? 'Редактировать деталь' : 'Добавить деталь' }}</v-card-title>
-        <v-card-text>
-          <v-form ref="detailFormRef">
-            <v-text-field v-model="detailForm.name" label="Название детали" :rules="[v => !!v || 'Название обязательно']" variant="outlined" class="mb-4"></v-text-field>
-            <v-text-field v-model.number="detailForm.defaultPrice" label="Цена по умолчанию" type="number" prefix="₽" :rules="[v => v > 0 || 'Цена должна быть больше 0']" variant="outlined" class="mb-4"></v-text-field>
-            <v-select 
-              v-model="detailForm.tagIds"
-              :items="availableTags" 
-              item-title="name" 
-              item-value="id" 
-              label="Теги" 
-              multiple 
-              chips 
-              variant="outlined"
-              :menu-props="{ contentClass: 'custom-select-menu' }"
-            >
-              <template v-slot:selection="{ item }">
-                <v-chip :color="item.raw.color" size="small">{{ item.title }}</v-chip>
-              </template>
-              <template v-slot:item="{ props, item }">
-                <v-list-item v-bind="props" :title="null" class="my-1">
-                  <template v-slot:prepend>
-                    <v-chip :color="item.raw.color" size="small">{{ item.raw.name }}</v-chip>
-                  </template>
-                </v-list-item>
-              </template>
-            </v-select>
-          </v-form>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-           <v-btn @click="detailDialog = false">Отмена</v-btn>
-          <v-btn color="primary" @click="saveDetail">{{ editingDetail ? 'Сохранить' : 'Добавить' }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+      <!-- ДИАЛОГ ДЕТАЛИ -->
+      <v-dialog v-model="detailDialog" max-width="500">
+        <v-card>
+          <v-card-title>{{ editingDetail ? 'Редактировать деталь' : 'Добавить деталь' }}</v-card-title>
+          <v-card-text>
+            <v-form ref="detailFormRef">
+              <v-text-field v-model="detailForm.name" label="Название детали" :rules="[v => !!v || 'Название обязательно']" variant="outlined" class="mb-4"></v-text-field>
+              <v-text-field v-model.number="detailForm.defaultPrice" label="Цена по умолчанию" type="number" prefix="₽" :rules="[v => v > 0 || 'Цена должна быть больше 0']" variant="outlined" class="mb-4"></v-text-field>
+              <v-select 
+                v-model="detailForm.tagIds"
+                :items="availableTags" 
+                item-title="name" 
+                item-value="id" 
+                label="Теги" 
+                multiple 
+                chips 
+                variant="outlined"
+                :menu-props="{ contentClass: 'custom-select-menu' }"
+              >
+                <template v-slot:selection="{ item }">
+                  <v-chip :color="item.raw.color" size="small">{{ item.title }}</v-chip>
+                </template>
+                <template v-slot:item="{ props, item }">
+                  <v-list-item v-bind="props" :title="null" class="my-1">
+                    <template v-slot:prepend>
+                      <v-chip :color="item.raw.color" size="small">{{ item.raw.name }}</v-chip>
+                    </template>
+                  </v-list-item>
+                </template>
+              </v-select>
+            </v-form>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn @click="detailDialog = false">Отмена</v-btn>
+            <v-btn color="primary" @click="saveDetail">{{ editingDetail ? 'Сохранить' : 'Добавить' }}</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
 
-    <!-- ДИАЛОГ ТЕГА -->
-    <v-dialog v-model="tagDialog" max-width="400">
-      <v-card>
-        <v-card-title>{{ editingTag ? 'Редактировать тег' : 'Добавить тег' }}</v-card-title>
-        <v-card-text>
-          <v-form ref="tagFormRef">
-            <v-text-field v-model="tagForm.name" label="Название тега" :rules="[v => !!v || 'Название обязательно']" variant="outlined" class="mb-4"></v-text-field>
-            <v-select 
-              v-model="tagForm.color" 
-              :items="tagColors" 
-              label="Цвет тега" 
-              variant="outlined"
-              :menu-props="{ contentClass: 'custom-select-menu' }"
-            >
-              <template v-slot:selection="{ item }"><v-chip :color="item.value" size="small">{{ item.title }}</v-chip></template>
-              <template v-slot:item="{ props, item }">
-                <v-list-item v-bind="props" class="my-1">
-                  <template v-slot:prepend><v-chip :color="item.value" size="small">{{ item.title }}</v-chip></template>
-                </v-list-item>
-              </template>
-            </v-select>
-          </v-form>
-         </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn @click="tagDialog = false">Отмена</v-btn>
-          <v-btn color="primary" @click="saveTag">{{ editingTag ? 'Сохранить' : 'Добавить' }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+      <!-- ДИАЛОГ ТЕГА -->
+      <v-dialog v-model="tagDialog" max-width="400">
+        <v-card>
+          <v-card-title>{{ editingTag ? 'Редактировать тег' : 'Добавить тег' }}</v-card-title>
+          <v-card-text>
+            <v-form ref="tagFormRef">
+              <v-text-field v-model="tagForm.name" label="Название тега" :rules="[v => !!v || 'Название обязательно']" variant="outlined" class="mb-4"></v-text-field>
+              <v-select 
+                v-model="tagForm.color" 
+                :items="tagColors" 
+                label="Цвет тега" 
+                variant="outlined"
+                :menu-props="{ contentClass: 'custom-select-menu' }"
+              >
+                <template v-slot:selection="{ item }"><v-chip :color="item.value" size="small">{{ item.title }}</v-chip></template>
+                <template v-slot:item="{ props, item }">
+                  <v-list-item v-bind="props" class="my-1">
+                    <template v-slot:prepend><v-chip :color="item.value" size="small">{{ item.title }}</v-chip></template>
+                  </v-list-item>
+                </template>
+              </v-select>
+            </v-form>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn @click="tagDialog = false">Отмена</v-btn>
+            <v-btn color="primary" @click="saveTag">{{ editingTag ? 'Сохранить' : 'Добавить' }}</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+    </template>
 
   </div>
 </template>
@@ -252,6 +270,9 @@ const confirmationStore = useConfirmationStore();
 const searchStore = useSearchStore();
 const { searchQuery } = storeToRefs(searchStore);
 const { sortBy } = storeToRefs(settingsViewStore);
+const { user: serviceUser, loading: servicesLoading } = storeToRefs(serviceStore);
+const { user: detailUser, loading: detailsLoading } = storeToRefs(detailStore);
+const { user: tagsUser, loading: tagsLoading } = storeToRefs(tagsStore);
 
 const tab = ref('services');
 const serviceDialog = ref(false);
@@ -333,6 +354,13 @@ const tagColors = [
   { title: 'Серый', value: 'grey' }
 ];
 const availableTags = computed(() => tagsStore.tags);
+const isLoggedIn = computed(() => Boolean(serviceUser.value || detailUser.value || tagsUser.value));
+const isLoading = computed(() => servicesLoading.value || detailsLoading.value || tagsLoading.value);
+const isEmpty = computed(() =>
+  serviceStore.services.length === 0
+  && detailStore.details.length === 0
+  && tagsStore.tags.length === 0
+);
 
 const sliderTransform = computed(() => {
   if (tab.value === 'details') return 'translateX(100%)';
@@ -514,9 +542,19 @@ onMounted(() => {
   gap: 4px;
 }
 .base-settings-view {
-  height: calc(100vh - 68px);
+  height: calc(100vh - var(--app-topbar-height, 68px));
   display: flex;
   flex-direction: column;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
 }
 
 .settings-container {

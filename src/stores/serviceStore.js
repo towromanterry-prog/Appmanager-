@@ -102,6 +102,8 @@ export const useServiceStore = defineStore('services', () => {
     return services.value.filter(s => s.tagIds && s.tagIds.includes(tagId));
   }
 
+  const loadServices = () => {};
+
   // Запуск прослушивания при создании стора
   init();
 
@@ -109,6 +111,7 @@ export const useServiceStore = defineStore('services', () => {
     services,
     user, // Экспортируем юзера, чтобы проверять в UI, вошли мы или нет
     loading,
+    loadServices,
     addService,
     updateService,
     deleteService,

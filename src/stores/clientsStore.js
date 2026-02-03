@@ -17,6 +17,7 @@ export const useClientsStore = defineStore('clients', () => {
   const clients = ref([]);
   const loading = ref(false);
   const user = ref(null);
+  const sortBy = ref('name');
   let unsubscribe = null;
 
   // === 1. Инициализация и синхронизация ===
@@ -27,6 +28,7 @@ export const useClientsStore = defineStore('clients', () => {
         subscribeToUserClients(currentUser.uid);
       } else {
         clients.value = [];
+        loading.value = false;
         if (unsubscribe) unsubscribe();
       }
     });
@@ -145,6 +147,8 @@ export const useClientsStore = defineStore('clients', () => {
       .slice(0, limit);
   }
 
+  const loadClients = () => {};
+
   // Запуск при создании стора
   init();
 
@@ -152,7 +156,8 @@ export const useClientsStore = defineStore('clients', () => {
     clients,
     loading,
     user,
-    // loadClients больше не нужен, init делает это сам
+    sortBy,
+    loadClients,
     addOrUpdateClient,
     deleteClient,
     searchClients,

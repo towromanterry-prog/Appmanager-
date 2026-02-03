@@ -31,7 +31,20 @@
       @touchstart="handleTouchStart"
       @touchend="handleTouchEnd"
     >
-      <div v-if="filteredOrders.length" class="pa-2 pb-16">
+      <div v-if="!isLoggedIn" class="empty-state">
+        <v-icon size="64" color="surface-variant" class="mb-4">mdi-lock-outline</v-icon>
+        <div class="text-h6 text-medium-emphasis">Нужен вход</div>
+        <div class="text-body-2 text-disabled mt-2">Войдите, чтобы видеть заказы.</div>
+        <v-btn class="mt-4" color="primary" to="/settings">Перейти в настройки</v-btn>
+      </div>
+
+      <div v-else-if="loading && !orders.length" class="empty-state">
+        <v-icon size="64" color="surface-variant" class="mb-4">mdi-timer-sand</v-icon>
+        <div class="text-h6 text-medium-emphasis">Загрузка...</div>
+        <div class="text-body-2 text-disabled mt-2">Подготавливаем список заказов.</div>
+      </div>
+
+      <div v-else-if="filteredOrders.length" class="pa-2 pb-16">
         <OrderCard
           v-for="order in filteredOrders"
           :key="order.id"
@@ -110,7 +123,7 @@
 
     <v-fab-transition>
       <v-btn
-        v-if="!showFullCalendar"
+        v-if="!showFullCalendar && isLoggedIn"
         position="fixed"
         location="bottom right"
         icon="mdi-plus"
@@ -144,7 +157,7 @@ import { useHapticFeedback } from '@/composables/useHapticFeedback';
 
 const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
-const { orders } = storeToRefs(orderStore);
+const { orders, loading, user } = storeToRefs(orderStore);
 const { triggerHapticFeedback } = useHapticFeedback();
 
 // Состояние
@@ -154,6 +167,7 @@ const selectedDate = ref(null); // Если null - показываем все
 const currentDate = ref(new Date()); // Текущий месяц просмотра
 const orderToEditId = ref(null);
 const initialOrderData = ref({});
+const isLoggedIn = computed(() => Boolean(user.value));
 
 // Хелперы даты
 const getLocalDateString = (date) => {
