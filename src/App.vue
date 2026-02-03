@@ -146,8 +146,7 @@ const showSortMenu = computed(() => isHomePage.value);
 const currentTitle = computed(() => {
   if (route.name === 'home') return 'Мои заказы';
   if (route.name === 'clients') return 'Клиенты';
-  if (route.name === 'order-new') return 'Новый заказ';
-  if (route.name === 'order-edit') return 'Редактирование заказа';
+  if (route.name === 'order-edit') return 'Мои заказы';
   if (route.name === 'settings') return 'Настройки';
   if (route.name === 'base-settings') return 'Справочники';
   return '';

@@ -50,6 +50,7 @@
           :key="order.id"
           :order="order"
           @edit="editOrder"
+          @delete="confirmDeleteOrder"
           class="mb-3"
         />
       </div>
@@ -147,16 +148,21 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useOrderStore } from '@/stores/orderStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useConfirmationStore } from '@/stores/confirmationStore';
 import { storeToRefs } from 'pinia';
 import OrderCard from '@/components/OrderCard.vue';
 import OrderForm from '@/components/OrderForm.vue';
 import { useHapticFeedback } from '@/composables/useHapticFeedback';
 
+const route = useRoute();
+const router = useRouter();
 const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
+const confirmationStore = useConfirmationStore();
 const { orders, loading, user } = storeToRefs(orderStore);
 const { triggerHapticFeedback } = useHapticFeedback();
 const indicatorStatuses = computed(
@@ -340,6 +346,15 @@ const editOrder = (order) => {
   showOrderForm.value = true;
 };
 
+const confirmDeleteOrder = async (orderId) => {
+  const confirmed = await confirmationStore.open(
+    'Удаление заказа',
+    'Вы уверены, что хотите удалить этот заказ?'
+  );
+  if (!confirmed) return;
+  await orderStore.deleteOrder(orderId);
+};
+
 const nextMonth = () => currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() + 1));
 const previousMonth = () => currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() - 1));
 
@@ -354,6 +369,19 @@ const handleTouchEnd = (e) => {
     showFullCalendar.value = true;
   }
 };
+
+watch(
+  () => route.query.editOrderId,
+  (orderId) => {
+    if (!orderId) return;
+    orderToEditId.value = Array.isArray(orderId) ? orderId[0] : orderId;
+    initialOrderData.value = {};
+    showOrderForm.value = true;
+    const { editOrderId, ...rest } = route.query;
+    router.replace({ query: rest });
+  },
+  { immediate: true }
+);
 </script>
 
 <style scoped>

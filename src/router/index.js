@@ -23,16 +23,13 @@ const router = createRouter({
       meta: { title: 'Заказы', requiresAuth: true }
     },
     {
-      path: '/order/new',
-      name: 'order-new',
-      component: loadView('OrderFormView'),
-      meta: { title: 'Новый заказ', requiresAuth: true }
-    },
-    {
       path: '/order/:orderId',
       name: 'order-edit',
-      component: loadView('OrderFormView'),
-      meta: { title: 'Редактирование заказа', requiresAuth: true }
+      redirect: (to) => ({
+        path: '/',
+        query: { editOrderId: to.params.orderId }
+      }),
+      meta: { title: 'Заказы', requiresAuth: true }
     },
     {
       path: '/clients',
