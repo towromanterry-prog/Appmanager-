@@ -158,6 +158,7 @@ import { useHapticFeedback } from '@/composables/useHapticFeedback';
 const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
 const { orders, loading, user } = storeToRefs(orderStore);
+const { calendarIndicatorStatuses } = storeToRefs(settingsStore);
 const { triggerHapticFeedback } = useHapticFeedback();
 
 // Состояние
@@ -225,8 +226,11 @@ const flatCalendarDays = computed(() => {
     });
 
     const statuses = {};
-    // Приоритет отображения полосок
-    ['in_progress', 'additional', 'accepted', 'completed', 'delivered'].forEach(st => {
+    const allowedStatuses = Array.isArray(calendarIndicatorStatuses.value)
+      ? calendarIndicatorStatuses.value
+      : [];
+
+    allowedStatuses.forEach(st => {
       const count = dayOrders.filter(o => o.status === st).length;
       if (count > 0) statuses[st] = count;
     });

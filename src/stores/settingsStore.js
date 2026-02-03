@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/firebase';
@@ -102,6 +102,12 @@ export const useSettingsStore = defineStore('settings', () => {
   const appSettings = ref({ ...defaultAppSettings });
   const requiredFields = ref({ ...defaultRequiredFields });
   const user = ref(null);
+  const calendarIndicatorStatuses = computed(() => {
+    const raw = appSettings.value?.fullCalendarIndicatorStatuses;
+    if (!Array.isArray(raw)) return [];
+    const uniq = [...new Set(raw)];
+    return uniq.filter((status) => appSettings.value?.orderStatuses?.[status]);
+  });
 
   let isInitialized = false;
   let unsubscribe = null;
@@ -292,6 +298,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   return {
     appSettings,
+    calendarIndicatorStatuses,
     requiredFields,
     loadSettings,
     updateAppSettings,
