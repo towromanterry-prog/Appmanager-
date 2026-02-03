@@ -159,6 +159,10 @@ const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
 const { orders, loading, user } = storeToRefs(orderStore);
 const { triggerHapticFeedback } = useHapticFeedback();
+const indicatorStatuses = computed(
+  () => settingsStore.appSettings.fullCalendarIndicatorStatuses || []
+);
+const activeOrderStatuses = computed(() => settingsStore.appSettings.orderStatuses || {});
 
 // Состояние
 const showFullCalendar = ref(false);
@@ -197,6 +201,9 @@ const currentMonthName = computed(() =>
 const flatCalendarDays = computed(() => {
   const year = currentDate.value.getFullYear();
   const month = currentDate.value.getMonth();
+  const indicatorStatusList = indicatorStatuses.value;
+  const indicatorStatusSet = new Set(indicatorStatusList);
+  const activeStatuses = activeOrderStatuses.value;
   
   // Первое число месяца
   const firstDayOfMonth = new Date(year, month, 1);
@@ -224,11 +231,17 @@ const flatCalendarDays = computed(() => {
        return oDate === dateStr;
     });
 
+    const indicatorOrders = dayOrders.filter(
+      (order) => indicatorStatusSet.has(order.status) && activeStatuses[order.status]
+    );
+    const statusCounts = indicatorOrders.reduce((acc, order) => {
+      acc[order.status] = (acc[order.status] || 0) + 1;
+      return acc;
+    }, {});
     const statuses = {};
-    // Приоритет отображения полосок
-    ['in_progress', 'additional', 'accepted', 'completed', 'delivered'].forEach(st => {
-      const count = dayOrders.filter(o => o.status === st).length;
-      if (count > 0) statuses[st] = count;
+    indicatorStatusList.forEach((status) => {
+      const count = statusCounts[status];
+      if (count > 0) statuses[status] = count;
     });
 
     days.push({
@@ -236,7 +249,7 @@ const flatCalendarDays = computed(() => {
       number: d.getDate(),
       isToday: dateStr === todayStr,
       otherMonth: d.getMonth() !== month,
-      orderStats: { total: dayOrders.length, statuses }
+      orderStats: { total: indicatorOrders.length, statuses }
     });
   }
   return days;
