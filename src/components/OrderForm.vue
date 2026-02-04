@@ -42,6 +42,15 @@
                   <v-list-item v-bind="props" :title="item.title" :subtitle="item.raw.phone || 'Телефон не указан'"></v-list-item>
                 </template>
               </v-autocomplete>
+              <v-alert
+                v-if="isClientMissing"
+                type="warning"
+                variant="tonal"
+                density="compact"
+                class="mb-3"
+              >
+                Выбранный клиент еще не загружен. Подождите синхронизацию или выберите другого клиента.
+              </v-alert>
               <v-text-field
                 v-model="clientNameInput"
                 :label="`Имя клиента ${settingsStore.isFieldRequired('clientName') ? '*' : ''}`"
@@ -290,6 +299,8 @@ const resolvedClient = computed(() => {
   return clientsStore.getClientById(form.clientId) || null;
 });
 
+const isClientMissing = computed(() => form.clientId && !resolvedClient.value);
+
 const clientNameInput = computed({
   get: () => resolvedClient.value?.name || form.clientName,
   set: (value) => {
@@ -416,6 +427,7 @@ watch([() => props.orderId, () => props.initialData], ([newId, newInitialData]) 
 
 const saveOrder = async () => {
   if (!isFormValid.value) return;
+  if (form.clientId && !resolvedClient.value) return;
   
   isSaving.value = true;
 

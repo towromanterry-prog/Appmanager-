@@ -10,15 +10,6 @@
           </div>
         </div>
       </div>
-      <v-btn
-        :disabled="!isLoggedIn"
-        color="primary"
-        variant="outlined"
-        @click="openCreateDialog"
-      >
-        <v-icon start>mdi-plus</v-icon>
-        Добавить
-      </v-btn>
     </div>
 
     <div class="clients-list-container">
@@ -36,16 +27,25 @@
       </div>
 
       <div v-else class="clients-content">
-        <div class="d-flex align-center justify-space-between px-4 pt-3">
-          <v-switch
-            v-model="showArchived"
-            color="primary"
-            inset
+        <div class="px-4 pt-3 d-flex flex-column" style="gap: 12px;">
+          <v-text-field
+            v-model="localSearch"
+            label="Поиск по имени или телефону"
+            clearable
+            density="comfortable"
             hide-details
-            label="Показывать архивные"
-          ></v-switch>
-          <div class="text-caption text-medium-emphasis">
-            {{ filteredClients.length }} найдено
+          ></v-text-field>
+          <div class="d-flex align-center justify-space-between">
+            <v-switch
+              v-model="showArchived"
+              color="primary"
+              inset
+              hide-details
+              label="Показывать архивные"
+            ></v-switch>
+            <div class="text-caption text-medium-emphasis">
+              {{ filteredClients.length }} найдено
+            </div>
           </div>
         </div>
 
@@ -133,6 +133,21 @@
       :client="editingClient"
       @save="handleSave"
     />
+
+    <v-fab-transition>
+      <v-btn
+        v-if="isLoggedIn"
+        position="fixed"
+        location="bottom right"
+        icon="mdi-plus"
+        size="x-large"
+        color="primary"
+        elevation="4"
+        class="mb-4 mr-4"
+        style="bottom: 80px; z-index: 90;"
+        @click="openCreateDialog"
+      ></v-btn>
+    </v-fab-transition>
   </div>
 </template>
 
@@ -152,13 +167,14 @@ const { clients, loading, user } = storeToRefs(clientsStore);
 const { searchQuery } = storeToRefs(searchStore);
 
 const showArchived = ref(false);
+const localSearch = ref('');
 const isDialogOpen = ref(false);
 const editingClient = ref(null);
 
 const isLoggedIn = computed(() => Boolean(user.value));
 
 const filteredClients = computed(() => {
-  const query = (searchQuery.value || '').trim().toLowerCase();
+  const query = (localSearch.value || searchQuery.value || '').trim().toLowerCase();
   const source = showArchived.value ? clients.value : clientsStore.activeClients;
   const filtered = source.filter((client) => {
     if (!query) return true;
