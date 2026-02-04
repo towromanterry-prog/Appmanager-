@@ -195,7 +195,6 @@
 
 <script setup>
 import { reactive, computed, watch, ref } from 'vue';
-import { useRoute } from 'vue-router';
 import { useOrderStore } from '@/stores/orderStore.js';
 import { useClientsStore } from '@/stores/clientsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -212,7 +211,6 @@ const props = defineProps({
 });
 const emit = defineEmits(['close', 'saved']);
 
-const route = useRoute();
 const orderStore = useOrderStore();
 const clientsStore = useClientsStore();
 const settingsStore = useSettingsStore();
@@ -237,6 +235,14 @@ const form = reactive({
 
 const rules = {
   required: value => !!value || 'Обязательное поле',
+};
+
+const normalizePhoneDigits = (value) => {
+  const digits = (value || '').replace(/\D/g, '');
+  if (digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'))) {
+    return digits.substring(1);
+  }
+  return digits.slice(0, 10);
 };
 
 const isEditing = computed(() => props.orderId !== null);
@@ -345,12 +351,15 @@ watch([() => props.orderId, () => props.initialData], ([newId, newInitialData]) 
       if (newInitialData.deadline) {
         form.deadline = newInitialData.deadline;
       }
-      // Можно добавить обработку других полей из initialData, если потребуется
-    }
-    if (route.query.clientName || route.query.clientPhone) {
-        form.clientName = route.query.clientName;
-        form.lastName = route.query.clientLastName;
-        form.phone = route.query.clientPhone;
+      if (newInitialData.clientName) {
+        form.clientName = newInitialData.clientName;
+      }
+      if (newInitialData.lastName) {
+        form.lastName = newInitialData.lastName;
+      }
+      if (newInitialData.phone) {
+        form.phone = normalizePhoneDigits(newInitialData.phone);
+      }
     }
   }
 }, { immediate: true, deep: true });
@@ -385,7 +394,7 @@ const saveOrder = async () => {
       lastName: form.lastName,
       phone: fullPhone,
       services: form.services.map(s => s.name),
-    });
+    }, { registerOrder: !isEditing.value });
     close();
   } catch(e) {
     console.error("Ошибка сохранения заказа", e)

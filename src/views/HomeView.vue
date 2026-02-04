@@ -31,12 +31,26 @@
       @touchstart="handleTouchStart"
       @touchend="handleTouchEnd"
     >
-      <div v-if="filteredOrders.length" class="pa-2 pb-16">
+      <div v-if="!isLoggedIn" class="empty-state">
+        <v-icon size="64" color="surface-variant" class="mb-4">mdi-lock-outline</v-icon>
+        <div class="text-h6 text-medium-emphasis">Нужен вход</div>
+        <div class="text-body-2 text-disabled mt-2">Войдите, чтобы видеть заказы.</div>
+        <v-btn class="mt-4" color="primary" to="/settings">Перейти в настройки</v-btn>
+      </div>
+
+      <div v-else-if="loading && !orders.length" class="empty-state">
+        <v-icon size="64" color="surface-variant" class="mb-4">mdi-timer-sand</v-icon>
+        <div class="text-h6 text-medium-emphasis">Загрузка...</div>
+        <div class="text-body-2 text-disabled mt-2">Подготавливаем список заказов.</div>
+      </div>
+
+      <div v-else-if="filteredOrders.length" class="pa-2 pb-16">
         <OrderCard
           v-for="order in filteredOrders"
           :key="order.id"
           :order="order"
           @edit="editOrder"
+          @delete="confirmDeleteOrder"
           class="mb-3"
         />
       </div>
@@ -110,7 +124,7 @@
 
     <v-fab-transition>
       <v-btn
-        v-if="!showFullCalendar"
+        v-if="!showFullCalendar && isLoggedIn"
         position="fixed"
         location="bottom right"
         icon="mdi-plus"
@@ -134,18 +148,27 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useOrderStore } from '@/stores/orderStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useConfirmationStore } from '@/stores/confirmationStore';
 import { storeToRefs } from 'pinia';
 import OrderCard from '@/components/OrderCard.vue';
 import OrderForm from '@/components/OrderForm.vue';
 import { useHapticFeedback } from '@/composables/useHapticFeedback';
 
+const route = useRoute();
+const router = useRouter();
 const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
-const { orders } = storeToRefs(orderStore);
+const confirmationStore = useConfirmationStore();
+const { orders, loading, user } = storeToRefs(orderStore);
 const { triggerHapticFeedback } = useHapticFeedback();
+const indicatorStatuses = computed(
+  () => settingsStore.appSettings.fullCalendarIndicatorStatuses || []
+);
+const showCompletedOrders = computed(() => settingsStore.appSettings.showCompletedOrders);
 
 // Состояние
 const showFullCalendar = ref(false);
@@ -154,6 +177,7 @@ const selectedDate = ref(null); // Если null - показываем все
 const currentDate = ref(new Date()); // Текущий месяц просмотра
 const orderToEditId = ref(null);
 const initialOrderData = ref({});
+const isLoggedIn = computed(() => Boolean(user.value));
 
 // Хелперы даты
 const getLocalDateString = (date) => {
@@ -173,6 +197,46 @@ const formatDateShort = (dateStr) => {
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 };
 
+const normalizeStatus = (status) => (status ?? '').trim();
+
+const clearQueryParams = (keys) => {
+  const query = { ...route.query };
+  keys.forEach((key) => {
+    delete query[key];
+  });
+  router.replace({ query });
+};
+
+const toDateObject = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  if (typeof value === 'object' && typeof value.toDate === 'function') {
+    return value.toDate();
+  }
+  if (typeof value === 'object' && typeof value.seconds === 'number') {
+    return new Date(value.seconds * 1000);
+  }
+  return null;
+};
+
+const toDateKey = (value) => {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed;
+    }
+  }
+  const date = toDateObject(value);
+  return date ? getLocalDateString(date) : null;
+};
+
+const getOrderDateKey = (order) => toDateKey(order.deadline ?? order.createDate);
+
 // Данные для календаря
 const currentYear = computed(() => currentDate.value.getFullYear());
 const currentMonthName = computed(() => 
@@ -183,6 +247,10 @@ const currentMonthName = computed(() =>
 const flatCalendarDays = computed(() => {
   const year = currentDate.value.getFullYear();
   const month = currentDate.value.getMonth();
+  const indicatorStatusList = indicatorStatuses.value
+    .map((status) => normalizeStatus(status))
+    .filter(Boolean);
+  const indicatorStatusSet = new Set(indicatorStatusList);
   
   // Первое число месяца
   const firstDayOfMonth = new Date(year, month, 1);
@@ -205,16 +273,21 @@ const flatCalendarDays = computed(() => {
     
     // Статистика заказов на этот день
     // Ищем заказы по deadline (или createDate)
-    const dayOrders = orders.value.filter(o => {
-       const oDate = o.deadline ? o.deadline.split('T')[0] : o.createDate.split('T')[0];
-       return oDate === dateStr;
-    });
+    const dayOrders = orders.value.filter((order) => getOrderDateKey(order) === dateStr);
 
+    const indicatorOrders = dayOrders.filter((order) => {
+      const status = normalizeStatus(order.status);
+      return indicatorStatusSet.has(status);
+    });
+    const statusCounts = indicatorOrders.reduce((acc, order) => {
+      const status = normalizeStatus(order.status);
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
     const statuses = {};
-    // Приоритет отображения полосок
-    ['in_progress', 'additional', 'accepted', 'completed', 'delivered'].forEach(st => {
-      const count = dayOrders.filter(o => o.status === st).length;
-      if (count > 0) statuses[st] = count;
+    indicatorStatusList.forEach((status) => {
+      const count = statusCounts[status];
+      if (count > 0) statuses[status] = count;
     });
 
     days.push({
@@ -222,7 +295,7 @@ const flatCalendarDays = computed(() => {
       number: d.getDate(),
       isToday: dateStr === todayStr,
       otherMonth: d.getMonth() !== month,
-      orderStats: { total: dayOrders.length, statuses }
+      orderStats: { total: indicatorOrders.length, statuses }
     });
   }
   return days;
@@ -232,19 +305,30 @@ const flatCalendarDays = computed(() => {
 const filteredOrders = computed(() => {
   let list = [...orders.value];
   
+  if (!showCompletedOrders.value) {
+    const hiddenStatuses = new Set(['delivered', 'cancelled']);
+    list = list.filter((order) => !hiddenStatuses.has(normalizeStatus(order.status)));
+  }
+
   if (selectedDate.value) {
-    list = list.filter(o => {
-      const oDate = o.deadline ? o.deadline.split('T')[0] : o.createDate.split('T')[0];
-      return oDate === selectedDate.value;
-    });
+    list = list.filter((order) => getOrderDateKey(order) === selectedDate.value);
+  }
+
+  if (orderStore.filterStatus.length) {
+    list = list.filter((order) => orderStore.filterStatus.includes(normalizeStatus(order.status)));
   }
   
   // Сортировка: Ближайшие сверху
-  return list.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+  return list.sort((a, b) => {
+    const aDate = toDateObject(a.deadline) ?? toDateObject(a.createDate);
+    const bDate = toDateObject(b.deadline) ?? toDateObject(b.createDate);
+    return (aDate?.getTime() ?? 0) - (bDate?.getTime() ?? 0);
+  });
 });
 
 // Методы
 const getStatusLabel = (status) => {
+  const normalizedStatus = normalizeStatus(status);
   const map = {
     'in_progress': 'В работе',
     'additional': settingsStore.appSettings.additionalStatusName || 'Доп. статус',
@@ -252,7 +336,7 @@ const getStatusLabel = (status) => {
     'completed': 'Готов',
     'delivered': 'Сдан'
   };
-  return map[status] || status;
+  return map[normalizedStatus] || normalizedStatus;
 };
 
 const handleDayClick = (day) => {
@@ -274,6 +358,20 @@ const editOrder = (order) => {
   showOrderForm.value = true;
 };
 
+const confirmDeleteOrder = async (orderId) => {
+  const confirmed = await confirmationStore.open(
+    'Удаление заказа',
+    'Вы уверены, что хотите удалить этот заказ?'
+  );
+  if (!confirmed) return;
+  await orderStore.deleteOrder(orderId);
+  if (orderToEditId.value === orderId) {
+    showOrderForm.value = false;
+    orderToEditId.value = null;
+    initialOrderData.value = {};
+  }
+};
+
 const nextMonth = () => currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() + 1));
 const previousMonth = () => currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() - 1));
 
@@ -288,6 +386,37 @@ const handleTouchEnd = (e) => {
     showFullCalendar.value = true;
   }
 };
+
+watch(
+  () => route.query.newOrder,
+  (flag) => {
+    const normalizedFlag = Array.isArray(flag) ? flag[0] : flag;
+    if (!normalizedFlag) return;
+    const deadline = selectedDate.value || getLocalDateString(new Date());
+    orderToEditId.value = null;
+    initialOrderData.value = {
+      deadline,
+      clientName: (Array.isArray(route.query.clientName) ? route.query.clientName[0] : route.query.clientName) || '',
+      lastName: (Array.isArray(route.query.clientLastName) ? route.query.clientLastName[0] : route.query.clientLastName) || '',
+      phone: (Array.isArray(route.query.clientPhone) ? route.query.clientPhone[0] : route.query.clientPhone) || ''
+    };
+    showOrderForm.value = true;
+    clearQueryParams(['newOrder', 'clientName', 'clientLastName', 'clientPhone']);
+  },
+  { immediate: true }
+);
+
+watch(
+  () => route.query.editOrderId,
+  (orderId) => {
+    if (!orderId) return;
+    orderToEditId.value = Array.isArray(orderId) ? orderId[0] : orderId;
+    initialOrderData.value = {};
+    showOrderForm.value = true;
+    clearQueryParams(['editOrderId']);
+  },
+  { immediate: true }
+);
 </script>
 
 <style scoped>

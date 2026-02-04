@@ -5,11 +5,11 @@ import {
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/firebase';
-import { useOrderStore } from './orderStore';
 
 export const useDetailStore = defineStore('details', () => {
   const details = ref([]);
   const user = ref(null);
+  const loading = ref(false);
   let unsubscribe = null;
 
   function init() {
@@ -19,6 +19,7 @@ export const useDetailStore = defineStore('details', () => {
         subscribeToUserDetails(currentUser.uid);
       } else {
         details.value = [];
+        loading.value = false;
         if (unsubscribe) unsubscribe();
       }
     });
@@ -26,6 +27,7 @@ export const useDetailStore = defineStore('details', () => {
 
   function subscribeToUserDetails(userId) {
     if (unsubscribe) unsubscribe();
+    loading.value = true;
     const q = query(collection(db, 'users', userId, 'details'), orderBy('name'));
 
     unsubscribe = onSnapshot(q, (snapshot) => {
@@ -33,6 +35,10 @@ export const useDetailStore = defineStore('details', () => {
         id: doc.id,
         ...doc.data()
       }));
+      loading.value = false;
+    }, (error) => {
+      console.error("Ошибка синхронизации деталей:", error);
+      loading.value = false;
     });
   }
 
@@ -60,7 +66,6 @@ export const useDetailStore = defineStore('details', () => {
       });
 
       // Обновляем цены в активных заказах (сохраняем вашу старую логику)
-      const orderStore = useOrderStore();
       // Тут нужно будет добавить метод updateDetailPricesInActiveOrders в orderStore,
       // если его там нет (по аналогии с услугами). 
       // Но если критично, можно пока пропустить.
@@ -82,10 +87,15 @@ export const useDetailStore = defineStore('details', () => {
     return details.value.find(d => d.id === id);
   }
 
+  const loadDetails = () => {};
+
   init();
 
   return {
     details,
+    user,
+    loading,
+    loadDetails,
     addDetail,
     updateDetail,
     deleteDetail,

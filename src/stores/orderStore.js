@@ -372,15 +372,25 @@ export const useOrderStore = defineStore('orders', () => {
     const confirmed = await confirmationStore.open('Отмена заказа', 'Вы уверены, что хотите отменить этот заказ?');
     if (!confirmed) return;
     
+    const services = order.services || [];
+    const details = order.details || [];
+    const servicesCache = services.map((service) => ({ id: service.id, status: service.status }));
+    const detailsCache = details.map((detail) => ({ id: detail.id, status: detail.status }));
+    const hasServiceWithoutId = services.some((service) => !service.id);
+    const hasDetailWithoutId = details.some((detail) => !detail.id);
+
     order.cachedState = {
+      v: 2,
       orderStatus: order.status,
-      serviceStatuses: order.services.map(s => s.status),
-      detailStatuses: order.details.map(d => d.status)
+      services: servicesCache,
+      details: detailsCache,
+      ...(hasServiceWithoutId ? { serviceStatuses: services.map((service) => service.status) } : {}),
+      ...(hasDetailWithoutId ? { detailStatuses: details.map((detail) => detail.status) } : {})
     };
     
     order.status = 'cancelled';
-    order.services.forEach(s => s.status = 'cancelled');
-    order.details.forEach(d => d.status = 'cancelled');
+    services.forEach(s => s.status = 'cancelled');
+    details.forEach(d => d.status = 'cancelled');
     
     await saveOrderToFirebase(order);
   }
@@ -396,13 +406,20 @@ export const useOrderStore = defineStore('orders', () => {
     const confirmed = await confirmationStore.open('Восстановление заказа', 'Вы уверены, что хотите восстановить этот заказ?');
     if (!confirmed) return;
 
-    order.status = cachedState.orderStatus;
-    order.services.forEach((service, index) => {
-      service.status = cachedState.serviceStatuses[index] || 'accepted';
-    });
-    order.details.forEach((detail, index) => {
-      detail.status = cachedState.detailStatuses[index] || 'accepted';
-    });
+    const restoreStatuses = (items, cachedItems, legacyStatuses) => {
+      const cachedList = Array.isArray(cachedItems) ? cachedItems : [];
+      const statusMap = new Map(cachedList.map((item) => [item.id, item.status]));
+      items.forEach((item, index) => {
+        const statusById = item?.id ? statusMap.get(item.id) : undefined;
+        const statusByIndex = cachedList[index]?.status;
+        const status = statusById ?? statusByIndex ?? legacyStatuses?.[index];
+        item.status = status || 'accepted';
+      });
+    };
+
+    order.status = cachedState.orderStatus || 'accepted';
+    restoreStatuses(order.services || [], cachedState.services, cachedState.serviceStatuses);
+    restoreStatuses(order.details || [], cachedState.details, cachedState.detailStatuses);
 
     // Удаляем кэш из объекта перед сохранением, или оставляем null
     delete order.cachedState;
@@ -420,7 +437,7 @@ export const useOrderStore = defineStore('orders', () => {
 
     for (const order of activeOrders) {
       let changed = false;
-      order.services.forEach(service => {
+      (order.services || []).forEach(service => {
         if (service.id === serviceId) {
           service.price = newPrice;
           changed = true;

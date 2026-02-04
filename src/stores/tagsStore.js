@@ -9,6 +9,7 @@ import { db, auth } from '@/firebase';
 export const useTagsStore = defineStore('tags', () => {
   const tags = ref([]);
   const user = ref(null);
+  const loading = ref(false);
   let unsubscribe = null;
 
   // Инициализация
@@ -19,6 +20,7 @@ export const useTagsStore = defineStore('tags', () => {
         subscribeToUserTags(currentUser.uid);
       } else {
         tags.value = [];
+        loading.value = false;
         if (unsubscribe) unsubscribe();
       }
     });
@@ -26,6 +28,7 @@ export const useTagsStore = defineStore('tags', () => {
 
   function subscribeToUserTags(userId) {
     if (unsubscribe) unsubscribe();
+    loading.value = true;
     // Сортируем теги по имени
     const q = query(collection(db, 'users', userId, 'tags'), orderBy('name'));
 
@@ -34,6 +37,10 @@ export const useTagsStore = defineStore('tags', () => {
         id: doc.id,
         ...doc.data()
       }));
+      loading.value = false;
+    }, (error) => {
+      console.error("Ошибка синхронизации тегов:", error);
+      loading.value = false;
     });
   }
 
@@ -71,10 +78,15 @@ export const useTagsStore = defineStore('tags', () => {
     return tags.value.find(t => t.id === id);
   }
 
+  const loadTags = () => {};
+
   init();
 
   return {
     tags,
+    user,
+    loading,
+    loadTags,
     addTag,
     updateTag,
     deleteTag,

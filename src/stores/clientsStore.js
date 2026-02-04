@@ -17,6 +17,7 @@ export const useClientsStore = defineStore('clients', () => {
   const clients = ref([]);
   const loading = ref(false);
   const user = ref(null);
+  const sortBy = ref('name');
   let unsubscribe = null;
 
   // === 1. Инициализация и синхронизация ===
@@ -27,6 +28,7 @@ export const useClientsStore = defineStore('clients', () => {
         subscribeToUserClients(currentUser.uid);
       } else {
         clients.value = [];
+        loading.value = false;
         if (unsubscribe) unsubscribe();
       }
     });
@@ -53,7 +55,7 @@ export const useClientsStore = defineStore('clients', () => {
   }
 
   // === 2. Добавление или Обновление (Умная логика) ===
-  async function addOrUpdateClient(clientData) {
+  async function addOrUpdateClient(clientData, { registerOrder = true } = {}) {
     if (!user.value) return;
 
     // Извлекаем данные
@@ -63,33 +65,39 @@ export const useClientsStore = defineStore('clients', () => {
     // Используем phone как уникальный ключ
     const existingClient = clients.value.find(c => c.phone === phone);
 
-    // Подготовка новых данных
-    // Если клиент был, берем его старые счетчики, иначе начинаем с нуля
-    const totalOrders = existingClient ? (existingClient.totalOrders || 0) + 1 : 1;
-    
-    // Логика истории (последние 10 заказов)
-    const newHistoryEntry = { 
-      date: new Date().toISOString(), 
-      services: services 
-    };
-    
-    let history = [];
-    if (existingClient && Array.isArray(existingClient.history)) {
-      history = [...existingClient.history, newHistoryEntry].slice(-10);
-    } else {
-      history = [newHistoryEntry];
-    }
-
     const clientRecord = {
       name,
       lastName,
-      phone,
-      lastOrderDate: new Date().toISOString(),
-      totalOrders,
-      favoriteServices: services, // Обновляем любимые услуги последними
-      notes: notes || (existingClient ? existingClient.notes : ''), // Не стираем заметки, если новые пустые
-      history
+      phone
     };
+    
+    if (notes) {
+      clientRecord.notes = notes;
+    }
+
+    if (registerOrder) {
+      // Подготовка новых данных
+      // Если клиент был, берем его старые счетчики, иначе начинаем с нуля
+      const totalOrders = existingClient ? (existingClient.totalOrders || 0) + 1 : 1;
+      
+      // Логика истории (последние 10 заказов)
+      const newHistoryEntry = { 
+        date: new Date().toISOString(), 
+        services: services 
+      };
+      
+      let history = [];
+      if (existingClient && Array.isArray(existingClient.history)) {
+        history = [...existingClient.history, newHistoryEntry].slice(-10);
+      } else {
+        history = [newHistoryEntry];
+      }
+
+      clientRecord.lastOrderDate = new Date().toISOString();
+      clientRecord.totalOrders = totalOrders;
+      clientRecord.favoriteServices = services; // Обновляем любимые услуги последними
+      clientRecord.history = history;
+    }
 
     try {
       // ИСПОЛЬЗУЕМ setDoc и phone как ID документа
@@ -145,6 +153,8 @@ export const useClientsStore = defineStore('clients', () => {
       .slice(0, limit);
   }
 
+  const loadClients = () => {};
+
   // Запуск при создании стора
   init();
 
@@ -152,7 +162,8 @@ export const useClientsStore = defineStore('clients', () => {
     clients,
     loading,
     user,
-    // loadClients больше не нужен, init делает это сам
+    sortBy,
+    loadClients,
     addOrUpdateClient,
     deleteClient,
     searchClients,

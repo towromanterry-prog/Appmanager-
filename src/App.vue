@@ -94,6 +94,11 @@
         <span class="text-caption mt-1">Клиенты</span>
       </v-btn>
 
+      <v-btn value="base-settings" to="/base-settings">
+        <v-icon>mdi-database-outline</v-icon>
+        <span class="text-caption mt-1">Справочники</span>
+      </v-btn>
+
       <v-btn value="settings" to="/settings">
         <v-icon>mdi-tune</v-icon>
         <span class="text-caption mt-1">Меню</span>
@@ -106,7 +111,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useThemeStore } from '@/stores/themeStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -141,6 +146,7 @@ const showSortMenu = computed(() => isHomePage.value);
 const currentTitle = computed(() => {
   if (route.name === 'home') return 'Мои заказы';
   if (route.name === 'clients') return 'Клиенты';
+  if (route.name === 'order-edit') return 'Мои заказы';
   if (route.name === 'settings') return 'Настройки';
   if (route.name === 'base-settings') return 'Справочники';
   return '';
@@ -196,9 +202,10 @@ watch(() => settingsStore.appSettings.baseFontSize, (newSize) => {
 
 // Синхронизация табов
 watch(() => route.path, (newPath) => {
-  if (newPath === '/') activeTab.value = 'home';
-  else if (newPath === '/clients') activeTab.value = 'clients';
-  else if (newPath === '/settings') activeTab.value = 'settings';
+  if (newPath === '/' || newPath.startsWith('/order')) activeTab.value = 'home';
+  else if (newPath.startsWith('/clients')) activeTab.value = 'clients';
+  else if (newPath.startsWith('/base-settings')) activeTab.value = 'base-settings';
+  else if (newPath.startsWith('/settings')) activeTab.value = 'settings';
 }, { immediate: true });
 
 onMounted(() => {
