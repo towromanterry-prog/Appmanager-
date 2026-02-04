@@ -131,7 +131,7 @@ const route = useRoute();
 const clientsStore = useClientsStore();
 
 // Инициализация
-useServiceStore();
+const servicesStore = useServiceStore();
 useTagsStore();
 useOrderStore(); 
 
@@ -212,6 +212,7 @@ onMounted(() => {
   themeStore.loadTheme();
   settingsStore.loadSettings();
   clientsStore.subscribeClients();
+  servicesStore.subscribeServices();
 });
 </script>
 

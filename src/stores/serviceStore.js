@@ -1,119 +1,194 @@
 // src/stores/serviceStore.js
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
-import { 
-  collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy 
+import { computed, ref } from 'vue';
+import {
+  collection,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  doc,
+  query,
+  orderBy,
+  serverTimestamp
 } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth'; // Слушатель авторизации
+import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/firebase';
+
+const normalizePrice = (value) => {
+  if (value === '' || value === null || value === undefined) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
+const mapService = (docSnap) => {
+  const data = docSnap.data() || {};
+  return {
+    id: docSnap.id,
+    name: data.name || '',
+    price: normalizePrice(data.price ?? data.defaultPrice) ?? 0,
+    notes: data.notes || '',
+    isArchived: Boolean(data.isArchived),
+    archivedAt: data.archivedAt || null,
+    tagIds: Array.isArray(data.tagIds) ? data.tagIds : (data.tags || []),
+    icon: data.icon || ''
+  };
+};
 
 export const useServiceStore = defineStore('services', () => {
   const services = ref([]);
   const loading = ref(false);
-  const user = ref(null); // Текущий пользователь
-  let unsubscribe = null;
+  const ready = ref(false);
+  const error = ref(null);
+  const user = ref(null);
+  let authUnsubscribe = null;
+  let servicesUnsubscribe = null;
 
-  // Главная функция инициализации
-  function init() {
-    // Слушаем изменение статуса входа (Вход / Выход)
-    onAuthStateChanged(auth, (currentUser) => {
-      user.value = currentUser;
+  const activeServices = computed(() => services.value.filter(service => !service.isArchived));
+  const archivedServices = computed(() => services.value.filter(service => service.isArchived));
 
-      if (currentUser) {
-        // Если вошли — подписываемся на СВОИ данные
-        subscribeToUserServices(currentUser.uid);
-      } else {
-        // Если вышли — очищаем данные
-        services.value = [];
-        if (unsubscribe) unsubscribe();
-      }
-    });
-  }
+  const stopServicesListener = () => {
+    if (servicesUnsubscribe) {
+      servicesUnsubscribe();
+      servicesUnsubscribe = null;
+    }
+  };
 
-  function subscribeToUserServices(userId) {
-    if (unsubscribe) unsubscribe();
+  const subscribeForUser = (userId) => {
+    stopServicesListener();
     loading.value = true;
-    
-    // Путь к коллекции: users -> [ID юзера] -> services
-    const userServicesRef = collection(db, 'users', userId, 'services');
-    const q = query(userServicesRef, orderBy('name'));
+    error.value = null;
 
-    unsubscribe = onSnapshot(q, (snapshot) => {
-      services.value = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          tagIds: Array.isArray(data.tagIds) ? data.tagIds : (data.tags || [])
-        };
-      });
+    const q = query(collection(db, 'users', userId, 'services'), orderBy('name'));
+    servicesUnsubscribe = onSnapshot(q, (snapshot) => {
+      services.value = snapshot.docs.map(mapService);
       loading.value = false;
+      ready.value = true;
+    }, (snapshotError) => {
+      console.error('Ошибка синхронизации услуг:', snapshotError);
+      error.value = snapshotError;
+      loading.value = false;
+      ready.value = true;
     });
-  }
+  };
 
-  // Методы изменения данных теперь тоже используют ID юзера
+  const subscribeServices = () => {
+    if (authUnsubscribe) return;
+    loading.value = true;
+    ready.value = false;
+    error.value = null;
+
+    authUnsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      user.value = currentUser;
+      if (!currentUser) {
+        services.value = [];
+        stopServicesListener();
+        loading.value = false;
+        ready.value = true;
+        return;
+      }
+      subscribeForUser(currentUser.uid);
+    });
+  };
+
+  const unsubscribeServices = () => {
+    if (authUnsubscribe) {
+      authUnsubscribe();
+      authUnsubscribe = null;
+    }
+    stopServicesListener();
+    services.value = [];
+    loading.value = false;
+    ready.value = false;
+    error.value = null;
+    user.value = null;
+  };
+
   async function addService(serviceData) {
-    if (!user.value) return; // Защита: нельзя писать без входа
-    
+    if (!user.value) return;
+
     try {
       await addDoc(collection(db, 'users', user.value.uid, 'services'), {
         name: serviceData.name,
-        defaultPrice: Number(serviceData.defaultPrice),
-        tagIds: serviceData.tagIds || []
+        price: normalizePrice(serviceData.price),
+        notes: serviceData.notes || '',
+        isArchived: false,
+        archivedAt: null
       });
     } catch (e) {
-      console.error("Ошибка добавления:", e);
+      console.error('Ошибка добавления услуги:', e);
     }
   }
 
   async function updateService(id, serviceData) {
     if (!user.value) return;
-    
+
     try {
-      // Путь к конкретному документу: users/[uid]/services/[serviceId]
       const serviceRef = doc(db, 'users', user.value.uid, 'services', id);
       await updateDoc(serviceRef, {
         name: serviceData.name,
-        defaultPrice: Number(serviceData.defaultPrice),
-        tagIds: serviceData.tagIds || []
+        price: normalizePrice(serviceData.price),
+        notes: serviceData.notes || ''
       });
     } catch (e) {
-      console.error("Ошибка обновления:", e);
+      console.error('Ошибка обновления услуги:', e);
     }
   }
 
-  async function deleteService(id) {
+  async function archiveService(id) {
     if (!user.value) return;
-    
+
     try {
-      await deleteDoc(doc(db, 'users', user.value.uid, 'services', id));
+      const serviceRef = doc(db, 'users', user.value.uid, 'services', id);
+      await updateDoc(serviceRef, {
+        isArchived: true,
+        archivedAt: serverTimestamp()
+      });
     } catch (e) {
-      console.error("Ошибка удаления:", e);
+      console.error('Ошибка архивирования услуги:', e);
     }
   }
 
-  // Геттеры для UI
-  function getServiceById(id) {
-    return services.value.find(s => s.id === id);
+  async function unarchiveService(id) {
+    if (!user.value) return;
+
+    try {
+      const serviceRef = doc(db, 'users', user.value.uid, 'services', id);
+      await updateDoc(serviceRef, {
+        isArchived: false,
+        archivedAt: null
+      });
+    } catch (e) {
+      console.error('Ошибка восстановления услуги:', e);
+    }
   }
-  
+
+  function getServiceById(id) {
+    return services.value.find(service => service.id === id);
+  }
+
   function getServicesByTag(tagId) {
     if (!tagId) return services.value;
-    return services.value.filter(s => s.tagIds && s.tagIds.includes(tagId));
+    return services.value.filter(service => service.tagIds && service.tagIds.includes(tagId));
   }
 
-  const loadServices = () => {};
-
-  // Запуск прослушивания при создании стора
-  init();
+  const loadServices = () => subscribeServices();
+  const deleteService = (id) => archiveService(id);
 
   return {
     services,
-    user, // Экспортируем юзера, чтобы проверять в UI, вошли мы или нет
+    activeServices,
+    archivedServices,
     loading,
+    ready,
+    error,
+    user,
     loadServices,
+    subscribeServices,
+    unsubscribeServices,
     addService,
     updateService,
+    archiveService,
+    unarchiveService,
     deleteService,
     getServiceById,
     getServicesByTag

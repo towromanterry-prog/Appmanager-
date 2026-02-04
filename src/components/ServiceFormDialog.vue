@@ -12,50 +12,36 @@
             class="mb-4"
           ></v-text-field>
           <v-text-field
-            v-model.number="serviceForm.defaultPrice"
-            label="Цена по умолчанию"
+            v-model="serviceForm.price"
+            label="Цена"
             type="number"
             prefix="₽"
-            :rules="[v => v > 0 || 'Цена должна быть больше 0']"
             variant="outlined"
             class="mb-4"
           ></v-text-field>
-          <v-select
-            v-model="serviceForm.tagIds"
-            :items="availableTags"
-            item-title="name"
-            item-value="id"
-            label="Теги"
-            multiple
-            chips
+          <v-textarea
+            v-model="serviceForm.notes"
+            label="Примечание"
             variant="outlined"
-          >
-            <template v-slot:selection="{ item }">
-              <v-chip :color="item.raw.color" size="small">{{ item.title }}</v-chip>
-            </template>
-            <template v-slot:item="{ props, item }">
-              <v-list-item v-bind="props" :title="null">
-                <template v-slot:prepend>
-                  <v-chip :color="item.raw.color" size="small">{{ item.raw.name }}</v-chip>
-                </template>
-              </v-list-item>
-            </template>
-          </v-select>
+            rows="2"
+            auto-grow
+          ></v-textarea>
         </v-form>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn @click="closeDialog">Отмена</v-btn>
-        <v-btn color="primary" @click="save">{{ editingService ? 'Сохранить' : 'Добавить' }}</v-btn>
+        <v-btn :disabled="isSaving" @click="closeDialog">Отмена</v-btn>
+        <v-btn color="primary" :loading="isSaving" @click="save">
+          {{ editingService ? 'Сохранить' : 'Добавить' }}
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch } from 'vue';
 import { useServiceStore } from '@/stores/serviceStore';
-import { useTagsStore } from '@/stores/tagsStore';
 import { useHapticFeedback } from '@/composables/useHapticFeedback';
 
 const { triggerHapticFeedback } = useHapticFeedback();
@@ -66,24 +52,26 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'saved']);
 
 const serviceStore = useServiceStore();
-const tagsStore = useTagsStore();
 
 const dialog = ref(props.modelValue);
 const serviceFormRef = ref(null);
-const serviceForm = ref({ name: '', defaultPrice: 0, tagIds: [] });
+const serviceForm = ref({ name: '', price: '', notes: '' });
 const editingService = ref(null);
-
-const availableTags = computed(() => tagsStore.tags);
+const isSaving = ref(false);
 
 watch(() => props.modelValue, (newVal) => {
   dialog.value = newVal;
   if (newVal) {
     if (props.service) {
       editingService.value = props.service;
-      serviceForm.value = { ...props.service, tagIds: props.service.tagIds ? [...props.service.tagIds] : [] };
+      serviceForm.value = {
+        name: props.service.name || '',
+        price: props.service.price ?? '',
+        notes: props.service.notes || ''
+      };
     } else {
       editingService.value = null;
-      serviceForm.value = { name: '', defaultPrice: 0, tagIds: [] };
+      serviceForm.value = { name: '', price: '', notes: '' };
     }
   }
 });
@@ -102,17 +90,18 @@ const save = async () => {
   const { valid } = await serviceFormRef.value.validate();
   if (!valid) return;
 
-  if (editingService.value) {
-    serviceStore.updateService(editingService.value.id, serviceForm.value);
-  } else {
-    serviceStore.addService(serviceForm.value);
+  isSaving.value = true;
+  try {
+    if (editingService.value) {
+      await serviceStore.updateService(editingService.value.id, serviceForm.value);
+    } else {
+      await serviceStore.addService(serviceForm.value);
+    }
+    triggerHapticFeedback('important');
+    emit('saved');
+    closeDialog();
+  } finally {
+    isSaving.value = false;
   }
-  triggerHapticFeedback('important');
-  emit('saved');
-  closeDialog();
 };
-
-if (tagsStore.tags.length === 0) {
-  tagsStore.loadTags();
-}
 </script>
