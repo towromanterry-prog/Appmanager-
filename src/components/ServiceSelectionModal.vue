@@ -17,7 +17,7 @@
               <div class="d-flex mb-4">
                 <v-text-field
                   v-model="searchQuery"
-                  label="Поиск по названию или тегу"
+                  label="Поиск по названию или примечанию"
                   prepend-inner-icon="mdi-magnify"
                   variant="outlined"
                   clearable
@@ -66,7 +66,7 @@
 
               <template v-slot:append>
                 <span class="text-body-1 font-weight-medium">
-                  {{ service.defaultPrice }} ₽
+                  {{ service.price }} ₽
                 </span>
               </template>
             </v-list-item>
@@ -77,7 +77,6 @@
   </v-dialog>
   <ServiceFormDialog
     v-model="isServiceFormVisible"
-    @saved="serviceStore.loadServices()"
   />
 </template>
 
@@ -102,7 +101,7 @@ const selected = ref([]);
 const isServiceFormVisible = ref(false);
 
 const availableServices = computed(() => {
-  return serviceStore.services.map(service => ({
+  return serviceStore.activeServices.map(service => ({
     ...service,
     tagNames: getTags(service.tagIds).map(t => t.name)
   }));
@@ -110,7 +109,7 @@ const availableServices = computed(() => {
 
 const fuse = computed(() => {
   return new Fuse(availableServices.value, {
-    keys: ['name', 'tagNames'],
+    keys: ['name', 'notes', 'tagNames'],
     threshold: 0.3,
   });
 });
@@ -139,7 +138,7 @@ const toggleService = (service) => {
     selected.value.push({
       id: service.id,
       name: service.name,
-      price: service.defaultPrice,
+      price: service.price,
       status: 'accepted',
       icon: service.icon || '',
       tagIds: service.tagIds || []
@@ -171,9 +170,6 @@ watch(dialog, (newVal) => {
 });
 
 // Load services and tags if not already loaded
-if (serviceStore.services.length === 0) {
-  serviceStore.loadServices();
-}
 if (tagsStore.tags.length === 0) {
   tagsStore.loadTags();
 }

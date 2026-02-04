@@ -86,6 +86,21 @@
                 </v-btn>
               </div>
 
+              <v-autocomplete
+                v-model="quickService"
+                :items="serviceStore.activeServices"
+                item-title="name"
+                item-value="id"
+                return-object
+                label="Быстро добавить услугу"
+                clearable
+                :loading="serviceStore.loading"
+                :disabled="!serviceStore.ready"
+                no-data-text="Услуги не найдены"
+                class="mb-3"
+                @update:modelValue="handleQuickServiceSelect"
+              ></v-autocomplete>
+
               <div v-if="form.services.length > 0" class="item-list">
                 <div v-for="(service, index) in form.services" :key="`service-${index}`" class="item-card">
                   <div class="item-content">
@@ -248,6 +263,7 @@ const { triggerHapticFeedback } = useHapticFeedback();
 const isSaving = ref(false);
 const isServiceModalOpen = ref(false);
 const isDetailModalOpen = ref(false);
+const quickService = ref(null);
 
 const form = reactive({
   clientId: null,
@@ -475,6 +491,19 @@ const removeService = (index) => {
   form.services.splice(index, 1);
 };
 
+const handleQuickServiceSelect = (service) => {
+  if (!service) return;
+  form.services.push({
+    id: service.id,
+    name: service.name,
+    price: Number(service.price ?? 0),
+    status: settingsStore.appSettings.defaultOrderStatus || 'accepted',
+    icon: service.icon || '',
+    tagIds: service.tagIds || []
+  });
+  quickService.value = null;
+};
+
 const handleServicesSelected = (selectedServices) => {
   form.services = selectedServices;
   isServiceModalOpen.value = false;
@@ -491,9 +520,6 @@ const handleDetailsSelected = (selectedDetails) => {
 
 if (tagsStore.tags.length === 0) {
   tagsStore.loadTags();
-}
-if (serviceStore.services.length === 0) {
-  serviceStore.loadServices();
 }
 if (detailStore.details.length === 0) {
   detailStore.loadDetails();

@@ -66,7 +66,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { useServiceStore } from '@/stores/serviceStore';
 
 const serviceStore = useServiceStore();
@@ -90,7 +90,7 @@ const isCompactView = computed(() => {
 
 const availableServices = computed(() => {
   const selectedIds = selectedServices.value.map(s => s.id);
-  return serviceStore.services.filter(s => !selectedIds.includes(s.id));
+  return serviceStore.activeServices.filter(s => !selectedIds.includes(s.id));
 });
 
 const filteredServices = computed(() => {
@@ -108,7 +108,7 @@ const addService = (service) => {
     selectedServices.value.push({
       id: service.id,
       name: service.name,
-      price: service.defaultPrice,
+      price: service.price,
       status: 'in_progress',
       icon: service.icon || ''
     });
@@ -157,11 +157,6 @@ watch(() => props.modelValue, (newValue) => {
   selectedServices.value = [...newValue];
 }, { deep: true });
 
-onMounted(() => {
-  if (serviceStore.services.length === 0) {
-    serviceStore.loadServices();
-  }
-});
 </script>
 
 <style scoped>
