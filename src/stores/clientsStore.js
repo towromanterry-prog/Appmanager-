@@ -1,175 +1,162 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
-// Импортируем Firebase
-import { 
-  collection, 
-  onSnapshot, 
-  doc, 
-  setDoc, 
-  deleteDoc, 
-  query, 
-  orderBy 
+import { computed, ref } from 'vue';
+import {
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { db, auth } from '@/firebase';
+import { auth, db } from '@/firebase';
 
 export const useClientsStore = defineStore('clients', () => {
   const clients = ref([]);
   const loading = ref(false);
+  const ready = ref(false);
+  const error = ref(null);
   const user = ref(null);
-  const sortBy = ref('name');
-  let unsubscribe = null;
 
-  // === 1. Инициализация и синхронизация ===
-  function init() {
-    onAuthStateChanged(auth, (currentUser) => {
-      user.value = currentUser;
-      if (currentUser) {
-        subscribeToUserClients(currentUser.uid);
-      } else {
-        clients.value = [];
-        loading.value = false;
-        if (unsubscribe) unsubscribe();
-      }
-    });
-  }
+  let unsubscribeSnapshot = null;
+  let unsubscribeAuth = null;
+  let isSubscribed = false;
 
-  function subscribeToUserClients(userId) {
-    if (unsubscribe) unsubscribe();
+  const activeClients = computed(() => clients.value.filter((client) => !client.isArchived));
+  const archivedClients = computed(() => clients.value.filter((client) => client.isArchived));
+
+  const getClientById = (id) => clients.value.find((client) => client.id === id);
+
+  const setSnapshot = (userId) => {
+    if (unsubscribeSnapshot) {
+      unsubscribeSnapshot();
+      unsubscribeSnapshot = null;
+    }
     loading.value = true;
+    ready.value = false;
+    error.value = null;
 
-    // Сортируем по имени, чтобы список был красивым
-    const q = query(collection(db, 'users', userId, 'clients'), orderBy('name'));
-
-    // onSnapshot автоматически кэширует данные локально и обновляет их из облака
-    unsubscribe = onSnapshot(q, (snapshot) => {
-      clients.value = snapshot.docs.map(doc => ({
-        id: doc.id, // ID документа (в нашем случае это будет телефон)
-        ...doc.data()
-      }));
-      loading.value = false;
-    }, (error) => {
-      console.error("Ошибка синхронизации клиентов:", error);
-      loading.value = false;
-    });
-  }
-
-  // === 2. Добавление или Обновление (Умная логика) ===
-  async function addOrUpdateClient(clientData, { registerOrder = true } = {}) {
-    if (!user.value) return;
-
-    // Извлекаем данные
-    const { name, lastName = '', phone, services = [], notes = '' } = clientData;
-    
-    // Ищем, есть ли такой клиент уже в нашем загруженном списке
-    // Используем phone как уникальный ключ
-    const existingClient = clients.value.find(c => c.phone === phone);
-
-    const clientRecord = {
-      name,
-      lastName,
-      phone
-    };
-    
-    if (notes) {
-      clientRecord.notes = notes;
-    }
-
-    if (registerOrder) {
-      // Подготовка новых данных
-      // Если клиент был, берем его старые счетчики, иначе начинаем с нуля
-      const totalOrders = existingClient ? (existingClient.totalOrders || 0) + 1 : 1;
-      
-      // Логика истории (последние 10 заказов)
-      const newHistoryEntry = { 
-        date: new Date().toISOString(), 
-        services: services 
-      };
-      
-      let history = [];
-      if (existingClient && Array.isArray(existingClient.history)) {
-        history = [...existingClient.history, newHistoryEntry].slice(-10);
-      } else {
-        history = [newHistoryEntry];
+    const clientsQuery = query(collection(db, 'users', userId, 'clients'), orderBy('name'));
+    unsubscribeSnapshot = onSnapshot(
+      clientsQuery,
+      (snapshot) => {
+        clients.value = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data()
+        }));
+        loading.value = false;
+        ready.value = true;
+      },
+      (err) => {
+        console.error('Ошибка синхронизации клиентов:', err);
+        error.value = err;
+        loading.value = false;
+        ready.value = true;
       }
+    );
+  };
 
-      clientRecord.lastOrderDate = new Date().toISOString();
-      clientRecord.totalOrders = totalOrders;
-      clientRecord.favoriteServices = services; // Обновляем любимые услуги последними
-      clientRecord.history = history;
+  const clearState = () => {
+    clients.value = [];
+    loading.value = false;
+    ready.value = false;
+    error.value = null;
+  };
+
+  const subscribeClients = () => {
+    if (isSubscribed) return;
+    isSubscribed = true;
+
+    unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      user.value = currentUser;
+      if (!currentUser) {
+        if (unsubscribeSnapshot) {
+          unsubscribeSnapshot();
+          unsubscribeSnapshot = null;
+        }
+        clearState();
+        return;
+      }
+      setSnapshot(currentUser.uid);
+    });
+  };
+
+  const unsubscribeClients = () => {
+    if (unsubscribeSnapshot) {
+      unsubscribeSnapshot();
+      unsubscribeSnapshot = null;
     }
-
-    try {
-      // ИСПОЛЬЗУЕМ setDoc и phone как ID документа
-      // Это гарантирует, что в базе не будет дублей по телефону
-      await setDoc(doc(db, 'users', user.value.uid, 'clients', phone), clientRecord, { merge: true });
-    } catch (e) {
-      console.error("Ошибка сохранения клиента:", e);
+    if (unsubscribeAuth) {
+      unsubscribeAuth();
+      unsubscribeAuth = null;
     }
-  }
+    isSubscribed = false;
+    user.value = null;
+    clearState();
+  };
 
-  // === 3. Удаление ===
-  async function deleteClient(phone) {
-    if (!user.value) return;
-    try {
-      // Удаляем по ID (который является телефоном)
-      await deleteDoc(doc(db, 'users', user.value.uid, 'clients', phone));
-    } catch (e) {
-      console.error("Ошибка удаления клиента:", e);
-    }
-  }
+  const addClient = async ({ name, phone, notes }) => {
+    if (!user.value || !name) return null;
+    const trimmedName = name.trim();
+    if (!trimmedName) return null;
 
-  // === 4. Геттеры и Поиск (Оставляем как было, работает с локальным массивом) ===
-  const searchClients = computed(() => (query) => {
-    if (!query || query.length < 2) return [];
-    
-    const lowerQuery = query.toLowerCase();
-    return clients.value
-      .filter(client => 
-        (client.name && client.name.toLowerCase().includes(lowerQuery)) ||
-        (client.phone && client.phone.includes(query))
-      )
-      .sort((a, b) => new Date(b.lastOrderDate) - new Date(a.lastOrderDate))
-      .slice(0, 10);
-  });
-  
-  function getClientByPhone(phone) {
-    return clients.value.find(c => c.phone === phone);
-  }
-  
-  function getClientByName(name) {
-    return clients.value.find(c => c.name && c.name.toLowerCase() === name.toLowerCase());
-  }
-  
-  function getTopClients(limit = 10) {
-    return [...clients.value]
-      .sort((a, b) => (b.totalOrders || 0) - (a.totalOrders || 0))
-      .slice(0, limit);
-  }
-  
-  function getRecentClients(limit = 10) {
-    return [...clients.value]
-      .sort((a, b) => new Date(b.lastOrderDate) - new Date(a.lastOrderDate))
-      .slice(0, limit);
-  }
+    const docRef = doc(collection(db, 'users', user.value.uid, 'clients'));
+    const clientRecord = {
+      id: docRef.id,
+      name: trimmedName,
+      ...(phone ? { phone } : {}),
+      ...(notes ? { notes } : {}),
+      isArchived: false
+    };
 
-  const loadClients = () => {};
+    await setDoc(docRef, clientRecord);
+    return docRef.id;
+  };
 
-  // Запуск при создании стора
-  init();
+  const updateClient = async (id, { name, phone, notes }) => {
+    if (!user.value || !id) return;
+    const trimmedName = name?.trim();
+    const updatePayload = {
+      ...(trimmedName ? { name: trimmedName } : {}),
+      ...(phone !== undefined ? { phone } : {}),
+      ...(notes !== undefined ? { notes } : {})
+    };
+    if (!Object.keys(updatePayload).length) return;
+    await updateDoc(doc(db, 'users', user.value.uid, 'clients', id), updatePayload);
+  };
+
+  const archiveClient = async (id) => {
+    if (!user.value || !id) return;
+    await updateDoc(doc(db, 'users', user.value.uid, 'clients', id), {
+      isArchived: true,
+      archivedAt: serverTimestamp()
+    });
+  };
+
+  const unarchiveClient = async (id) => {
+    if (!user.value || !id) return;
+    await updateDoc(doc(db, 'users', user.value.uid, 'clients', id), {
+      isArchived: false,
+      archivedAt: null
+    });
+  };
 
   return {
     clients,
     loading,
+    ready,
+    error,
     user,
-    sortBy,
-    loadClients,
-    addOrUpdateClient,
-    deleteClient,
-    searchClients,
-    getClientByPhone,
-    getClientByName,
-    getTopClients,
-    getRecentClients
+    activeClients,
+    archivedClients,
+    getClientById,
+    subscribeClients,
+    unsubscribeClients,
+    addClient,
+    updateClient,
+    archiveClient,
+    unarchiveClient
   };
 });

@@ -7,10 +7,10 @@
         <div class="d-flex align-center">
           <div class="client-info">
             <div class="client-name-line">
-              <span class="font-weight-bold text-truncate">{{ order.clientName }}</span>
+              <span class="font-weight-bold text-truncate">{{ displayClientName }}</span>
               <span class="font-weight-bold text-truncate">{{ order.lastName }}</span>
             </div>
-            <div class="text-caption text-on-surface-variant">{{ order.phone }}</div>
+            <div class="text-caption text-on-surface-variant">{{ displayClientPhone }}</div>
             <div class="text-caption text-on-surface-variant">Создан: {{ formattedCreateDate }}</div>
           </div>
         </div>
@@ -128,8 +128,8 @@
         <div class="receipt-title">ВЫПОЛНЕННЫЕ РАБОТЫ</div>
         <div class="receipt-divider"></div>
 
-        <div>Клиент: {{ order.clientName }} {{ order.lastName }}</div>
-        <div>Тел: {{ formattedPhone }}</div>
+        <div>Клиент: {{ displayClientName }} {{ order.lastName }}</div>
+        <div>Тел: {{ displayClientPhone || formattedPhone }}</div>
 
         <div class="receipt-divider"></div>
 
@@ -164,6 +164,7 @@
 import { ref, computed, nextTick } from 'vue';
 import { useOrderStore } from '@/stores/orderStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useClientsStore } from '@/stores/clientsStore';
 import { useTemplateSelectionStore } from '@/stores/templateSelectionStore';
 import { useTagsStore } from '@/stores/tagsStore';
 import { useServiceStore } from '@/stores/serviceStore';
@@ -181,6 +182,7 @@ const emit = defineEmits(['edit', 'delete']);
 
 const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
+const clientsStore = useClientsStore();
 const templateSelectionStore = useTemplateSelectionStore();
 const tagsStore = useTagsStore();
 const serviceStore = useServiceStore();
@@ -191,6 +193,19 @@ const { triggerHapticFeedback } = useHapticFeedback();
 const expanded = ref(false);
 const isGeneratingReceipt = ref(false);
 const receiptRef = ref(null);
+
+const resolvedClient = computed(() => {
+  if (!props.order.clientId) return null;
+  return clientsStore.getClientById(props.order.clientId) || null;
+});
+
+const displayClientName = computed(() => {
+  return resolvedClient.value?.name || props.order.clientName || '';
+});
+
+const displayClientPhone = computed(() => {
+  return resolvedClient.value?.phone || props.order.phone || '';
+});
 
 const allTags = computed(() => {
   const tagIds = new Set();

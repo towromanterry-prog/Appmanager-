@@ -103,6 +103,7 @@ export const useOrderStore = defineStore('orders', () => {
       id: id,
       status: settingsStore.appSettings.defaultOrderStatus || 'accepted',
       createDate: new Date().toISOString(),
+      clientId: orderData.clientId || null,
       services: (orderData.services || []).map(s => ({
         ...s,
         status: settingsStore.appSettings.defaultOrderStatus || 'accepted'
@@ -132,6 +133,7 @@ export const useOrderStore = defineStore('orders', () => {
         id: originalOrder.id,
         createDate: originalOrder.createDate,
         status: orderData.status !== undefined ? orderData.status : originalOrder.status,
+        clientId: orderData.clientId !== undefined ? orderData.clientId : originalOrder.clientId,
         services: (orderData.services || originalOrder.services).map(s => ({
           ...s,
           status: s.status || 'accepted'
