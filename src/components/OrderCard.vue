@@ -104,7 +104,15 @@
         <v-divider></v-divider>
         <!-- Действия -->
         <v-card-actions class="pa-2">
-          <v-btn icon="mdi-phone" variant="text" size="small" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop></v-btn>
+          <v-btn
+            icon="mdi-phone"
+            variant="text"
+            size="small"
+            color="on-surface-variant"
+            :href="phoneHref"
+            :disabled="!phoneHref"
+            @click.stop
+          ></v-btn>
           <v-btn icon="mdi-message-text" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessageWithHaptic('sms')"></v-btn>
           <v-btn :icon="IconWhatsapp" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessageWithHaptic('whatsapp')"></v-btn>
           <v-btn :icon="IconTelegram" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessageWithHaptic('telegram')"></v-btn>
@@ -284,9 +292,12 @@ const handleCancelClick = () => {
 };
 
 const formattedPhone = computed(() => {
-  if (!props.order.phone) return '';
-  return `+${props.order.phone.replace(/\D/g, '')}`;
+  const source = displayClientPhone.value || props.order.phone || '';
+  if (!source) return '';
+  return `+${source.replace(/\D/g, '')}`;
 });
+
+const phoneHref = computed(() => (formattedPhone.value ? `tel:${formattedPhone.value}` : ''));
 
 const downloadReceipt = async () => {
   triggerHapticFeedback('tap');
@@ -330,7 +341,7 @@ const sendMessage = async (service) => {
   }
 
   const message = selectedTemplate.text
-    .replace('%имя%', props.order.clientName)
+    .replace('%имя%', displayClientName.value || props.order.clientName || '')
     .replace('%цена%', totalAmount.value);
 
   let url;

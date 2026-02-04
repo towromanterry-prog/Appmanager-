@@ -23,17 +23,37 @@ export const useClientsStore = defineStore('clients', () => {
   let unsubscribeSnapshot = null;
   let unsubscribeAuth = null;
   let isSubscribed = false;
+  let currentUserId = null;
+
+  const normalizeClient = (docSnap) => {
+    const data = docSnap.data() || {};
+    return {
+      id: docSnap.id,
+      ...data,
+      isArchived: data.isArchived ?? false
+    };
+  };
 
   const activeClients = computed(() => clients.value.filter((client) => !client.isArchived));
   const archivedClients = computed(() => clients.value.filter((client) => client.isArchived));
-
   const getClientById = (id) => clients.value.find((client) => client.id === id);
 
+  const clearState = () => {
+    clients.value = [];
+    loading.value = false;
+    ready.value = false;
+    error.value = null;
+    currentUserId = null;
+  };
+
   const setSnapshot = (userId) => {
+    if (!userId) return;
+    if (currentUserId === userId && unsubscribeSnapshot) return;
     if (unsubscribeSnapshot) {
       unsubscribeSnapshot();
       unsubscribeSnapshot = null;
     }
+    currentUserId = userId;
     loading.value = true;
     ready.value = false;
     error.value = null;
@@ -42,10 +62,7 @@ export const useClientsStore = defineStore('clients', () => {
     unsubscribeSnapshot = onSnapshot(
       clientsQuery,
       (snapshot) => {
-        clients.value = snapshot.docs.map((docSnap) => ({
-          id: docSnap.id,
-          ...docSnap.data()
-        }));
+        clients.value = snapshot.docs.map(normalizeClient);
         loading.value = false;
         ready.value = true;
       },
@@ -56,13 +73,6 @@ export const useClientsStore = defineStore('clients', () => {
         ready.value = true;
       }
     );
-  };
-
-  const clearState = () => {
-    clients.value = [];
-    loading.value = false;
-    ready.value = false;
-    error.value = null;
   };
 
   const subscribeClients = () => {
@@ -97,14 +107,13 @@ export const useClientsStore = defineStore('clients', () => {
     clearState();
   };
 
-  const addClient = async ({ name, phone, notes }) => {
-    if (!user.value || !name) return null;
-    const trimmedName = name.trim();
+  const addClient = async ({ name, phone, notes } = {}) => {
+    if (!user.value) return null;
+    const trimmedName = (name || '').trim();
     if (!trimmedName) return null;
 
     const docRef = doc(collection(db, 'users', user.value.uid, 'clients'));
     const clientRecord = {
-      id: docRef.id,
       name: trimmedName,
       ...(phone ? { phone } : {}),
       ...(notes ? { notes } : {}),
@@ -115,9 +124,9 @@ export const useClientsStore = defineStore('clients', () => {
     return docRef.id;
   };
 
-  const updateClient = async (id, { name, phone, notes }) => {
+  const updateClient = async (id, { name, phone, notes } = {}) => {
     if (!user.value || !id) return;
-    const trimmedName = name?.trim();
+    const trimmedName = name !== undefined ? name.trim() : undefined;
     const updatePayload = {
       ...(trimmedName ? { name: trimmedName } : {}),
       ...(phone !== undefined ? { phone } : {}),
