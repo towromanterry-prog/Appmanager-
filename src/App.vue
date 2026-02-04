@@ -128,10 +128,10 @@ const settingsStore = useSettingsStore();
 const orderStore = useOrderStore();
 const searchStore = useSearchStore();
 const route = useRoute();
+const clientsStore = useClientsStore();
 
 // Инициализация
 useServiceStore();
-useClientsStore();
 useTagsStore();
 useOrderStore(); 
 
@@ -211,6 +211,7 @@ watch(() => route.path, (newPath) => {
 onMounted(() => {
   themeStore.loadTheme();
   settingsStore.loadSettings();
+  clientsStore.subscribeClients();
 });
 </script>
 
