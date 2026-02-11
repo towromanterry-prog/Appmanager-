@@ -111,13 +111,13 @@
 <script setup>
 import { onMounted, ref, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useThemeStore } from '@/store/themeStore';
-import { useSettingsStore } from '@/store/settingsStore';
-import { useOrderStore } from '@/store/orderStore';
-import { useClientsStore } from '@/store/clientsStore';
-import { useServiceStore } from '@/store/serviceStore';
-import { useTagsStore } from '@/store/tagsStore';
-import { useSearchStore } from '@/store/searchStore';
+import { useThemeStore } from '@/stores/themeStore';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { useOrderStore } from '@/stores/orderStore';
+import { useClientsStore } from '@/stores/clientsStore';
+import { useServiceStore } from '@/stores/serviceStore';
+import { useTagsStore } from '@/stores/tagsStore';
+import { useSearchStore } from '@/stores/searchStore';
 import { auth } from './firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
 import ConfirmationDialog from '@/components/ConfirmationDialog.vue';
