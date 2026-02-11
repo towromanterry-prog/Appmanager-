@@ -221,16 +221,23 @@ export const useOrderStore = defineStore('orders', () => {
       return;
     }
 
-    const servicesToUpdate = (order.services || []).filter(item => {
-      const isStatusConfigured = settingsStore.appSettings.serviceStatuses[newStatus];
-      const canUpdate = SERVICE_STATUS_FLOW.indexOf(item.status) < SERVICE_STATUS_FLOW.indexOf(newStatus);
-      return isStatusConfigured && canUpdate;
+    const targetServiceStatusIndex = SERVICE_STATUS_FLOW.indexOf(newStatus);
+    const targetDetailStatusIndex = DETAIL_STATUS_FLOW.indexOf(newStatus);
+
+    const servicesToUpdate = (order.services || []).filter((item) => {
+      const isTargetStatusConfigured = settingsStore.appSettings.serviceStatuses[newStatus];
+      const currentIndex = SERVICE_STATUS_FLOW.indexOf(item.status);
+      const isCurrentStatusInFlow = currentIndex !== -1;
+      const canUpdate = isCurrentStatusInFlow && currentIndex < targetServiceStatusIndex;
+      return isTargetStatusConfigured && canUpdate;
     });
 
-    const detailsToUpdate = (order.details || []).filter(item => {
-      const isStatusConfigured = settingsStore.appSettings.detailStatuses[newStatus];
-      const canUpdate = DETAIL_STATUS_FLOW.indexOf(item.status) < DETAIL_STATUS_FLOW.indexOf(newStatus);
-      return isStatusConfigured && canUpdate;
+    const detailsToUpdate = (order.details || []).filter((item) => {
+      const isTargetStatusConfigured = settingsStore.appSettings.detailStatuses[newStatus];
+      const currentIndex = DETAIL_STATUS_FLOW.indexOf(item.status);
+      const isCurrentStatusInFlow = currentIndex !== -1;
+      const canUpdate = isCurrentStatusInFlow && currentIndex < targetDetailStatusIndex;
+      return isTargetStatusConfigured && canUpdate;
     });
 
     if (servicesToUpdate.length === 0 && detailsToUpdate.length === 0) {

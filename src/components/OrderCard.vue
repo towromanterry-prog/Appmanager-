@@ -20,6 +20,7 @@
         <StatusIndicator
           :status="order.status"
           @click.stop="changeOrderStatus"
+          @long-press="openStatusPicker('order')"
           class="mb-2"
         />
       </div>
@@ -40,6 +41,7 @@
               <StatusIndicator
                 :status="service.status"
                 @click.stop="changeServiceStatus(index)"
+                @long-press="openStatusPicker('service', index)"
               />
             </div>
           </div>
@@ -54,6 +56,7 @@
               <StatusIndicator
                 :status="detail.status"
                 @click.stop="changeDetailStatus(index)"
+                @long-press="openStatusPicker('detail', index)"
               />
             </div>
           </div>
@@ -130,6 +133,15 @@
       </div>
     </v-expand-transition>
 
+    <StatusPickerDialog
+      v-model="statusPicker.open"
+      :title="statusPickerTitle"
+      :item-type="statusPicker.itemType"
+      :current-status="statusPicker.currentStatus"
+      :active-statuses="statusPicker.activeStatuses"
+      @select="applyPickedStatus"
+    />
+
     <!-- Скрытый шаблон чека -->
     <div v-if="isGeneratingReceipt" class="receipt-wrapper">
       <div ref="receiptRef" class="receipt-container">
@@ -178,6 +190,7 @@ import { useTagsStore } from '@/stores/tagsStore';
 import { useServiceStore } from '@/stores/serviceStore';
 import { useDetailStore } from '@/stores/detailStore';
 import StatusIndicator from '@/components/common/StatusIndicator.vue';
+import StatusPickerDialog from '@/components/common/StatusPickerDialog.vue';
 import { useHapticFeedback } from '@/composables/useHapticFeedback';
 import { useFormatDate } from '@/composables/useDateUtils';
 import { IconTelegram, IconWhatsapp } from '@iconify-prerendered/vue-simple-icons';
@@ -201,6 +214,63 @@ const { triggerHapticFeedback } = useHapticFeedback();
 const expanded = ref(false);
 const isGeneratingReceipt = ref(false);
 const receiptRef = ref(null);
+
+
+const STATUS_PICKER_DEFAULT = {
+  open: false,
+  itemType: 'order',
+  itemIndex: -1,
+  currentStatus: 'accepted',
+  activeStatuses: {}
+};
+
+const statusPicker = ref({ ...STATUS_PICKER_DEFAULT });
+
+const statusPickerTitle = computed(() => {
+  if (statusPicker.value.itemType === 'service') return 'Выберите статус услуги';
+  if (statusPicker.value.itemType === 'detail') return 'Выберите статус детали';
+  return 'Выберите статус заказа';
+});
+
+const getActiveStatusesByType = (itemType) => {
+  if (itemType === 'service') return settingsStore.appSettings.serviceStatuses || {};
+  if (itemType === 'detail') return settingsStore.appSettings.detailStatuses || {};
+  return settingsStore.appSettings.orderStatuses || {};
+};
+
+const openStatusPicker = (itemType, itemIndex = -1) => {
+  if (props.order.status === 'cancelled') return;
+
+  let currentStatus = props.order.status;
+
+  if (itemType === 'service') {
+    const service = props.order.services?.[itemIndex];
+    if (!service || service.status === 'cancelled') return;
+    currentStatus = service.status;
+  }
+
+  if (itemType === 'detail') {
+    const detail = props.order.details?.[itemIndex];
+    if (!detail || detail.status === 'cancelled') return;
+    currentStatus = detail.status;
+  }
+
+  statusPicker.value = {
+    open: true,
+    itemType,
+    itemIndex,
+    currentStatus,
+    activeStatuses: getActiveStatusesByType(itemType)
+  };
+};
+
+const applyPickedStatus = (newStatus) => {
+  const picker = statusPicker.value;
+  if (!newStatus || newStatus === picker.currentStatus) return;
+
+  triggerHapticFeedback('tap');
+  orderStore.updateStatus(props.order.id, newStatus, picker.itemType, picker.itemIndex);
+};
 
 const resolvedClient = computed(() => {
   if (!props.order.clientId) return null;
