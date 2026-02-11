@@ -114,17 +114,17 @@ import { useRoute } from 'vue-router';
 import { auth } from '@/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
-// Импорт сторов из папки src/stores
-import { useThemeStore } from '@/stores/themeStore';
-import { useSettingsStore } from '@/stores/settingsStore';
-import { useOrderStore } from '@/stores/orderStore';
-import { useSearchStore } from '@/stores/searchStore';
-import { useServiceStore } from '@/stores/serviceStore';
-import { useClientsStore } from '@/stores/clientsStore';
-import { useTagsStore } from '@/stores/tagsStore';
+// Импорт сторов с ПРАВИЛЬНЫМИ путями и расширениями
+import { useThemeStore } from '@/stores/themeStore.js';
+import { useSettingsStore } from '@/stores/settingsStore.js';
+import { useOrderStore } from '@/stores/orderStore.js';
+import { useSearchStore } from '@/stores/searchStore.js';
+import { useServiceStore } from '@/stores/serviceStore.js';
+import { useClientsStore } from '@/stores/clientsStore.js';
+import { useTagsStore } from '@/stores/tagsStore.js';
 
 // Импорт компонентов
-import ConfirmationDialog from '@/components/common/ConfirmationDialog.vue';
+import ConfirmationDialog from '@/ConfirmationDialog.vue';
 
 // Инициализация сторов
 const themeStore = useThemeStore();
@@ -209,28 +209,23 @@ watch(() => settingsStore.appSettings?.baseFontSize, (newSize) => {
   }
 }, { immediate: true });
 
-// Инициализация при монтировании
+// ИНИЦИАЛИЗАЦИЯ
 onMounted(async () => {
-  // 1. Загрузка темы и базовых настроек
   themeStore.loadTheme();
   await settingsStore.loadSettings();
 
-  // 2. Подписка на авторизацию и запуск обновлений данных
   onAuthStateChanged(auth, (user) => {
     if (user) {
-      // Передаем пользователя в сторы для контекста
+      // Прокидываем юзера в сторы
       orderStore.user = user;
       clientsStore.user = user;
       serviceStore.user = user;
 
-      // Запускаем подписки реального времени (единообразные имена методов)
+      // ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЕ ИМЕНА МЕТОДОВ (initRealtimeUpdates)
       orderStore.initRealtimeUpdates();
       clientsStore.initRealtimeUpdates();
       serviceStore.initRealtimeUpdates();
       tagsStore.initRealtimeUpdates();
-    } else {
-      console.log('Пользователь не авторизован');
-      // Здесь можно добавить логику редиректа на LoginView
     }
     isReady.value = true;
   });
@@ -251,7 +246,6 @@ html {
   font-size: 1rem !important; 
 }
 
-/* Фикс нижней панели для мобилок */
 .app-bottom-nav.safe-area-fix {
   border-top: 1px solid rgba(var(--v-border-color), 0.08);
   height: calc(56px + var(--safe-area-bottom) + 8px) !important;
