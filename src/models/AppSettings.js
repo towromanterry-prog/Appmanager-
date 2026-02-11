@@ -4,6 +4,7 @@ export default class AppSettings {
     theme = 'light',
     currency = 'RUB',
     language = 'ru'
+    fontSize = 16
   } = {}) {
     this.id = id;
     this.theme = theme;
@@ -27,4 +28,5 @@ export const settingsConverter = {
     return new AppSettings({ id: snapshot.id, ...data });
   }
 };
+
 
