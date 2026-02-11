@@ -1,0 +1,76 @@
+/*
+ * ==========================================================================
+ * Глобальные стили - Тема "Soft Modern"
+ * ==========================================================================
+ */
+
+/* 1. Настройка шрифтов и базовой типографики */
+body {
+  font-family: 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: rgb(var(--v-theme-background));
+  color: rgb(var(--v-theme-on-background));
+  line-height: 1.5;
+  /* Плавный переход цвета фона при смене темы */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 2. Улучшенная прокрутка */
+html {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  /* Базовый размер шрифта, который может масштабироваться через настройки */
+  font-size: calc(16px * var(--app-font-scale, 1));
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Используем цвета из темы для скроллбара */
+::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(var(--v-theme-on-surface), 0.4);
+}
+
+/* 3. Кастомизация Vuetify компонентов для соответствия MD3 */
+
+/* Убираем лишние заглавные буквы (Material Design 3 стиль) */
+.v-btn, .v-tab, .v-list-subheader {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+/*
+ * Более мягкие тени и границы для карточек.
+ * Вместо сильной тени используем тонкую рамку, как в MD3.
+ */
+.v-card {
+  border: 1px solid rgba(var(--v-theme-outline-variant), 0.5) !important;
+  /* Убираем тень по умолчанию, так как мы хотим плоский стиль */
+  box-shadow: none !important;
+}
+
+/* 4. Адаптивность и улучшения для мобильных устройств */
+@media (max-width: 600px) {
+  /* Увеличиваем кликабельные области на мобильных */
+  .v-btn, .v-list-item {
+    min-height: 48px !important;
+  }
+}
+
+/* 5. Общие хелперы */
+.gap-1 { gap: 4px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
