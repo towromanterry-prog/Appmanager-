@@ -1,196 +1,83 @@
-// src/stores/serviceStore.js
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
-import {
-  collection,
-  onSnapshot,
-  addDoc,
-  updateDoc,
-  doc,
-  query,
-  orderBy,
-  serverTimestamp
-} from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
-import { db, auth } from '@/firebase';
+import serviceService from '../services/serviceService';
+import ServiceItem from '../models/ServiceItem.js';
 
-const normalizePrice = (value) => {
-  if (value === '' || value === null || value === undefined) return null;
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : null;
-};
+export const useServiceStore = defineStore('serviceStore', {
+  state: () => ({
+    services: [],
+    loading: false,
+    unsubscribe: null,
+    error: null
+  }),
 
-const mapService = (docSnap) => {
-  const data = docSnap.data() || {};
-  return {
-    id: docSnap.id,
-    name: data.name || '',
-    price: normalizePrice(data.price ?? data.defaultPrice) ?? 0,
-    notes: data.notes || '',
-    isArchived: Boolean(data.isArchived),
-    archivedAt: data.archivedAt || null,
-    tagIds: Array.isArray(data.tagIds) ? data.tagIds : (data.tags || []),
-    icon: data.icon || ''
-  };
-};
+  getters: {
+    // Только активные услуги (не в архиве)
+    activeServices: (state) => state.services.filter(s => !s.isArchived),
+    
+    // Архивные услуги
+    archivedServices: (state) => state.services.filter(s => s.isArchived),
+    
+    getServiceById: (state) => (id) => state.services.find(s => s.id === id)
+  },
 
-export const useServiceStore = defineStore('services', () => {
-  const services = ref([]);
-  const loading = ref(false);
-  const ready = ref(false);
-  const error = ref(null);
-  const user = ref(null);
-  let authUnsubscribe = null;
-  let servicesUnsubscribe = null;
+  actions: {
+    initRealtimeUpdates() {
+      if (this.unsubscribe) return; // Уже подписаны
+      
+      this.loading = true;
+      this.unsubscribe = serviceService.subscribe((items) => {
+        this.services = items;
+        this.loading = false;
+      });
+    },
 
-  const activeServices = computed(() => services.value.filter(service => !service.isArchived));
-  const archivedServices = computed(() => services.value.filter(service => service.isArchived));
-
-  const stopServicesListener = () => {
-    if (servicesUnsubscribe) {
-      servicesUnsubscribe();
-      servicesUnsubscribe = null;
-    }
-  };
-
-  const subscribeForUser = (userId) => {
-    stopServicesListener();
-    loading.value = true;
-    error.value = null;
-
-    const q = query(collection(db, 'users', userId, 'services'), orderBy('name'));
-    servicesUnsubscribe = onSnapshot(q, (snapshot) => {
-      services.value = snapshot.docs.map(mapService);
-      loading.value = false;
-      ready.value = true;
-    }, (snapshotError) => {
-      console.error('Ошибка синхронизации услуг:', snapshotError);
-      error.value = snapshotError;
-      loading.value = false;
-      ready.value = true;
-    });
-  };
-
-  const subscribeServices = () => {
-    if (authUnsubscribe) return;
-    loading.value = true;
-    ready.value = false;
-    error.value = null;
-
-    authUnsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      user.value = currentUser;
-      if (!currentUser) {
-        services.value = [];
-        stopServicesListener();
-        loading.value = false;
-        ready.value = true;
-        return;
+    stopRealtimeUpdates() {
+      if (this.unsubscribe) {
+        this.unsubscribe();
+        this.unsubscribe = null;
       }
-      subscribeForUser(currentUser.uid);
-    });
-  };
+    },
 
-  const unsubscribeServices = () => {
-    if (authUnsubscribe) {
-      authUnsubscribe();
-      authUnsubscribe = null;
-    }
-    stopServicesListener();
-    services.value = [];
-    loading.value = false;
-    ready.value = false;
-    error.value = null;
-    user.value = null;
-  };
+    async addService(rawServiceData) {
+      try {
+        const newService = new ServiceItem(rawServiceData);
+        await serviceService.create(newService);
+      } catch (err) {
+        console.error('Ошибка добавления услуги:', err);
+        this.error = err.message;
+      }
+    },
 
-  async function addService(serviceData) {
-    if (!user.value) return;
+    async updateService(id, rawServiceData) {
+      try {
+        // Создаем модель, убеждаемся что ID проставлен
+        const updatedService = new ServiceItem({ ...rawServiceData, id });
+        await serviceService.update(updatedService);
+      } catch (err) {
+        console.error('Ошибка обновления услуги:', err);
+        this.error = err.message;
+      }
+    },
 
-    try {
-      await addDoc(collection(db, 'users', user.value.uid, 'services'), {
-        name: serviceData.name,
-        price: normalizePrice(serviceData.price),
-        notes: serviceData.notes || '',
-        isArchived: false,
-        archivedAt: null
-      });
-    } catch (e) {
-      console.error('Ошибка добавления услуги:', e);
-    }
-  }
+    // Логика архивации — это просто обновление поля isArchived
+    async archiveService(id) {
+      const service = this.getServiceById(id);
+      if (service) {
+        const updated = service.clone();
+        updated.isArchived = true;
+        updated.archivedAt = new Date();
+        await this.updateService(id, updated);
+      }
+    },
 
-  async function updateService(id, serviceData) {
-    if (!user.value) return;
-
-    try {
-      const serviceRef = doc(db, 'users', user.value.uid, 'services', id);
-      await updateDoc(serviceRef, {
-        name: serviceData.name,
-        price: normalizePrice(serviceData.price),
-        notes: serviceData.notes || ''
-      });
-    } catch (e) {
-      console.error('Ошибка обновления услуги:', e);
+    async unarchiveService(id) {
+      const service = this.getServiceById(id);
+      if (service) {
+        const updated = service.clone();
+        updated.isArchived = false;
+        updated.archivedAt = null;
+        await this.updateService(id, updated);
+      }
     }
   }
-
-  async function archiveService(id) {
-    if (!user.value) return;
-
-    try {
-      const serviceRef = doc(db, 'users', user.value.uid, 'services', id);
-      await updateDoc(serviceRef, {
-        isArchived: true,
-        archivedAt: serverTimestamp()
-      });
-    } catch (e) {
-      console.error('Ошибка архивирования услуги:', e);
-    }
-  }
-
-  async function unarchiveService(id) {
-    if (!user.value) return;
-
-    try {
-      const serviceRef = doc(db, 'users', user.value.uid, 'services', id);
-      await updateDoc(serviceRef, {
-        isArchived: false,
-        archivedAt: null
-      });
-    } catch (e) {
-      console.error('Ошибка восстановления услуги:', e);
-    }
-  }
-
-  function getServiceById(id) {
-    return services.value.find(service => service.id === id);
-  }
-
-  function getServicesByTag(tagId) {
-    if (!tagId) return services.value;
-    return services.value.filter(service => service.tagIds && service.tagIds.includes(tagId));
-  }
-
-  const loadServices = () => subscribeServices();
-  const deleteService = (id) => archiveService(id);
-
-  return {
-    services,
-    activeServices,
-    archivedServices,
-    loading,
-    ready,
-    error,
-    user,
-    loadServices,
-    subscribeServices,
-    unsubscribeServices,
-    addService,
-    updateService,
-    archiveService,
-    unarchiveService,
-    deleteService,
-    getServiceById,
-    getServicesByTag
-  };
 });
