@@ -5,8 +5,7 @@ import { aliases, mdi } from 'vuetify/iconsets/mdi'
 import '@mdi/font/css/materialdesignicons.css'
 import 'vuetify/styles'
 
-// Используем тему из theme.js (если она экспортируется как объект)
-// или настраиваем базовые цвета здесь, если нужно
+// Импортируем объекты тем
 import { light, dark } from '../theme/theme' 
 
 export default createVuetify({
@@ -22,23 +21,26 @@ export default createVuetify({
   theme: {
     defaultTheme: 'light',
     themes: {
-      light: lightTheme,
-      dark: darkTheme,
+      // ИСПРАВЛЕНО: используем те имена, которые импортировали (light и dark)
+      light: light,
+      dark: dark,
     },
   },
   // Глобальные настройки по умолчанию для компонентов (Minimal Soft)
   defaults: {
     global: {
-      ripple: false, // Отключаем жесткую волну material design для мягкости
+      ripple: false, // Отключаем жесткую волну
     },
     VCard: {
-      elevation: 0, // Тень контролируется через CSS
+      elevation: 0, 
       color: 'surface',
+      // Класс для скруглений задан в CSS, но можно продублировать и тут
     },
     VBtn: {
       elevation: 0,
       variant: 'flat',
       height: 44,
+      rounded: 'lg' // Скругление кнопок
     },
     VTextField: {
       variant: 'outlined',
@@ -50,23 +52,30 @@ export default createVuetify({
       variant: 'outlined',
       color: 'primary',
       density: 'comfortable',
+      hideDetails: 'auto',
     },
     VSelect: {
       variant: 'outlined',
       color: 'primary',
       density: 'comfortable',
+      hideDetails: 'auto',
     },
     VAutocomplete: {
       variant: 'outlined',
       color: 'primary',
       density: 'comfortable',
+      hideDetails: 'auto',
     },
     VSwitch: {
       color: 'primary',
       inset: true,
+      hideDetails: 'auto',
     },
     VDialog: {
       transition: 'dialog-bottom-transition',
     },
+    VMenu: {
+      transition: 'scale-transition',
+    }
   },
 })
