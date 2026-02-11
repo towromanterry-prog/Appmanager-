@@ -1,14 +1,9 @@
 import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router';
 
-// Импорты с проверкой существования компонентов
-const loadView = (view) => {
-  return () => import(`@/views/${view}.vue`).catch(() => {
-    console.error(`❌ Компонент ${view} не найден`);
-    return import('@/views/HomeView.vue');
-  });
-};
+// Обертка для ленивой загрузки
+const loadView = (view) => () => import(`@/views/${view}.vue`);
 
-const isHashHistory = typeof window !== 'undefined'
+const isHashHistory = typeof window !== 'undefined' 
   && (window.Capacitor || window.location.protocol === 'file:');
 
 const router = createRouter({
@@ -19,12 +14,13 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: () => import('@/views/HomeView.vue'),
+      component: loadView('HomeView'),
       meta: { title: 'Заказы', requiresAuth: true }
     },
     {
       path: '/order/:orderId',
       name: 'order-edit',
+      // Логика редиректа на главную с открытием модалки (как было у тебя)
       redirect: (to) => ({
         path: '/',
         query: { editOrderId: to.params.orderId }
@@ -41,7 +37,7 @@ const router = createRouter({
       path: '/base-settings/:tab?',
       name: 'base-settings',
       component: loadView('BaseSettingsView'),
-      meta: { title: 'Управление услугами', requiresAuth: true }
+      meta: { title: 'Справочники', requiresAuth: true }
     },
     {
       path: '/settings',
@@ -49,29 +45,19 @@ const router = createRouter({
       component: loadView('SettingsView'),
       meta: { title: 'Настройки', requiresAuth: true }
     },
+    // Catch-all 404
     {
       path: '/:pathMatch(.*)*',
-      name: 'not-found',
-      component: loadView('NotFoundView'),
-      meta: { title: 'Страница не найдена' }
+      redirect: '/'
     }
   ]
 });
 
-// Глобальные обработчики
 router.beforeEach((to, from, next) => {
-  console.log(`🔄 Переход с ${from.path} на ${to.path}`);
-  
-  // Обновление заголовка
   if (to.meta.title) {
     document.title = `${to.meta.title} - Order Manager`;
   }
-  
   next();
-});
-
-router.onError((error) => {
-  console.error('❌ Ошибка роутинга:', error);
 });
 
 export default router;
