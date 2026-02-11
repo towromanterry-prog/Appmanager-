@@ -1,572 +1,446 @@
 <template>
-  <v-card class="d-flex flex-column" style="height: 100vh;">
-    <!-- Шапка формы -->
-    <v-toolbar color="surface" flat>
-      <v-btn icon="mdi-close" @click="close"></v-btn>
-      <v-toolbar-title>{{ isEditing ? 'Редактировать заказ' : 'Новый заказ' }}</v-toolbar-title>
+  <v-card class="h-100 d-flex flex-column bg-surface">
+    <v-toolbar color="surface" density="comfortable" class="border-b px-2">
+      <v-btn icon="mdi-close" variant="text" @click="$emit('close')"></v-btn>
+      <v-toolbar-title class="text-h6 font-weight-bold">
+        {{ isEditMode ? 'Редактирование' : 'Новый заказ' }}
+      </v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-toolbar-items>
-        <v-btn
-          :disabled="!isFormValid"
-          :loading="isSaving"
-          variant="text"
-          color="primary"
-          @click="saveOrder"
-        >
-          Сохранить
-        </v-btn>
-      </v-toolbar-items>
+      <v-btn
+        :loading="saving"
+        color="primary"
+        variant="flat"
+        class="px-4"
+        @click="saveOrder"
+      >
+        Сохранить
+      </v-btn>
     </v-toolbar>
-    <v-divider></v-divider>
 
-    <!-- Контент формы -->
-    <v-card-text class="flex-grow-1" style="overflow-y: auto;">
-      <v-form>
-        <v-container>
-          <v-row>
-            <!-- Секция клиента -->
-            <v-col cols="12">
-              <div class="text-overline mb-2">Клиент</div>
-              <v-autocomplete
-                v-model="form.clientId"
-                :items="clientsStore.activeClients"
-                item-title="name"
-                item-value="id"
-                label="Выбрать клиента"
-                clearable
-                :loading="clientsStore.loading"
-                :disabled="!clientsStore.ready"
-                no-data-text="Клиенты не найдены"
-              >
-                <template v-slot:item="{ props, item }">
-                  <v-list-item v-bind="props" :title="item.title" :subtitle="item.raw.phone || 'Телефон не указан'"></v-list-item>
-                </template>
-              </v-autocomplete>
-              <v-alert
-                v-if="isClientMissing"
-                type="warning"
-                variant="tonal"
-                density="compact"
-                class="mb-3"
-              >
-                Выбранный клиент еще не загружен. Подождите синхронизацию или выберите другого клиента.
-              </v-alert>
-              <v-text-field
-                v-model="clientNameInput"
-                :label="`Имя клиента ${settingsStore.isFieldRequired('clientName') ? '*' : ''}`"
-                :rules="settingsStore.isFieldRequired('clientName') ? [rules.required] : []"
-                :readonly="Boolean(resolvedClient)"
-              ></v-text-field>
-              <v-text-field
-                v-model="form.lastName"
-                :label="`${settingsStore.appSettings.orderFormLastNameLabel} ${settingsStore.isFieldRequired('lastName') ? '*' : ''}`"
-                :rules="settingsStore.isFieldRequired('lastName') ? [rules.required] : []"
-              ></v-text-field>
-              <v-text-field
-                v-model="clientPhoneInput"
-                :label="`Телефон ${settingsStore.isFieldRequired('phone') ? '*' : ''}`"
-                :rules="settingsStore.isFieldRequired('phone') ? [rules.required] : []"
-                type="tel"
-                prefix="+7"
-                :readonly="Boolean(resolvedClient)"
-              ></v-text-field>
-            </v-col>
+    <v-card-text class="flex-grow-1 overflow-y-auto pa-4 pb-16">
+      <v-form ref="form" v-model="valid">
+        
+        <div class="d-flex gap-2 mb-4">
+          <v-select
+            v-model="formData.status"
+            :items="statusOptions"
+            label="Статус"
+            hide-details
+            density="comfortable"
+            variant="outlined"
+            class="flex-grow-1"
+          >
+            <template v-slot:selection="{ item }">
+              <v-chip size="small" :color="getStatusColor(item.value)" class="font-weight-bold">
+                {{ item.title }}
+              </v-chip>
+            </template>
+          </v-select>
 
-            <!-- Секция услуг -->
-            <v-col cols="12">
-              <div class="d-flex justify-space-between align-center mb-2">
-                <div class="text-overline">Услуги {{ settingsStore.isFieldRequired('services') ? '*' : '' }}</div>
-                <v-btn
-                  color="primary"
-                  variant="outlined"
-                  @click="isServiceModalOpen = true"
-                >
-                  <v-icon start>mdi-plus</v-icon>
-                  Выбрать услуги
-                </v-btn>
+          <v-text-field
+            v-model="formData.deadline"
+            label="Срок сдачи"
+            type="date"
+            hide-details
+            density="comfortable"
+            variant="outlined"
+            style="max-width: 160px;"
+          ></v-text-field>
+        </div>
+
+        <v-card class="mb-4 pa-3" border flat>
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-subtitle-2 text-medium-emphasis font-weight-bold">КЛИЕНТ</span>
+            <v-btn
+              icon="mdi-account-plus"
+              size="small"
+              variant="text"
+              color="primary"
+              @click="openClientCreate"
+            ></v-btn>
+          </div>
+          
+          <v-autocomplete
+            v-model="formData.client"
+            :items="clientsStore.clients"
+            item-title="name"
+            item-value="id" 
+            return-object
+            label="Выберите клиента"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            clearable
+            :custom-filter="clientFilter"
+          >
+            <template v-slot:item="{ props, item }">
+              <v-list-item v-bind="props" :title="item.raw.name" :subtitle="item.raw.phone">
+              </v-list-item>
+            </template>
+            <template v-slot:selection="{ item }">
+               <span class="font-weight-bold">{{ item.raw.name }}</span>
+               <span v-if="item.raw.phone" class="text-caption ml-2 text-medium-emphasis">{{ item.raw.phone }}</span>
+            </template>
+          </v-autocomplete>
+        </v-card>
+
+        <v-card class="mb-4 pa-3" border flat>
+          <div class="text-subtitle-2 text-medium-emphasis font-weight-bold mb-2">УСЛУГИ</div>
+          
+          <div v-if="formData.services.length" class="mb-3 d-flex flex-column gap-2">
+            <v-card
+              v-for="(svc, index) in formData.services"
+              :key="index"
+              flat
+              class="bg-grey-lighten-4 rounded-lg px-3 py-2 d-flex align-center"
+            >
+              <div class="flex-grow-1 overflow-hidden">
+                <div class="text-body-2 font-weight-bold text-truncate">{{ svc.title }}</div>
+                <div class="text-caption text-medium-emphasis">{{ svc.category }}</div>
               </div>
-
-              <v-autocomplete
-                v-model="quickService"
-                :items="serviceStore.activeServices"
-                item-title="name"
-                item-value="id"
-                return-object
-                label="Быстро добавить услугу"
-                clearable
-                :loading="serviceStore.loading"
-                :disabled="!serviceStore.ready"
-                no-data-text="Услуги не найдены"
-                class="mb-3"
-                @update:modelValue="handleQuickServiceSelect"
-              ></v-autocomplete>
-
-              <div v-if="form.services.length > 0" class="item-list">
-                <div v-for="(service, index) in form.services" :key="`service-${index}`" class="item-card">
-                  <div class="item-content">
-                    <div class="item-title">{{ service.name }}</div>
-                    <v-text-field
-                      v-model="service.price"
-                      type="number"
-                      variant="underlined"
-                      density="compact"
-                      suffix="₽"
-                      hide-details
-                      class="price-input"
-                    ></v-text-field>
-                    <div class="tags-container">
-                      <v-chip
-                        v-for="tag in getServiceTags(service.id, service.tagIds)"
-                        :key="tag.id"
-                        :color="tag.color"
-                        size="small"
-                        class="mr-1"
-                      >
-                        {{ tag.name }}
-                      </v-chip>
-                    </div>
-                  </div>
-                  <v-btn icon="mdi-close" variant="text" size="small" @click="removeService(index)"></v-btn>
-                </div>
+              
+              <div class="d-flex align-center gap-2">
+                <v-text-field
+                  v-model.number="svc.price"
+                  type="number"
+                  variant="plain"
+                  density="compact"
+                  hide-details
+                  class="price-input text-right font-weight-bold"
+                  style="width: 80px;"
+                  prefix="₽"
+                ></v-text-field>
+                <v-btn icon="mdi-close" size="x-small" variant="text" color="medium-emphasis" @click="removeService(index)"></v-btn>
               </div>
+            </v-card>
+          </div>
 
-              <div v-else class="text-caption text-medium-emphasis">
-                {{ settingsStore.isFieldRequired('services') ? 'Услуги обязательны для выбора' : 'Услуги не выбраны' }}
+          <v-autocomplete
+            v-model="serviceToAdd"
+            :items="serviceStore.activeServices"
+            item-title="title"
+            return-object
+            label="Добавить услугу"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            prepend-inner-icon="mdi-plus"
+            @update:model-value="addService"
+          >
+            <template v-slot:item="{ props, item }">
+              <v-list-item v-bind="props" :subtitle="formatPrice(item.raw.price)"></v-list-item>
+            </template>
+          </v-autocomplete>
+        </v-card>
+
+        <v-card class="mb-4 pa-3" border flat>
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-subtitle-2 text-medium-emphasis font-weight-bold">ДЕТАЛИ / РАСХОДНИКИ</span>
+            <v-btn
+              icon="mdi-package-variant-closed-plus"
+              size="small"
+              variant="text"
+              color="primary"
+              @click="showDetailSelector = true"
+            ></v-btn>
+          </div>
+
+          <div v-if="formData.details.length" class="d-flex flex-column gap-2">
+             <v-card
+              v-for="(det, index) in formData.details"
+              :key="index"
+              flat
+              class="bg-grey-lighten-4 rounded-lg px-3 py-2 d-flex align-center"
+            >
+              <div class="flex-grow-1 overflow-hidden">
+                <div class="text-body-2 font-weight-medium text-truncate">{{ det.title }}</div>
               </div>
-            </v-col>
-            
-            <!-- Секция Деталей -->
-            <v-col cols="12">
-              <div class="d-flex justify-space-between align-center mb-2">
-                <div class="text-overline">{{ settingsStore.appSettings.detailsTabLabel }} {{ settingsStore.isFieldRequired('details') ? '*' : '' }}</div>
-                <v-btn
-                  color="primary"
-                  variant="outlined"
-                  @click="isDetailModalOpen = true"
-                >
-                  <v-icon start>mdi-plus</v-icon>
-                  Выбрать детали
-                </v-btn>
+              
+              <div class="d-flex align-center gap-2">
+                <v-text-field
+                  v-model.number="det.price"
+                  type="number"
+                  variant="plain"
+                  density="compact"
+                  hide-details
+                  class="price-input text-right"
+                  style="width: 70px;"
+                  prefix="₽"
+                ></v-text-field>
+                 <v-btn icon="mdi-close" size="x-small" variant="text" color="medium-emphasis" @click="removeDetail(index)"></v-btn>
               </div>
+            </v-card>
+          </div>
+          <div v-else class="text-caption text-center text-medium-emphasis py-2">
+            Нет деталей
+          </div>
+        </v-card>
 
-              <div v-if="form.details.length > 0" class="item-list">
-                <div v-for="(detail, index) in form.details" :key="`detail-${index}`" class="item-card">
-                  <div class="item-content">
-                    <div class="item-title">{{ detail.name }}</div>
-                    <v-text-field
-                      v-model="detail.price"
-                      type="number"
-                      variant="underlined"
-                      density="compact"
-                      suffix="₽"
-                      hide-details
-                      class="price-input"
-                    ></v-text-field>
-                     <div class="tags-container">
-                      <v-chip
-                        v-for="tag in getDetailTags(detail.id, detail.tagIds)"
-                        :key="tag.id"
-                        :color="tag.color"
-                        size="small"
-                        class="mr-1"
-                      >
-                        {{ tag.name }}
-                      </v-chip>
-                    </div>
-                  </div>
-                  <v-btn icon="mdi-close" variant="text" size="small" @click="removeDetail(index)"></v-btn>
-                </div>
-              </div>
+        <v-textarea
+          v-model="formData.notes"
+          label="Заметки к заказу"
+          variant="outlined"
+          auto-grow
+          rows="2"
+          hide-details
+          class="mb-4"
+        ></v-textarea>
 
-              <div v-else class="text-caption text-medium-emphasis">
-                {{ settingsStore.isFieldRequired('details') ? 'Детали обязательны для выбора' : 'Детали не выбраны' }}
-              </div>
-            </v-col>
-
-            <!-- Секция оплаты и сроков -->
-            <v-col cols="12">
-              <div class="text-overline mb-2">Оплата и сроки</div>
-               <v-row>
-                <v-col cols="12" sm="6">
-                  <v-text-field
-                    :model-value="totalAmount"
-                    label="Общая сумма"
-                    readonly
-                    prefix="₽"
-                  ></v-text-field>
-                </v-col>
-                <v-col cols="12" sm="6">
-                  <v-text-field
-                    v-model="form.deadline"
-                    :label="`Дедлайн ${settingsStore.isFieldRequired('deadline') ? '*' : ''}`"
-                    :rules="settingsStore.isFieldRequired('deadline') ? [rules.required] : []"
-                    type="date"
-                  ></v-text-field>
-                </v-col>
-              </v-row>
-            </v-col>
-
-            <!-- Секция дополнительно -->
-            <v-col cols="12">
-              <div class="text-overline mb-2">Дополнительно</div>
-              <v-textarea
-                v-model="form.notes"
-                :label="`Примечание ${settingsStore.isFieldRequired('notes') ? '*' : ''}`"
-                :rules="settingsStore.isFieldRequired('notes') ? [rules.required] : []"
-                rows="3"
-                auto-grow
-              ></v-textarea>
-            </v-col>
-          </v-row>
-        </v-container>
       </v-form>
     </v-card-text>
+
+    <v-footer app color="surface" class="border-t pa-0 safe-area-bottom">
+      <div class="d-flex align-center justify-space-between w-100 px-4 py-3">
+        <div>
+          <div class="text-caption text-medium-emphasis">Итоговая стоимость</div>
+          <div class="text-h5 font-weight-bold text-primary">{{ formatPrice(totalPrice) }}</div>
+        </div>
+        </div>
+    </v-footer>
+
+    <ClientFormDialog 
+      v-model="showClientDialog"
+      @saved="onClientSaved"
+    />
+    
+    <DetailSelectionModal
+      v-model="showDetailSelector"
+      @select="addDetail"
+    />
+
   </v-card>
-  <ServiceSelectionModal
-    v-model="isServiceModalOpen"
-    :previously-selected="form.services"
-    @selection-confirmed="handleServicesSelected"
-  />
-  <DetailSelectionModal
-    v-model="isDetailModalOpen"
-    :previously-selected="form.details"
-    @selection-confirmed="handleDetailsSelected"
-  />
 </template>
 
 <script setup>
-import { reactive, computed, watch, ref } from 'vue';
-import { useOrderStore } from '@/stores/orderStore.js';
+import { ref, computed, onMounted, reactive, watch } from 'vue';
+import { useOrderStore } from '@/stores/orderStore';
 import { useClientsStore } from '@/stores/clientsStore';
-import { useSettingsStore } from '@/stores/settingsStore';
-import { useTagsStore } from '@/stores/tagsStore';
 import { useServiceStore } from '@/stores/serviceStore';
-import { useHapticFeedback } from '@/composables/useHapticFeedback.js';
 import { useDetailStore } from '@/stores/detailStore';
-import ServiceSelectionModal from './ServiceSelectionModal.vue';
-import DetailSelectionModal from './DetailSelectionModal.vue';
+import { useTagsStore } from '@/stores/tagsStore';
+import ClientFormDialog from '@/components/ClientFormDialog.vue';
+import DetailSelectionModal from '@/components/DetailSelectionModal.vue';
 
+// --- PROPS ---
 const props = defineProps({
-  orderId: { type: [String, null], default: null },
-  initialData: { type: Object, default: () => ({}) }
+  orderId: {
+    type: String,
+    default: null
+  },
+  initialData: {
+    type: Object,
+    default: () => ({})
+  }
 });
+
 const emit = defineEmits(['close', 'saved']);
 
+// --- STORES ---
 const orderStore = useOrderStore();
 const clientsStore = useClientsStore();
-const settingsStore = useSettingsStore();
-const tagsStore = useTagsStore();
 const serviceStore = useServiceStore();
 const detailStore = useDetailStore();
-const { triggerHapticFeedback } = useHapticFeedback();
+useTagsStore(); // Инит
 
-const isSaving = ref(false);
-const isServiceModalOpen = ref(false);
-const isDetailModalOpen = ref(false);
-const quickService = ref(null);
+// --- STATE ---
+const valid = ref(false);
+const saving = ref(false);
+const isEditMode = computed(() => !!props.orderId);
 
-const form = reactive({
-  clientId: null,
-  clientName: '',
-  lastName: '',
-  phone: '',
-  services: [],
-  details: [],
-  deadline: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0],
-  notes: ''
+// Форма
+const formData = reactive({
+  client: null,
+  status: 'accepted',
+  deadline: new Date().toISOString().split('T')[0],
+  services: [], // { title, price, category, ... }
+  details: [],  // { title, price, costPrice, ... }
+  notes: '',
+  tags: []
 });
 
-const rules = {
-  required: value => !!value || 'Обязательное поле',
+// UI State
+const serviceToAdd = ref(null);
+const showClientDialog = ref(false);
+const showDetailSelector = ref(false);
+
+// Опции статусов
+const statusOptions = [
+  { value: 'accepted', title: 'Принят' },
+  { value: 'in_progress', title: 'В работе' },
+  { value: 'additional', title: 'Ожидание' },
+  { value: 'completed', title: 'Готов' },
+  { value: 'delivered', title: 'Сдан' },
+  { value: 'cancelled', title: 'Отменен' },
+];
+
+// --- COMPUTED ---
+const totalPrice = computed(() => {
+  const servicesSum = formData.services.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+  const detailsSum = formData.details.reduce((sum, d) => sum + (Number(d.price) || 0), 0);
+  return servicesSum + detailsSum;
+});
+
+// --- METHODS ---
+const formatPrice = (val) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(val || 0);
+
+const getStatusColor = (status) => {
+  const map = {
+    'in_progress': 'warning',
+    'completed': 'success',
+    'delivered': 'grey',
+    'accepted': 'primary',
+    'additional': 'purple'
+  };
+  return map[status] || 'grey';
 };
 
-const normalizePhoneDigits = (value) => {
-  const digits = (value || '').replace(/\D/g, '');
-  if (digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'))) {
-    return digits.substring(1);
-  }
-  return digits.slice(0, 10);
+// Фильтр для поиска клиентов
+const clientFilter = (itemTitle, queryText, item) => {
+  const text = queryText.toLowerCase();
+  const name = item.raw.name?.toLowerCase() || '';
+  const phone = item.raw.phone?.toLowerCase() || '';
+  return name.includes(text) || phone.includes(text);
 };
 
-const isEditing = computed(() => props.orderId !== null);
-const totalAmount = computed(() => {
-  const servicesTotal = form.services.reduce((sum, s) => sum + Number(s.price || 0), 0);
-  const detailsTotal = form.details.reduce((sum, d) => sum + Number(d.price || 0), 0);
-  return servicesTotal + detailsTotal;
-});
-
-const isFormValid = computed(() => {
-  const { requiredFields } = settingsStore;
-  if (form.clientId && !resolvedClient.value) return false;
-  const clientNameValue = resolvedClient.value?.name || form.clientName;
-  const clientPhoneValue = resolvedClient.value?.phone || form.phone;
-  if (requiredFields.clientName && !clientNameValue.trim()) return false;
-  if (requiredFields.lastName && !form.lastName.trim()) return false;
-  if (requiredFields.phone && !clientPhoneValue.trim()) return false;
-  if (requiredFields.services && form.services.length === 0) return false;
-  if (requiredFields.details && form.details.length === 0) return false;
-  if (requiredFields.deadline && !form.deadline) return false;
-  if (requiredFields.notes && !form.notes.trim()) return false;
-  return true;
-});
-
-const resolvedClient = computed(() => {
-  if (!form.clientId) return null;
-  return clientsStore.getClientById(form.clientId) || null;
-});
-
-const isClientMissing = computed(() => form.clientId && !resolvedClient.value);
-
-const clientNameInput = computed({
-  get: () => resolvedClient.value?.name || form.clientName,
-  set: (value) => {
-    if (!resolvedClient.value) form.clientName = value;
-  }
-});
-
-const clientPhoneInput = computed({
-  get: () => {
-    if (resolvedClient.value) {
-      return normalizePhoneDigits(resolvedClient.value.phone || '');
-    }
-    return form.phone;
-  },
-  set: (value) => {
-    if (!resolvedClient.value) form.phone = value;
-  }
-});
-
-const getTags = (tagIds) => {
-  if (!tagIds) return [];
-  return tagIds.map(id => tagsStore.getTagById(id)).filter(Boolean);
-};
-
-const getServiceTags = (serviceId, fallbackTagIds) => {
-  const liveService = serviceStore.getServiceById(serviceId);
-  const tagIds = (fallbackTagIds && fallbackTagIds.length > 0)
-    ? fallbackTagIds
-    : (liveService?.tagIds || []);
-  return getTags(tagIds);
-};
-
-const getDetailTags = (detailId, fallbackTagIds) => {
-  const liveDetail = detailStore.getDetailById(detailId);
-  const tagIds = liveDetail ? liveDetail.tagIds : fallbackTagIds || [];
-  return getTags(tagIds);
-};
-
-const resetForm = () => {
-  Object.assign(form, { 
-    clientId: null,
-    clientName: '', 
-    lastName: '',
-    phone: '', 
-    services: [], 
-    details: [],
-    deadline: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0],
-    notes: '' 
+// --- LOGIC: SERVICES ---
+const addService = (service) => {
+  if (!service) return;
+  // Копируем объект, чтобы цена была независимой
+  formData.services.push({
+    id: service.id, // Ссылка на оригинал (опционально)
+    title: service.title,
+    category: service.category,
+    price: service.price,
+    costPrice: 0 // У услуг обычно нет себестоимости в явном виде в заказе, но можно добавить
   });
-};
-
-watch(() => form.phone, (newVal, oldVal) => {
-  const digits = newVal.replace(/\D/g, '');
-  if (digits.length > 10) {
-    form.phone = oldVal;
-    return;
-  }
-
-  let formatted = '';
-  if (digits.length > 0) {
-    formatted = '(' + digits.substring(0, 3);
-  }
-  if (digits.length > 3) {
-    formatted += ') ' + digits.substring(3, 6);
-  }
-  if (digits.length > 6) {
-    formatted += '-' + digits.substring(6, 8);
-  }
-  if (digits.length > 8) {
-    formatted += '-' + digits.substring(8, 10);
-  }
-
-  if (newVal !== formatted) {
-    form.phone = formatted;
-  }
-});
-
-watch([() => props.orderId, () => props.initialData], ([newId, newInitialData]) => {
-  if (newId) {
-    const order = orderStore.getOrderById(newId);
-    if (order) {
-      // Если телефон уже с кодом страны, убираем его для отображения в поле с префиксом +7
-      let phone = order.phone || '';
-      const digits = phone.replace(/\D/g, '');
-
-      // Если 11 цифр и начинается с 7 или 8 - убираем первую цифру
-      if (digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'))) {
-        phone = digits.substring(1);
-      } else if (digits.length === 10) {
-        phone = digits;
-      }
-      // Форматирование применится автоматически через watcher
-
-      Object.assign(form, {
-        clientId: order.clientId || null,
-        clientName: order.clientName,
-        lastName: order.lastName,
-        phone: phone,
-        services: JSON.parse(JSON.stringify(order.services || [])),
-        details: JSON.parse(JSON.stringify(order.details || [])),
-        deadline: order.deadline,
-        notes: order.notes,
-      });
-    }
-  } else {
-    resetForm();
-    if (newInitialData && Object.keys(newInitialData).length > 0) {
-      if (newInitialData.deadline) {
-        form.deadline = newInitialData.deadline;
-      }
-      if (newInitialData.clientId) {
-        form.clientId = newInitialData.clientId;
-      }
-      if (newInitialData.clientName) {
-        form.clientName = newInitialData.clientName;
-      }
-      if (newInitialData.lastName) {
-        form.lastName = newInitialData.lastName;
-      }
-      if (newInitialData.phone) {
-        form.phone = normalizePhoneDigits(newInitialData.phone);
-      }
-    }
-  }
-}, { immediate: true, deep: true });
-
-const saveOrder = async () => {
-  if (!isFormValid.value) return;
-  if (form.clientId && !resolvedClient.value) return;
-  
-  isSaving.value = true;
-
-  const clientFromStore = resolvedClient.value;
-  const normalizePhone = (value) => {
-    const digits = normalizePhoneDigits(value);
-    return digits ? `+7 ${digits}` : '';
-  };
-  const fullPhone = clientFromStore?.phone
-    ? normalizePhone(clientFromStore.phone)
-    : normalizePhone(form.phone);
-  
-  const orderData = {
-    clientId: form.clientId,
-    clientName: clientFromStore?.name || form.clientName,
-    lastName: form.lastName,
-    phone: fullPhone,
-    services: form.services,
-    details: form.details,
-    totalAmount: totalAmount.value,
-    deadline: form.deadline,
-    notes: form.notes,
-  };
-
-  try {
-    if (isEditing.value) {
-      await orderStore.updateOrder(props.orderId, orderData);
-    } else {
-      await orderStore.addOrder(orderData);
-    }
-    triggerHapticFeedback('important');
-    close();
-  } catch(e) {
-    console.error("Ошибка сохранения заказа", e)
-  } finally {
-    isSaving.value = false;
-  }
-};
-
-const close = () => {
-  emit('close');
+  serviceToAdd.value = null; // Сброс
 };
 
 const removeService = (index) => {
-  form.services.splice(index, 1);
+  formData.services.splice(index, 1);
 };
 
-const handleQuickServiceSelect = (service) => {
-  if (!service) return;
-  form.services.push({
-    id: service.id,
-    name: service.name,
-    price: Number(service.price ?? 0),
-    status: 'accepted',
-    icon: service.icon || '',
-    tagIds: service.tagIds || []
+// --- LOGIC: DETAILS ---
+const addDetail = (detail) => {
+  formData.details.push({
+    id: detail.id,
+    title: detail.title,
+    price: detail.price,
+    costPrice: detail.costPrice
   });
-  quickService.value = null;
-};
-
-const handleServicesSelected = (selectedServices) => {
-  form.services = selectedServices;
-  isServiceModalOpen.value = false;
+  showDetailSelector.value = false;
 };
 
 const removeDetail = (index) => {
-  form.details.splice(index, 1);
+  formData.details.splice(index, 1);
 };
 
-const handleDetailsSelected = (selectedDetails) => {
-  form.details = selectedDetails;
-  isDetailModalOpen.value = false;
+// --- LOGIC: CLIENT ---
+const openClientCreate = () => {
+  showClientDialog.value = true;
 };
 
-if (tagsStore.tags.length === 0) {
-  tagsStore.loadTags();
-}
-if (detailStore.details.length === 0) {
-  detailStore.loadDetails();
-}
+const onClientSaved = (newClient) => {
+  // Автоматически выбираем созданного клиента
+  if (newClient) {
+    formData.client = newClient;
+  }
+  showClientDialog.value = false;
+};
+
+// --- INIT ---
+const loadOrderData = () => {
+  // Если редактируем
+  if (props.orderId) {
+    const order = orderStore.getOrderById(props.orderId);
+    if (order) {
+      formData.status = order.status;
+      formData.deadline = order.deadline;
+      formData.notes = order.notes;
+      // Восстанавливаем клиента
+      if (order.clientId) {
+        const client = clientsStore.getClientById(order.clientId);
+        if (client) formData.client = client;
+      }
+      // Восстанавливаем массивы (клонируем)
+      formData.services = [...(order.services || [])];
+      formData.details = [...(order.details || [])];
+    }
+  } else {
+    // Новый заказ (применяем initialData)
+    if (props.initialData.deadline) formData.deadline = props.initialData.deadline;
+    // Если передан клиент через query/initialData
+    if (props.initialData.clientId) {
+        const client = clientsStore.getClientById(props.initialData.clientId);
+        if(client) formData.client = client;
+    }
+  }
+};
+
+// --- SAVE ---
+const saveOrder = async () => {
+  if (!formData.client && !props.orderId) {
+    // Валидация: клиент обязателен для нового заказа? Зависит от бизнес-логики.
+    // Допустим, можно без клиента (быстрый заказ), но лучше предупредить.
+  }
+
+  saving.value = true;
+  try {
+    const orderPayload = {
+      status: formData.status,
+      deadline: formData.deadline,
+      notes: formData.notes,
+      price: totalPrice.value,
+      // Связи
+      clientId: formData.client?.id || null,
+      clientName: formData.client?.name || 'Гость', // Денормализация для быстрого отображения
+      // Списки
+      services: formData.services,
+      details: formData.details
+    };
+
+    if (isEditMode.value) {
+      await orderStore.updateOrder({
+        id: props.orderId,
+        ...orderPayload
+      });
+    } else {
+      await orderStore.addOrder(orderPayload);
+    }
+    
+    emit('saved');
+    emit('close');
+  } catch (e) {
+    console.error('Ошибка сохранения:', e);
+  } finally {
+    saving.value = false;
+  }
+};
+
+onMounted(() => {
+  // Убеждаемся, что справочники загружены
+  if (!clientsStore.clients.length) clientsStore.subscribeClients();
+  if (!serviceStore.activeServices.length) serviceStore.initRealtimeUpdates();
+  
+  loadOrderData();
+});
 </script>
 
 <style scoped>
-.item-list {
-  border: 1px solid rgba(var(--v-border-color), 0.2);
-  border-radius: 4px;
-  padding: 8px;
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+
+/* Кастомный инпут цены без рамок, чтобы выглядел как текст */
+.price-input :deep(.v-field__outline) {
+  display: none;
+}
+.price-input :deep(.v-field__input) {
+  padding: 0;
+  font-weight: 700;
+  color: rgb(var(--v-theme-primary));
 }
 
-.item-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px;
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.1);
-}
-
-.item-card:last-child {
-  border-bottom: none;
-}
-
-.item-content {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-  min-width: 0;
-}
-
-.price-input {
-  max-width: 120px;
-  margin-top: 4px;
-}
-
-.item-title {
-  font-weight: 500;
-}
-
-.tags-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 16px) !important;
 }
 </style>
