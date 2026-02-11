@@ -35,7 +35,7 @@
             ></v-btn>
 
             <v-menu
-              v-if="isHomePage"
+              v-if="showSortMenu"
               v-model="sortMenu"
               location="bottom end"
               :close-on-content-click="false"
@@ -44,7 +44,7 @@
                 <v-btn icon="mdi-sort-variant" variant="text" v-bind="props"></v-btn>
               </template>
               <v-card min-width="250" class="rounded-xl">
-                 <div>
+                 <div v-if="isHomePage">
                     <v-list dense>
                       <v-list-subheader class="text-caption font-weight-bold">СТАТУС</v-list-subheader>
                       <v-list-item
@@ -54,7 +54,7 @@
                         density="compact"
                       >
                         <template v-slot:prepend>
-                          <v-checkbox-btn :model-value="orderStore.filterStatus.includes(status.value)"></v-checkbox-btn>
+                          <v-checkbox-btn :model-value="orderStore.filterStatus?.includes(status.value)"></v-checkbox-btn>
                         </template>
                         <v-list-item-title class="text-body-2">{{ status.text }}</v-list-item-title>
                       </v-list-item>
@@ -109,74 +109,70 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { useThemeStore } from '@/stores/themeStore';
-import { useSettingsStore } from '@/stores/settingsStore';
-import { useOrderStore } from '@/stores/orderStore';
-import { useClientsStore } from '@/stores/clientsStore';
-import { useServiceStore } from '@/stores/serviceStore';
-import { useTagsStore } from '@/stores/tagsStore';
-import { useSearchStore } from '@/stores/searchStore';
-import { auth } from './firebase'; 
+import { auth } from '@/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import ConfirmationDialog from '@/components/ConfirmationDialog.vue';
+
+// Импорт сторов из папки src/store
+import { useThemeStore } from '@/store/themeStore';
+import { useSettingsStore } from '@/store/settingsStore';
+import { useOrderStore } from '@/store/orderStore';
+import { useSearchStore } from '@/store/searchStore';
+import { useServiceStore } from '@/store/serviceStore';
+import { useClientsStore } from '@/store/clientsStore';
+import { useTagsStore } from '@/store/tagsStore';
+
+// Импорт компонентов
+import ConfirmationDialog from '@/ConfirmationDialog.vue';
 
 // Инициализация сторов
 const themeStore = useThemeStore();
 const settingsStore = useSettingsStore();
 const orderStore = useOrderStore();
-const clientsStore = useClientsStore();
-const serviceStore = useServiceStore();
-const tagsStore = useTagsStore();
 const searchStore = useSearchStore();
+const serviceStore = useServiceStore();
+const clientsStore = useClientsStore();
+const tagsStore = useTagsStore();
 
 const route = useRoute();
 
-// Состояние UI
+// UI State
 const isReady = ref(false);
 const activeTab = ref('home');
-const showSearch = ref(false);
 const sortMenu = ref(false);
+const showSearch = ref(false);
 
-// --- Логика заголовка и поиска ---
+// Навигация и заголовки
+const isHomePage = computed(() => route.name === 'home');
+const isSearchPage = computed(() => ['home', 'clients', 'base-settings'].includes(route.name));
+const showSortMenu = computed(() => isHomePage.value);
 
 const currentTitle = computed(() => {
   switch (route.name) {
-    case 'Home': return 'Заказы';
-    case 'Clients': return 'Клиенты';
-    case 'BaseSettings': return 'Справочники';
-    case 'Settings': return 'Меню';
-    default: return 'AppManager';
+    case 'home': return 'Мои заказы';
+    case 'clients': return 'Клиенты';
+    case 'settings': return 'Настройки';
+    case 'base-settings': return 'Справочники';
+    default: return '';
   }
 });
 
-const isSearchPage = computed(() => {
-  return ['Home', 'Clients'].includes(route.name);
-});
-
-const isHomePage = computed(() => route.name === 'Home');
-
-const openSearch = () => {
-  showSearch.value = true;
-};
-
+// Поиск
+const openSearch = () => { showSearch.value = true; };
 const closeSearch = () => {
   showSearch.value = false;
   searchStore.setSearchQuery('');
 };
 
-// Сброс поиска при смене страницы
 watch(() => route.name, () => {
   showSearch.value = false;
   searchStore.setSearchQuery('');
 });
 
-// --- Логика фильтров (статусы) ---
-
+// Статусы и фильтры
 const availableStatuses = computed(() => {
   const allStatuses = [
-    { value: 'new', text: orderStore.getStatusText ? orderStore.getStatusText('new') : 'Новый' }, // Добавил 'new', так как он обычно есть
     { value: 'accepted', text: orderStore.getStatusText ? orderStore.getStatusText('accepted') : 'Принят' },
     { value: 'additional', text: orderStore.getStatusText ? orderStore.getStatusText('additional') : 'Доп.' },
     { value: 'in_progress', text: orderStore.getStatusText ? orderStore.getStatusText('in_progress') : 'В работе' },
@@ -184,66 +180,55 @@ const availableStatuses = computed(() => {
     { value: 'delivered', text: orderStore.getStatusText ? orderStore.getStatusText('delivered') : 'Сдан' },
     { value: 'cancelled', text: orderStore.getStatusText ? orderStore.getStatusText('cancelled') : 'Отменен' }
   ];
-  
   return allStatuses.filter(s => {
     if (s.value === 'cancelled') return true;
-    // Безопасный доступ к настройкам
     return settingsStore.appSettings?.orderStatuses?.[s.value] ?? true;
   });
 });
 
 const toggleStatusFilter = (statusValue) => {
-  // Предполагаем, что в orderStore есть такой метод или доступ к массиву
-  if (orderStore.toggleStatusFilter) {
-      orderStore.toggleStatusFilter(statusValue);
-  } else {
-      // Фолбэк, если метода нет (напрямую меняем массив, если это допустимо в твоем сторе)
-      const index = orderStore.filterStatus.indexOf(statusValue);
-      if (index === -1) {
-          orderStore.filterStatus.push(statusValue);
-      } else {
-          orderStore.filterStatus.splice(index, 1);
-      }
-  }
+  if (!orderStore.filterStatus) orderStore.filterStatus = [];
+  const index = orderStore.filterStatus.indexOf(statusValue);
+  if (index === -1) orderStore.filterStatus.push(statusValue);
+  else orderStore.filterStatus.splice(index, 1);
 };
 
-// --- Инициализация и Авторизация (Главный фикс) ---
+// Синхронизация табов с роутом
+watch(() => route.path, (newPath) => {
+  if (newPath === '/' || newPath.startsWith('/order')) activeTab.value = 'home';
+  else if (newPath.startsWith('/clients')) activeTab.value = 'clients';
+  else if (newPath.startsWith('/base-settings')) activeTab.value = 'base-settings';
+  else if (newPath.startsWith('/settings')) activeTab.value = 'settings';
+}, { immediate: true });
 
+// Инициализация при монтировании
 onMounted(async () => {
-  // 1. Загружаем тему и настройки
   themeStore.loadTheme();
   await settingsStore.loadSettings();
 
-  // 2. Слушаем авторизацию
+  // Подписка на авторизацию и запуск обновлений данных
   onAuthStateChanged(auth, (user) => {
     if (user) {
-      console.log('User logged in:', user.uid);
-      
-      // Передаем пользователя в сторы
+      // Передаем пользователя в сторы для фильтрации данных
       orderStore.user = user;
       clientsStore.user = user;
       serviceStore.user = user;
-      
-      // 3. Запускаем подписки (initRealtimeUpdates)
+
+      // Запускаем подписки реального времени
       orderStore.initRealtimeUpdates();
       clientsStore.initRealtimeUpdates();
       serviceStore.initRealtimeUpdates();
       tagsStore.initRealtimeUpdates();
-      
     } else {
-      console.log('User logged out');
-      orderStore.user = null;
-      clientsStore.user = null;
-      serviceStore.user = null;
+      isReady.value = true;
+      // Здесь можно добавить редирект на страницу логина
     }
-    
     isReady.value = true;
   });
 });
 </script>
 
 <style>
-/* Глобальные стили для App.vue */
 :root {
   --app-base-font-size: 16px;
   --safe-area-bottom: env(safe-area-inset-bottom, 16px); 
@@ -257,7 +242,6 @@ html {
   font-size: 1rem !important; 
 }
 
-/* Фикс нижней панели для мобилок */
 .app-bottom-nav.safe-area-fix {
   border-top: 1px solid rgba(var(--v-border-color), 0.08);
   height: calc(56px + var(--safe-area-bottom) + 8px) !important;
