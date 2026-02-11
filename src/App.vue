@@ -1,12 +1,13 @@
 <template>
-  <v-app :theme="themeStore.theme" class="app-root">
+  <v-app :theme="themeStore.theme" class="app-root bg-background">
     
     <v-app-bar app color="surface" flat density="comfortable" class="app-bar-minimal">
       <div class="d-flex align-center px-4 w-100">
         <v-scale-transition mode="out-in">
-          <div v-if="showSearch" class="d-flex align-center flex-grow-1 w-100">
+          
+          <div v-if="searchStore.isActive" class="d-flex align-center flex-grow-1 w-100">
             <v-text-field
-              v-model="searchStore.searchQuery"
+              v-model="searchStore.query"
               placeholder="Поиск..."
               variant="plain"
               density="compact"
@@ -14,250 +15,186 @@
               autofocus
               class="search-input"
               clearable
+              prepend-inner-icon="mdi-magnify"
               @click:clear="closeSearch"
-            >
-              <template v-slot:prepend-inner>
-                <v-icon color="primary">mdi-magnify</v-icon>
-              </template>
-            </v-text-field>
+            ></v-text-field>
             <v-btn icon="mdi-close" variant="text" size="small" @click="closeSearch"></v-btn>
           </div>
 
           <div v-else class="d-flex align-center flex-grow-1 w-100">
-            <span class="text-h6 font-weight-bold">{{ currentTitle }}</span>
+            <span class="text-h6 font-weight-bold text-primary">{{ currentTitle }}</span>
             <v-spacer></v-spacer>
             
             <v-btn 
-              v-if="isSearchPage" 
+              v-if="showSearchBtn" 
               icon="mdi-magnify" 
               variant="text" 
+              color="primary"
               @click="openSearch"
             ></v-btn>
 
-            <v-menu
-              v-if="showSortMenu"
-              v-model="sortMenu"
-              location="bottom end"
-              :close-on-content-click="false"
-            >
-              <template v-slot:activator="{ props }">
-                <v-btn icon="mdi-sort-variant" variant="text" v-bind="props"></v-btn>
-              </template>
-              <v-card min-width="250" class="rounded-xl">
-                 <div v-if="isHomePage">
-                    <v-list dense>
-                      <v-list-subheader class="text-caption font-weight-bold">СТАТУС</v-list-subheader>
-                      <v-list-item
-                        v-for="status in availableStatuses"
-                        :key="status.value"
-                        @click="toggleStatusFilter(status.value)"
-                        density="compact"
-                      >
-                        <template v-slot:prepend>
-                          <v-checkbox-btn :model-value="orderStore.filterStatus.includes(status.value)"></v-checkbox-btn>
-                        </template>
-                        <v-list-item-title class="text-body-2">{{ status.text }}</v-list-item-title>
-                      </v-list-item>
-                    </v-list>
-                 </div>
-              </v-card>
-            </v-menu>
-          </div>
+            </div>
+
         </v-scale-transition>
       </div>
     </v-app-bar>
 
-    <v-main class="app-main">
-      <router-view v-slot="{ Component }">
-        <v-fade-transition mode="out-in">
-          <component :is="Component" />
-        </v-fade-transition>
-      </router-view>
+    <v-main>
+      <div class="fill-height pb-16"> <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
+      </div>
     </v-main>
 
     <v-bottom-navigation
-      v-model="activeTab"
-      bg-color="surface"
-      color="primary"
       grow
+      color="primary"
       class="app-bottom-nav safe-area-fix"
       elevation="0"
+      bg-color="surface"
+      v-model="activeTab"
     >
-      <v-btn value="home" to="/">
-        <v-icon>mdi-calendar-check-outline</v-icon>
-        <span class="text-caption mt-1">Заказы</span>
+      <v-btn to="/" value="orders">
+        <v-icon>mdi-clipboard-list-outline</v-icon>
+        <span>Заказы</span>
       </v-btn>
 
-      <v-btn value="clients" to="/clients">
+      <v-btn to="/clients" value="clients">
         <v-icon>mdi-account-group-outline</v-icon>
-        <span class="text-caption mt-1">Клиенты</span>
+        <span>Клиенты</span>
       </v-btn>
 
-      <v-btn value="base-settings" to="/base-settings">
-        <v-icon>mdi-database-outline</v-icon>
-        <span class="text-caption mt-1">Справочники</span>
-      </v-btn>
-
-      <v-btn value="settings" to="/settings">
-        <v-icon>mdi-tune</v-icon>
-        <span class="text-caption mt-1">Меню</span>
+      <v-btn to="/settings" value="settings">
+        <v-icon>mdi-cog-outline</v-icon>
+        <span>Настройки</span>
       </v-btn>
     </v-bottom-navigation>
-    
-    <ConfirmationDialog />
-    </v-app>
+
+    <ConfirmationDialog 
+      v-model="confirmationStore.isVisible"
+      :title="confirmationStore.options.title"
+      :message="confirmationStore.options.message"
+      :confirm-text="confirmationStore.options.confirmText"
+      :cancel-text="confirmationStore.options.cancelText"
+      :color="confirmationStore.options.color"
+      @confirm="confirmationStore.confirm"
+      @cancel="confirmationStore.cancel"
+    />
+  </v-app>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { useTheme } from 'vuetify'
 
-// Импорт сторов
-import { useThemeStore } from '@/stores/themeStore';
-import { useSettingsStore } from '@/stores/settingsStore';
-import { useOrderStore } from '@/stores/orderStore';
-import { useSearchStore } from '@/stores/searchStore';
-import { useServiceStore } from '@/stores/serviceStore';
-import { useClientsStore } from '@/stores/clientsStore';
-import { useTagsStore } from '@/stores/tagsStore';
+// Stores (4 Layer Architecture)
+import { useSettingsStore } from '@/stores/settingsStore'
+import { useThemeStore } from '@/stores/themeStore'
+import { useConfirmationStore } from '@/stores/confirmationStore'
+import { useSearchStore } from '@/stores/searchStore'
+import { useOrderStore } from '@/stores/orderStore'
+import { useClientsStore } from '@/stores/clientsStore'
+// Если есть serviceStore, добавь: import { useServiceStore } from '@/stores/serviceStore'
 
-// Импорт компонентов
-import ConfirmationDialog from '@/components/common/ConfirmationDialog.vue';
-// import TemplateSelectionDialog from '@/components/TemplateSelectionDialog.vue'; 
+const route = useRoute()
+const theme = useTheme()
 
-// Инициализация сторов
-const themeStore = useThemeStore();
-const settingsStore = useSettingsStore();
-const orderStore = useOrderStore();
-const searchStore = useSearchStore();
-const servicesStore = useServiceStore();
-const clientsStore = useClientsStore();
-const tagsStore = useTagsStore(); // Просто инициализируем
+// Init Stores
+const settingsStore = useSettingsStore()
+const themeStore = useThemeStore()
+const confirmationStore = useConfirmationStore()
+const searchStore = useSearchStore()
+const orderStore = useOrderStore()
+const clientsStore = useClientsStore()
 
-const route = useRoute();
+// --- WIRING: ИНИЦИАЛИЗАЦИЯ ---
+onMounted(async () => {
+  // 1. Загрузка настроек и темы
+  await settingsStore.loadSettings()
+  themeStore.initTheme(theme)
 
-// UI State
-const activeTab = ref('home');
-const sortMenu = ref(false);
-const showSearch = ref(false);
-
-// Вычисляемые свойства для навигации
-const isHomePage = computed(() => route.name === 'home');
-const isSearchPage = computed(() => ['home', 'clients', 'base-settings'].includes(route.name));
-const showSortMenu = computed(() => isHomePage.value);
-
-const currentTitle = computed(() => {
-  if (route.name === 'home') return 'Мои заказы';
-  if (route.name === 'clients') return 'Клиенты';
-  if (route.name === 'order-edit') return 'Мои заказы';
-  if (route.name === 'settings') return 'Настройки';
-  if (route.name === 'base-settings') return 'Справочники';
-  return '';
-});
-
-// Логика поиска
-const openSearch = () => { showSearch.value = true; };
-const closeSearch = () => {
-  showSearch.value = false;
-  searchStore.setSearchQuery('');
-};
-
-watch(() => route.name, () => {
-  showSearch.value = false;
-  searchStore.setSearchQuery('');
-});
-
-// Статусы для фильтра (берем из orderStore/settingsStore)
-const availableStatuses = computed(() => {
-  const allStatuses = [
-    { value: 'accepted', text: orderStore.getStatusText ? orderStore.getStatusText('accepted') : 'Принят' },
-    { value: 'additional', text: orderStore.getStatusText ? orderStore.getStatusText('additional') : 'Доп.' },
-    { value: 'in_progress', text: orderStore.getStatusText ? orderStore.getStatusText('in_progress') : 'В работе' },
-    { value: 'completed', text: orderStore.getStatusText ? orderStore.getStatusText('completed') : 'Готов' },
-    { value: 'delivered', text: orderStore.getStatusText ? orderStore.getStatusText('delivered') : 'Сдан' },
-    { value: 'cancelled', text: orderStore.getStatusText ? orderStore.getStatusText('cancelled') : 'Отменен' }
-  ];
-  return allStatuses.filter(s => {
-    if (s.value === 'cancelled') return true;
-    // Безопасный доступ к settingsStore.appSettings
-    return settingsStore.appSettings?.orderStatuses?.[s.value] ?? true;
-  });
-});
-
-const toggleStatusFilter = (statusValue) => {
-  const index = orderStore.filterStatus.indexOf(statusValue);
-  if (index === -1) orderStore.filterStatus.push(statusValue);
-  else orderStore.filterStatus.splice(index, 1);
-};
-
-// Глобальное изменение шрифта (если реализовано в settings)
-watch(() => settingsStore.appSettings?.baseFontSize, (newSize) => {
-  if (newSize) {
-    document.documentElement.style.fontSize = `${newSize}px`;
-  }
-}, { immediate: true });
-
-// Синхронизация табов
-watch(() => route.path, (newPath) => {
-  if (newPath === '/' || newPath.startsWith('/order')) activeTab.value = 'home';
-  else if (newPath.startsWith('/clients')) activeTab.value = 'clients';
-  else if (newPath.startsWith('/base-settings')) activeTab.value = 'base-settings';
-  else if (newPath.startsWith('/settings')) activeTab.value = 'settings';
-}, { immediate: true });
+  // 2. Инициализация данных (Realtime listeners)
+  // Проверяем наличие методов, т.к. сторы заморожены, но мы должны их вызвать
+  if (orderStore.initRealtimeUpdates) orderStore.initRealtimeUpdates()
+  if (orderStore.subscribeOrders) orderStore.subscribeOrders() // На случай если метод называется так
   
-  watch(() => settingsStore.appSettings?.fontSize, (newSize) => {
+  if (clientsStore.subscribeClients) clientsStore.subscribeClients()
+})
+
+// --- ЛОГИКА ШРИФТА (ДИНАМИЧЕСКАЯ) ---
+watch(() => settingsStore.appSettings?.fontSize, (newSize) => {
   if (newSize) {
-    // Меняем размер шрифта у корня HTML -> все rem-размеры в Vuetify пересчитаются
     document.documentElement.style.fontSize = `${newSize}px`
   }
 }, { immediate: true })
 
-// ИНИЦИАЛИЗАЦИЯ ДАННЫХ ПРИ ЗАПУСКЕ
-onMounted(async () => {
-  // 1. Тема и настройки
-  themeStore.loadTheme();
-  await settingsStore.loadSettings();
+// --- ЛОГИКА ИНТЕРФЕЙСА ---
+const activeTab = ref('orders')
 
-  // 2. Подписка на данные (используем методы из твоих новых сторов)
-  // В OrderStore метод называется initRealtimeUpdates
-  orderStore.initRealtimeUpdates();
-  
-  // Для клиентов и сервисов предполагаем аналогичные методы инициализации
-  // Если в твоих замороженных сторах методы называются init() или subscribe(), убедись, что вызываешь верные
-  if (clientsStore.subscribeClients) clientsStore.subscribeClients();
-  if (servicesStore.subscribeServices) servicesStore.subscribeServices();
-});
+// Вычисляем заголовок на основе текущего роута
+const currentTitle = computed(() => {
+  switch (route.name) {
+    case 'home': return 'Мои заказы'
+    case 'clients': return 'Список клиентов'
+    case 'settings': return 'Настройки'
+    default: return 'AppManager'
+  }
+})
+
+// Показывать кнопку поиска только на страницах списков
+const showSearchBtn = computed(() => {
+  return ['home', 'clients'].includes(route.name)
+})
+
+// Методы поиска
+const openSearch = () => {
+  searchStore.isActive = true
+  // searchStore.query = '' // Опционально: очищать при открытии
+}
+
+const closeSearch = () => {
+  searchStore.isActive = false
+  searchStore.query = ''
+}
 </script>
 
-<style>
+<style scoped>
 /* Глобальные стили для App.vue */
 :root {
   --app-base-font-size: 16px;
   --safe-area-bottom: env(safe-area-inset-bottom, 16px); 
 }
 
-html {
-  font-size: var(--app-base-font-size);
+/* Переход страниц */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
 }
 
-.v-application {
-  font-size: 1rem !important; 
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
-/* Фикс нижней панели для мобилок */
-.app-bottom-nav.safe-area-fix {
-  border-top: 1px solid rgba(var(--v-border-color), 0.08);
-  height: calc(56px + var(--safe-area-bottom) + 8px) !important;
-  padding-bottom: calc(var(--safe-area-bottom) + 8px) !important;
-}
-
+/* Minimal Soft App Bar */
 .app-bar-minimal {
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.05);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.03) !important;
 }
 
-.search-input .v-field__input {
-  font-size: 1.1rem;
+/* Bottom Nav Fixes */
+.app-bottom-nav {
+  border-top: 1px solid rgba(var(--v-border-color), 0.05);
+  padding-bottom: var(--safe-area-bottom);
+  height: calc(56px + var(--safe-area-bottom)) !important;
+}
+
+.search-input :deep(.v-field__input) {
   padding-top: 0;
   padding-bottom: 0;
+  min-height: 40px;
 }
 </style>
