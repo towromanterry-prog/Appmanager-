@@ -1,78 +1,72 @@
-// plugins/vuetify.js
-import 'vuetify/styles';
-import { createVuetify } from 'vuetify';
-import * as components from 'vuetify/components';
-import * as directives from 'vuetify/directives';
-import { aliases, mdi } from 'vuetify/iconsets/mdi';
-// Убедись, что этот пакет установлен: npm install @iconify-prerendered/vue-simple-icons
-import { IconTelegram, IconWhatsapp } from '@iconify-prerendered/vue-simple-icons';
-import '@mdi/font/css/materialdesignicons.css';
-import { light, dark } from '@/theme/theme'; // Импортируем наши темы
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
+import { aliases, mdi } from 'vuetify/iconsets/mdi'
+import '@mdi/font/css/materialdesignicons.css'
+import 'vuetify/styles'
 
-const customAliases = {
-  ...aliases,
-  whatsapp: {
-    component: IconWhatsapp,
-  },
-  telegram: {
-    component: IconTelegram,
-  },
-};
+// Используем тему из theme.js (если она экспортируется как объект)
+// или настраиваем базовые цвета здесь, если нужно
+import { lightTheme, darkTheme } from '../theme/theme' 
 
 export default createVuetify({
   components,
   directives,
   icons: {
     defaultSet: 'mdi',
-    aliases: customAliases,
+    aliases,
     sets: {
       mdi,
     },
   },
-  // Настройка тем
   theme: {
     defaultTheme: 'light',
     themes: {
-      light,
-      dark,
+      light: lightTheme,
+      dark: darkTheme,
     },
   },
-  // Глобальные настройки (твои defaults)
+  // Глобальные настройки по умолчанию для компонентов (Minimal Soft)
   defaults: {
-    VBtn: {
-      style: 'text-transform: none; letter-spacing: 0;',
-      rounded: 'pill',
-      elevation: 0,
+    global: {
+      ripple: false, // Отключаем жесткую волну material design для мягкости
     },
     VCard: {
-      rounded: 'xl',
+      elevation: 0, // Тень контролируется через CSS
+      color: 'surface',
+    },
+    VBtn: {
       elevation: 0,
+      variant: 'flat',
+      height: 44,
     },
     VTextField: {
       variant: 'outlined',
-      density: 'comfortable',
       color: 'primary',
+      density: 'comfortable',
+      hideDetails: 'auto', 
     },
     VTextarea: {
       variant: 'outlined',
-      density: 'comfortable',
       color: 'primary',
+      density: 'comfortable',
     },
     VSelect: {
       variant: 'outlined',
-      density: 'comfortable',
       color: 'primary',
+      density: 'comfortable',
     },
     VAutocomplete: {
       variant: 'outlined',
-      density: 'comfortable',
       color: 'primary',
+      density: 'comfortable',
     },
-    VListItem: {
-       rounded: 'lg'
+    VSwitch: {
+      color: 'primary',
+      inset: true,
     },
-    VChip: {
-      rounded: 'lg',
+    VDialog: {
+      transition: 'dialog-bottom-transition',
     },
   },
-});
+})
