@@ -122,7 +122,7 @@ import { useTagsStore } from '@/stores/tagsStore.js';
 
 // --- ИМПОРТ КОМПОНЕНТОВ ---
 // ОТРЕДАКТИРУЙТЕ ЭТУ СТРОКУ, если диалог лежит в другом месте:
-import ConfirmationDialog from '@/ConfirmationDialog.vue'; 
+import ConfirmationDialog from '@/components/ConfirmationDialog.vue'; 
 
 const themeStore = useThemeStore();
 const settingsStore = useSettingsStore();
