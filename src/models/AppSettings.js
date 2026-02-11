@@ -3,7 +3,7 @@ export default class AppSettings {
     id = 'global', // Обычно настройки хранятся в одном документе
     theme = 'light',
     currency = 'RUB',
-    language = 'ru'
+    language = 'ru',
     fontSize = 16
   } = {}) {
     this.id = id;
@@ -28,5 +28,6 @@ export const settingsConverter = {
     return new AppSettings({ id: snapshot.id, ...data });
   }
 };
+
 
 
