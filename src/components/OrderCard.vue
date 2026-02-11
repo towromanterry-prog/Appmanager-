@@ -7,10 +7,10 @@
         <div class="d-flex align-center">
           <div class="client-info">
             <div class="client-name-line">
-              <span class="font-weight-bold text-truncate">{{ order.clientName }}</span>
+              <span class="font-weight-bold text-truncate">{{ displayClientName }}</span>
               <span class="font-weight-bold text-truncate">{{ order.lastName }}</span>
             </div>
-            <div class="text-caption text-on-surface-variant">{{ order.phone }}</div>
+            <div class="text-caption text-on-surface-variant">{{ displayClientPhone }}</div>
             <div class="text-caption text-on-surface-variant">Создан: {{ formattedCreateDate }}</div>
           </div>
         </div>
@@ -20,6 +20,7 @@
         <StatusIndicator
           :status="order.status"
           @click.stop="changeOrderStatus"
+          @long-press="openStatusPicker('order')"
           class="mb-2"
         />
       </div>
@@ -40,6 +41,7 @@
               <StatusIndicator
                 :status="service.status"
                 @click.stop="changeServiceStatus(index)"
+                @long-press="openStatusPicker('service', index)"
               />
             </div>
           </div>
@@ -54,6 +56,7 @@
               <StatusIndicator
                 :status="detail.status"
                 @click.stop="changeDetailStatus(index)"
+                @long-press="openStatusPicker('detail', index)"
               />
             </div>
           </div>
@@ -104,7 +107,15 @@
         <v-divider></v-divider>
         <!-- Действия -->
         <v-card-actions class="pa-2">
-          <v-btn icon="mdi-phone" variant="text" size="small" color="on-surface-variant" :href="`tel:${order.phone}`" @click.stop></v-btn>
+          <v-btn
+            icon="mdi-phone"
+            variant="text"
+            size="small"
+            color="on-surface-variant"
+            :href="phoneHref"
+            :disabled="!phoneHref"
+            @click.stop
+          ></v-btn>
           <v-btn icon="mdi-message-text" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessageWithHaptic('sms')"></v-btn>
           <v-btn :icon="IconWhatsapp" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessageWithHaptic('whatsapp')"></v-btn>
           <v-btn :icon="IconTelegram" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessageWithHaptic('telegram')"></v-btn>
@@ -122,14 +133,23 @@
       </div>
     </v-expand-transition>
 
+    <StatusPickerDialog
+      v-model="statusPicker.open"
+      :title="statusPickerTitle"
+      :item-type="statusPicker.itemType"
+      :current-status="statusPicker.currentStatus"
+      :active-statuses="statusPicker.activeStatuses"
+      @select="applyPickedStatus"
+    />
+
     <!-- Скрытый шаблон чека -->
     <div v-if="isGeneratingReceipt" class="receipt-wrapper">
       <div ref="receiptRef" class="receipt-container">
         <div class="receipt-title">ВЫПОЛНЕННЫЕ РАБОТЫ</div>
         <div class="receipt-divider"></div>
 
-        <div>Клиент: {{ order.clientName }} {{ order.lastName }}</div>
-        <div>Тел: {{ formattedPhone }}</div>
+        <div>Клиент: {{ displayClientName }} {{ order.lastName }}</div>
+        <div>Тел: {{ displayClientPhone || formattedPhone }}</div>
 
         <div class="receipt-divider"></div>
 
@@ -164,11 +184,13 @@
 import { ref, computed, nextTick } from 'vue';
 import { useOrderStore } from '@/stores/orderStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useClientsStore } from '@/stores/clientsStore';
 import { useTemplateSelectionStore } from '@/stores/templateSelectionStore';
 import { useTagsStore } from '@/stores/tagsStore';
 import { useServiceStore } from '@/stores/serviceStore';
 import { useDetailStore } from '@/stores/detailStore';
 import StatusIndicator from '@/components/common/StatusIndicator.vue';
+import StatusPickerDialog from '@/components/common/StatusPickerDialog.vue';
 import { useHapticFeedback } from '@/composables/useHapticFeedback';
 import { useFormatDate } from '@/composables/useDateUtils';
 import { IconTelegram, IconWhatsapp } from '@iconify-prerendered/vue-simple-icons';
@@ -181,6 +203,7 @@ const emit = defineEmits(['edit', 'delete']);
 
 const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
+const clientsStore = useClientsStore();
 const templateSelectionStore = useTemplateSelectionStore();
 const tagsStore = useTagsStore();
 const serviceStore = useServiceStore();
@@ -191,6 +214,76 @@ const { triggerHapticFeedback } = useHapticFeedback();
 const expanded = ref(false);
 const isGeneratingReceipt = ref(false);
 const receiptRef = ref(null);
+
+
+const STATUS_PICKER_DEFAULT = {
+  open: false,
+  itemType: 'order',
+  itemIndex: -1,
+  currentStatus: 'accepted',
+  activeStatuses: {}
+};
+
+const statusPicker = ref({ ...STATUS_PICKER_DEFAULT });
+
+const statusPickerTitle = computed(() => {
+  if (statusPicker.value.itemType === 'service') return 'Выберите статус услуги';
+  if (statusPicker.value.itemType === 'detail') return 'Выберите статус детали';
+  return 'Выберите статус заказа';
+});
+
+const getActiveStatusesByType = (itemType) => {
+  if (itemType === 'service') return settingsStore.appSettings.serviceStatuses || {};
+  if (itemType === 'detail') return settingsStore.appSettings.detailStatuses || {};
+  return settingsStore.appSettings.orderStatuses || {};
+};
+
+const openStatusPicker = (itemType, itemIndex = -1) => {
+  if (props.order.status === 'cancelled') return;
+
+  let currentStatus = props.order.status;
+
+  if (itemType === 'service') {
+    const service = props.order.services?.[itemIndex];
+    if (!service || service.status === 'cancelled') return;
+    currentStatus = service.status;
+  }
+
+  if (itemType === 'detail') {
+    const detail = props.order.details?.[itemIndex];
+    if (!detail || detail.status === 'cancelled') return;
+    currentStatus = detail.status;
+  }
+
+  statusPicker.value = {
+    open: true,
+    itemType,
+    itemIndex,
+    currentStatus,
+    activeStatuses: getActiveStatusesByType(itemType)
+  };
+};
+
+const applyPickedStatus = (newStatus) => {
+  const picker = statusPicker.value;
+  if (!newStatus || newStatus === picker.currentStatus) return;
+
+  triggerHapticFeedback('tap');
+  orderStore.updateStatus(props.order.id, newStatus, picker.itemType, picker.itemIndex);
+};
+
+const resolvedClient = computed(() => {
+  if (!props.order.clientId) return null;
+  return clientsStore.getClientById(props.order.clientId) || null;
+});
+
+const displayClientName = computed(() => {
+  return resolvedClient.value?.name || props.order.clientName || '';
+});
+
+const displayClientPhone = computed(() => {
+  return resolvedClient.value?.phone || props.order.phone || '';
+});
 
 const allTags = computed(() => {
   const tagIds = new Set();
@@ -269,9 +362,12 @@ const handleCancelClick = () => {
 };
 
 const formattedPhone = computed(() => {
-  if (!props.order.phone) return '';
-  return `+${props.order.phone.replace(/\D/g, '')}`;
+  const source = displayClientPhone.value || props.order.phone || '';
+  if (!source) return '';
+  return `+${source.replace(/\D/g, '')}`;
 });
+
+const phoneHref = computed(() => (formattedPhone.value ? `tel:${formattedPhone.value}` : ''));
 
 const downloadReceipt = async () => {
   triggerHapticFeedback('tap');
@@ -315,7 +411,7 @@ const sendMessage = async (service) => {
   }
 
   const message = selectedTemplate.text
-    .replace('%имя%', props.order.clientName)
+    .replace('%имя%', displayClientName.value || props.order.clientName || '')
     .replace('%цена%', totalAmount.value);
 
   let url;

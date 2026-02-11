@@ -27,10 +27,35 @@
             <!-- Секция клиента -->
             <v-col cols="12">
               <div class="text-overline mb-2">Клиент</div>
+              <v-autocomplete
+                v-model="form.clientId"
+                :items="clientsStore.activeClients"
+                item-title="name"
+                item-value="id"
+                label="Выбрать клиента"
+                clearable
+                :loading="clientsStore.loading"
+                :disabled="!clientsStore.ready"
+                no-data-text="Клиенты не найдены"
+              >
+                <template v-slot:item="{ props, item }">
+                  <v-list-item v-bind="props" :title="item.title" :subtitle="item.raw.phone || 'Телефон не указан'"></v-list-item>
+                </template>
+              </v-autocomplete>
+              <v-alert
+                v-if="isClientMissing"
+                type="warning"
+                variant="tonal"
+                density="compact"
+                class="mb-3"
+              >
+                Выбранный клиент еще не загружен. Подождите синхронизацию или выберите другого клиента.
+              </v-alert>
               <v-text-field
-                v-model="form.clientName"
+                v-model="clientNameInput"
                 :label="`Имя клиента ${settingsStore.isFieldRequired('clientName') ? '*' : ''}`"
                 :rules="settingsStore.isFieldRequired('clientName') ? [rules.required] : []"
+                :readonly="Boolean(resolvedClient)"
               ></v-text-field>
               <v-text-field
                 v-model="form.lastName"
@@ -38,11 +63,12 @@
                 :rules="settingsStore.isFieldRequired('lastName') ? [rules.required] : []"
               ></v-text-field>
               <v-text-field
-                v-model="form.phone"
+                v-model="clientPhoneInput"
                 :label="`Телефон ${settingsStore.isFieldRequired('phone') ? '*' : ''}`"
                 :rules="settingsStore.isFieldRequired('phone') ? [rules.required] : []"
                 type="tel"
                 prefix="+7"
+                :readonly="Boolean(resolvedClient)"
               ></v-text-field>
             </v-col>
 
@@ -59,6 +85,21 @@
                   Выбрать услуги
                 </v-btn>
               </div>
+
+              <v-autocomplete
+                v-model="quickService"
+                :items="serviceStore.activeServices"
+                item-title="name"
+                item-value="id"
+                return-object
+                label="Быстро добавить услугу"
+                clearable
+                :loading="serviceStore.loading"
+                :disabled="!serviceStore.ready"
+                no-data-text="Услуги не найдены"
+                class="mb-3"
+                @update:modelValue="handleQuickServiceSelect"
+              ></v-autocomplete>
 
               <div v-if="form.services.length > 0" class="item-list">
                 <div v-for="(service, index) in form.services" :key="`service-${index}`" class="item-card">
@@ -222,8 +263,10 @@ const { triggerHapticFeedback } = useHapticFeedback();
 const isSaving = ref(false);
 const isServiceModalOpen = ref(false);
 const isDetailModalOpen = ref(false);
+const quickService = ref(null);
 
 const form = reactive({
+  clientId: null,
   clientName: '',
   lastName: '',
   phone: '',
@@ -254,14 +297,43 @@ const totalAmount = computed(() => {
 
 const isFormValid = computed(() => {
   const { requiredFields } = settingsStore;
-  if (requiredFields.clientName && !form.clientName.trim()) return false;
+  if (form.clientId && !resolvedClient.value) return false;
+  const clientNameValue = resolvedClient.value?.name || form.clientName;
+  const clientPhoneValue = resolvedClient.value?.phone || form.phone;
+  if (requiredFields.clientName && !clientNameValue.trim()) return false;
   if (requiredFields.lastName && !form.lastName.trim()) return false;
-  if (requiredFields.phone && !form.phone.trim()) return false;
+  if (requiredFields.phone && !clientPhoneValue.trim()) return false;
   if (requiredFields.services && form.services.length === 0) return false;
   if (requiredFields.details && form.details.length === 0) return false;
   if (requiredFields.deadline && !form.deadline) return false;
   if (requiredFields.notes && !form.notes.trim()) return false;
   return true;
+});
+
+const resolvedClient = computed(() => {
+  if (!form.clientId) return null;
+  return clientsStore.getClientById(form.clientId) || null;
+});
+
+const isClientMissing = computed(() => form.clientId && !resolvedClient.value);
+
+const clientNameInput = computed({
+  get: () => resolvedClient.value?.name || form.clientName,
+  set: (value) => {
+    if (!resolvedClient.value) form.clientName = value;
+  }
+});
+
+const clientPhoneInput = computed({
+  get: () => {
+    if (resolvedClient.value) {
+      return normalizePhoneDigits(resolvedClient.value.phone || '');
+    }
+    return form.phone;
+  },
+  set: (value) => {
+    if (!resolvedClient.value) form.phone = value;
+  }
 });
 
 const getTags = (tagIds) => {
@@ -271,7 +343,9 @@ const getTags = (tagIds) => {
 
 const getServiceTags = (serviceId, fallbackTagIds) => {
   const liveService = serviceStore.getServiceById(serviceId);
-  const tagIds = liveService ? liveService.tagIds : fallbackTagIds || [];
+  const tagIds = (fallbackTagIds && fallbackTagIds.length > 0)
+    ? fallbackTagIds
+    : (liveService?.tagIds || []);
   return getTags(tagIds);
 };
 
@@ -283,6 +357,7 @@ const getDetailTags = (detailId, fallbackTagIds) => {
 
 const resetForm = () => {
   Object.assign(form, { 
+    clientId: null,
     clientName: '', 
     lastName: '',
     phone: '', 
@@ -336,6 +411,7 @@ watch([() => props.orderId, () => props.initialData], ([newId, newInitialData]) 
       // Форматирование применится автоматически через watcher
 
       Object.assign(form, {
+        clientId: order.clientId || null,
         clientName: order.clientName,
         lastName: order.lastName,
         phone: phone,
@@ -350,6 +426,9 @@ watch([() => props.orderId, () => props.initialData], ([newId, newInitialData]) 
     if (newInitialData && Object.keys(newInitialData).length > 0) {
       if (newInitialData.deadline) {
         form.deadline = newInitialData.deadline;
+      }
+      if (newInitialData.clientId) {
+        form.clientId = newInitialData.clientId;
       }
       if (newInitialData.clientName) {
         form.clientName = newInitialData.clientName;
@@ -366,13 +445,22 @@ watch([() => props.orderId, () => props.initialData], ([newId, newInitialData]) 
 
 const saveOrder = async () => {
   if (!isFormValid.value) return;
+  if (form.clientId && !resolvedClient.value) return;
   
   isSaving.value = true;
 
-  const fullPhone = '+7 ' + form.phone;
+  const clientFromStore = resolvedClient.value;
+  const normalizePhone = (value) => {
+    const digits = normalizePhoneDigits(value);
+    return digits ? `+7 ${digits}` : '';
+  };
+  const fullPhone = clientFromStore?.phone
+    ? normalizePhone(clientFromStore.phone)
+    : normalizePhone(form.phone);
   
   const orderData = {
-    clientName: form.clientName,
+    clientId: form.clientId,
+    clientName: clientFromStore?.name || form.clientName,
     lastName: form.lastName,
     phone: fullPhone,
     services: form.services,
@@ -389,12 +477,6 @@ const saveOrder = async () => {
       await orderStore.addOrder(orderData);
     }
     triggerHapticFeedback('important');
-    clientsStore.addOrUpdateClient({
-      name: form.clientName,
-      lastName: form.lastName,
-      phone: fullPhone,
-      services: form.services.map(s => s.name),
-    }, { registerOrder: !isEditing.value });
     close();
   } catch(e) {
     console.error("Ошибка сохранения заказа", e)
@@ -409,6 +491,19 @@ const close = () => {
 
 const removeService = (index) => {
   form.services.splice(index, 1);
+};
+
+const handleQuickServiceSelect = (service) => {
+  if (!service) return;
+  form.services.push({
+    id: service.id,
+    name: service.name,
+    price: Number(service.price ?? 0),
+    status: 'accepted',
+    icon: service.icon || '',
+    tagIds: service.tagIds || []
+  });
+  quickService.value = null;
 };
 
 const handleServicesSelected = (selectedServices) => {
@@ -427,9 +522,6 @@ const handleDetailsSelected = (selectedDetails) => {
 
 if (tagsStore.tags.length === 0) {
   tagsStore.loadTags();
-}
-if (serviceStore.services.length === 0) {
-  serviceStore.loadServices();
 }
 if (detailStore.details.length === 0) {
   detailStore.loadDetails();

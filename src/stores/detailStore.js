@@ -1,104 +1,73 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
-import { 
-  collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy 
-} from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
-import { db, auth } from '@/firebase';
+import detailService from '../services/detailService';
+import DetailItem from '../models/DetailItem';
 
-export const useDetailStore = defineStore('details', () => {
-  const details = ref([]);
-  const user = ref(null);
-  const loading = ref(false);
-  let unsubscribe = null;
+export const useDetailStore = defineStore('detailStore', {
+  state: () => ({
+    details: [],
+    loading: false,
+    error: null,
+    unsubscribe: null
+  }),
 
-  function init() {
-    onAuthStateChanged(auth, (currentUser) => {
-      user.value = currentUser;
-      if (currentUser) {
-        subscribeToUserDetails(currentUser.uid);
-      } else {
-        details.value = [];
-        loading.value = false;
-        if (unsubscribe) unsubscribe();
+  getters: {
+    getDetailById: (state) => (id) => state.details.find(d => d.id === id),
+    
+    // Если нужно получить уникальные категории для фильтров
+    categories: (state) => [...new Set(state.details.map(d => d.category).filter(Boolean))]
+  },
+
+  actions: {
+    initRealtimeUpdates() {
+      if (this.unsubscribe) return;
+      
+      this.loading = true;
+      this.unsubscribe = detailService.subscribe((items) => {
+        this.details = items;
+        this.loading = false;
+      });
+    },
+
+    stopRealtimeUpdates() {
+      if (this.unsubscribe) {
+        this.unsubscribe();
+        this.unsubscribe = null;
       }
-    });
-  }
+    },
 
-  function subscribeToUserDetails(userId) {
-    if (unsubscribe) unsubscribe();
-    loading.value = true;
-    const q = query(collection(db, 'users', userId, 'details'), orderBy('name'));
+    async addDetail(rawDetailData) {
+      this.loading = true;
+      try {
+        const newDetail = new DetailItem(rawDetailData);
+        await detailService.create(newDetail);
+      } catch (err) {
+        console.error('Error adding detail:', err);
+        this.error = err.message;
+      } finally {
+        this.loading = false;
+      }
+    },
 
-    unsubscribe = onSnapshot(q, (snapshot) => {
-      details.value = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      loading.value = false;
-    }, (error) => {
-      console.error("Ошибка синхронизации деталей:", error);
-      loading.value = false;
-    });
-  }
+    async updateDetail(id, rawDetailData) {
+      this.loading = true;
+      try {
+        const detailModel = new DetailItem({ ...rawDetailData, id });
+        await detailService.update(detailModel);
+      } catch (err) {
+        console.error('Error updating detail:', err);
+        this.error = err.message;
+      } finally {
+        this.loading = false;
+      }
+    },
 
-  async function addDetail(detailData) {
-    if (!user.value) return;
-    try {
-      await addDoc(collection(db, 'users', user.value.uid, 'details'), {
-        name: detailData.name,
-        defaultPrice: Number(detailData.defaultPrice) || 0,
-        category: detailData.category || ''
-      });
-    } catch (e) {
-      console.error("Ошибка добавления детали:", e);
+    async deleteDetail(id) {
+      try {
+        await detailService.delete(id);
+      } catch (err) {
+        console.error('Error deleting detail:', err);
+        this.error = err.message;
+      }
     }
   }
-
-  async function updateDetail(id, detailData) {
-    if (!user.value) return;
-    try {
-      const detailRef = doc(db, 'users', user.value.uid, 'details', id);
-      await updateDoc(detailRef, {
-        name: detailData.name,
-        defaultPrice: Number(detailData.defaultPrice) || 0,
-        category: detailData.category || ''
-      });
-
-      // Обновляем цены в активных заказах (сохраняем вашу старую логику)
-      // Тут нужно будет добавить метод updateDetailPricesInActiveOrders в orderStore,
-      // если его там нет (по аналогии с услугами). 
-      // Но если критично, можно пока пропустить.
-    } catch (e) {
-      console.error("Ошибка обновления детали:", e);
-    }
-  }
-
-  async function deleteDetail(id) {
-    if (!user.value) return;
-    try {
-      await deleteDoc(doc(db, 'users', user.value.uid, 'details', id));
-    } catch (e) {
-      console.error("Ошибка удаления детали:", e);
-    }
-  }
-
-  function getDetailById(id) {
-    return details.value.find(d => d.id === id);
-  }
-
-  const loadDetails = () => {};
-
-  init();
-
-  return {
-    details,
-    user,
-    loading,
-    loadDetails,
-    addDetail,
-    updateDetail,
-    deleteDetail,
-    getDetailById
-  };
 });

@@ -55,7 +55,16 @@
         <!-- УСЛУГИ -->
         <v-window-item value="services" class="window-item-full-height flex-grow-1">
           <div class="d-flex align-center justify-space-between pa-2 bg-surface" style="position: sticky; top: 0; z-index: 1; background-color: rgb(var(--v-theme-surface));">
-            <h3 class="text-h6">Услуги</h3>
+            <div class="d-flex align-center">
+              <h3 class="text-h6 mr-4">Услуги</h3>
+              <v-switch
+                v-model="showArchivedServices"
+                label="Показать архив"
+                color="primary"
+                density="compact"
+                hide-details
+              ></v-switch>
+            </div>
             <v-btn color="primary" @click="openServiceDialog">
               <v-icon class="mr-2">mdi-plus</v-icon>
                Добавить услугу
@@ -64,27 +73,46 @@
           <v-divider class="my-0"></v-divider>
 
           <div class="list-wrapper">
+            <v-alert
+              v-if="serviceStore.error"
+              type="error"
+              variant="tonal"
+              density="compact"
+              class="ma-3"
+            >
+              Не удалось загрузить услуги. Попробуйте позже.
+            </v-alert>
+
+            <div v-else-if="filteredServices.length === 0" class="empty-state">
+              <v-icon size="48" color="surface-variant" class="mb-2">
+                {{ showArchivedServices ? 'mdi-archive-outline' : 'mdi-briefcase-outline' }}
+              </v-icon>
+              <div class="text-body-2 text-medium-emphasis">
+                {{ showArchivedServices ? 'Архив пуст' : 'Услуг пока нет' }}
+              </div>
+            </div>
+
             <v-card v-for="service in filteredServices" :key="service.id" class="item-card mb-2">
               <v-card-text class="pa-3">
                 <div class="d-flex align-center">
                   <div class="flex-grow-1" style="min-width: 0;">
                     <div class="font-weight-medium">{{ service.name }}</div>
-                    <div class="text-caption text-on-surface-variant">{{ service.defaultPrice }}₽</div>
-                    <div class="tags-container mt-2" v-if="service.tagIds && service.tagIds.length">
-                      <v-chip
-                        v-for="tag in getTagsForService(service.tagIds)"
-                        :key="tag.id"
-                        :color="tag.color"
-                        size="x-small"
-                        class="mr-1"
-                      >
-                        {{ tag.name }}
-                      </v-chip>
+                    <div v-if="service.price !== null && service.price !== undefined" class="text-caption text-on-surface-variant">
+                      {{ service.price }}₽
+                    </div>
+                    <div v-if="service.notes" class="text-caption text-on-surface-variant mt-1">
+                      {{ service.notes }}
                     </div>
                   </div>
                   <div class="item-actions">
                     <v-btn icon="mdi-pencil" variant="text" size="small" @click="editService(service)"></v-btn>
-                    <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteService(service.id)"></v-btn>
+                    <v-btn
+                      :icon="showArchivedServices ? 'mdi-restore' : 'mdi-archive-outline'"
+                      variant="text"
+                      size="small"
+                      color="warning"
+                      @click="toggleServiceArchive(service)"
+                    ></v-btn>
                   </div>
                 </div>
               </v-card-text>
@@ -168,7 +196,6 @@
       <ServiceFormDialog
         v-model="serviceDialog"
         :service="editingService"
-        @saved="serviceStore.loadServices()"
       />
 
       <!-- ДИАЛОГ ДЕТАЛИ -->
@@ -276,6 +303,7 @@ const { user: tagsUser, loading: tagsLoading } = storeToRefs(tagsStore);
 
 const tab = ref('services');
 const serviceDialog = ref(false);
+const showArchivedServices = ref(false);
 const detailDialog = ref(false);
 const tagDialog = ref(false);
 const detailFormRef = ref(null);
@@ -378,17 +406,15 @@ const createFuse = (list, keys) => {
 };
 
 const filteredServices = computed(() => {
-  let items = [...serviceStore.services];
-  if (sortBy.value === 'name') {
-    items.sort((a, b) => a.name.localeCompare(b.name));
-  } else {
-    items.sort((a, b) => b.id - a.id);
-  }
+  let items = showArchivedServices.value
+    ? [...serviceStore.archivedServices]
+    : [...serviceStore.activeServices];
+  items.sort((a, b) => a.name.localeCompare(b.name));
 
   if (!searchQuery.value) {
     return items;
   }
-  const fuse = createFuse(items, ['name']);
+  const fuse = createFuse(items, ['name', 'notes']);
   return fuse.search(searchQuery.value).map(result => result.item);
 });
 
@@ -422,11 +448,6 @@ const filteredTags = computed(() => {
   return fuse.search(searchQuery.value).map(result => result.item);
 });
 
-const getTagsForService = (tagIds) => {
-  if (!tagIds) return [];
-  return tagIds.map(id => tagsStore.tags.find(t => t.id === id)).filter(Boolean);
-};
-
 const getTagsForDetail = (tagIds) => {
   if (!tagIds) return [];
   return tagIds.map(id => tagsStore.tags.find(t => t.id === id)).filter(Boolean);
@@ -443,11 +464,19 @@ const editService = (service) => {
   serviceDialog.value = true;
 };
 
-const deleteService = async (serviceId) => {
-  const confirmed = await confirmationStore.open('Удаление услуги', 'Вы уверены, что хотите удалить эту услугу?');
-  if (confirmed) {
-    triggerHapticFeedback('important');
-    serviceStore.deleteService(serviceId);
+const toggleServiceArchive = async (service) => {
+  const isArchived = Boolean(service.isArchived);
+  const title = isArchived ? 'Восстановить услугу' : 'Архивировать услугу';
+  const message = isArchived
+    ? 'Вернуть услугу из архива?'
+    : 'Услуга будет скрыта из списка. Перенести в архив?';
+  const confirmed = await confirmationStore.open(title, message);
+  if (!confirmed) return;
+  triggerHapticFeedback('important');
+  if (isArchived) {
+    serviceStore.unarchiveService(service.id);
+  } else {
+    serviceStore.archiveService(service.id);
   }
 };
 
@@ -518,7 +547,6 @@ const deleteTag = async (tagId) => {
 };
 
 onMounted(() => {
-  serviceStore.loadServices();
   detailStore.loadDetails();
   tagsStore.loadTags();
 });

@@ -396,12 +396,13 @@ watch(
     orderToEditId.value = null;
     initialOrderData.value = {
       deadline,
+      clientId: (Array.isArray(route.query.clientId) ? route.query.clientId[0] : route.query.clientId) || '',
       clientName: (Array.isArray(route.query.clientName) ? route.query.clientName[0] : route.query.clientName) || '',
       lastName: (Array.isArray(route.query.clientLastName) ? route.query.clientLastName[0] : route.query.clientLastName) || '',
       phone: (Array.isArray(route.query.clientPhone) ? route.query.clientPhone[0] : route.query.clientPhone) || ''
     };
     showOrderForm.value = true;
-    clearQueryParams(['newOrder', 'clientName', 'clientLastName', 'clientPhone']);
+    clearQueryParams(['newOrder', 'clientId', 'clientName', 'clientLastName', 'clientPhone']);
   },
   { immediate: true }
 );

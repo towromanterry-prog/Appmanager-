@@ -1,39 +1,49 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
 
-export const useConfirmationStore = defineStore('confirmation', () => {
-  const dialog = ref(false);
-  const title = ref('');
-  const message = ref('');
-  
-  // Эти функции будут хранить коллбэки resolve/reject для промиса
-  let resolvePromise = null;
-  
-  const open = (newTitle, newMessage) => {
-    title.value = newTitle;
-    message.value = newMessage;
-    dialog.value = true;
-    
-    return new Promise((resolve) => {
-      resolvePromise = resolve;
-    });
-  };
+export const useConfirmationStore = defineStore('confirmation', {
+  state: () => ({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Подтвердить',
+    cancelText: 'Отмена',
+    color: 'primary', // Для изменения цвета кнопки (например, 'error' для удаления)
+    resolve: null, // Ссылка на resolve промиса
+  }),
 
-  const confirm = () => {
-    if (resolvePromise) {
-      resolvePromise(true);
-      resolvePromise = null;  // ✅ ДОБАВИТЬ: Очистка ссылки
+  actions: {
+    /**
+     * Открывает диалог подтверждения
+     * @param {Object} options - { title, message, confirmText, cancelText, color }
+     * @returns {Promise<boolean>} - true если нажали "Да", false если "Нет"
+     */
+    ask({ title, message, confirmText, cancelText, color } = {}) {
+      this.title = title || 'Подтверждение';
+      this.message = message || 'Вы уверены, что хотите продолжить?';
+      this.confirmText = confirmText || 'Да';
+      this.cancelText = cancelText || 'Нет';
+      this.color = color || 'primary';
+      this.isOpen = true;
+
+      return new Promise((resolve) => {
+        this.resolve = resolve;
+      });
+    },
+
+    confirm() {
+      this.isOpen = false;
+      if (this.resolve) {
+        this.resolve(true);
+        this.resolve = null;
+      }
+    },
+
+    cancel() {
+      this.isOpen = false;
+      if (this.resolve) {
+        this.resolve(false);
+        this.resolve = null;
+      }
     }
-    dialog.value = false;
-  };
-
-  const cancel = () => {
-    if (resolvePromise) {
-      resolvePromise(false);
-      resolvePromise = null;  // ✅ ДОБАВИТЬ: Очистка ссылки
-    }
-    dialog.value = false;
-  };
-
-  return { dialog, title, message, open, confirm, cancel };
+  }
 });
