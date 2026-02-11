@@ -87,17 +87,14 @@
         <v-icon>mdi-calendar-check-outline</v-icon>
         <span class="text-caption mt-1">Заказы</span>
       </v-btn>
-
       <v-btn value="clients" to="/clients">
         <v-icon>mdi-account-group-outline</v-icon>
         <span class="text-caption mt-1">Клиенты</span>
       </v-btn>
-
       <v-btn value="base-settings" to="/base-settings">
         <v-icon>mdi-database-outline</v-icon>
         <span class="text-caption mt-1">Справочники</span>
       </v-btn>
-
       <v-btn value="settings" to="/settings">
         <v-icon>mdi-tune</v-icon>
         <span class="text-caption mt-1">Меню</span>
@@ -114,7 +111,7 @@ import { useRoute } from 'vue-router';
 import { auth } from '@/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
-// Импорт сторов с ПРАВИЛЬНЫМИ путями и расширениями
+// --- ИМПОРТ СТОРОВ (папка stores) ---
 import { useThemeStore } from '@/stores/themeStore.js';
 import { useSettingsStore } from '@/stores/settingsStore.js';
 import { useOrderStore } from '@/stores/orderStore.js';
@@ -123,10 +120,10 @@ import { useServiceStore } from '@/stores/serviceStore.js';
 import { useClientsStore } from '@/stores/clientsStore.js';
 import { useTagsStore } from '@/stores/tagsStore.js';
 
-// Импорт компонентов
-import ConfirmationDialog from '@/ConfirmationDialog.vue';
+// --- ИМПОРТ КОМПОНЕНТОВ ---
+// ОТРЕДАКТИРУЙТЕ ЭТУ СТРОКУ, если диалог лежит в другом месте:
+import ConfirmationDialog from '@/ConfirmationDialog.vue'; 
 
-// Инициализация сторов
 const themeStore = useThemeStore();
 const settingsStore = useSettingsStore();
 const orderStore = useOrderStore();
@@ -136,14 +133,11 @@ const clientsStore = useClientsStore();
 const tagsStore = useTagsStore();
 
 const route = useRoute();
-
-// UI State
 const isReady = ref(false);
 const activeTab = ref('home');
 const sortMenu = ref(false);
 const showSearch = ref(false);
 
-// Навигация и заголовки
 const isHomePage = computed(() => route.name === 'home');
 const isSearchPage = computed(() => ['home', 'clients', 'base-settings'].includes(route.name));
 const showSortMenu = computed(() => isHomePage.value);
@@ -154,12 +148,10 @@ const currentTitle = computed(() => {
     case 'clients': return 'Клиенты';
     case 'settings': return 'Настройки';
     case 'base-settings': return 'Справочники';
-    case 'order-edit': return 'Мои заказы';
     default: return '';
   }
 });
 
-// Логика поиска
 const openSearch = () => { showSearch.value = true; };
 const closeSearch = () => {
   showSearch.value = false;
@@ -171,7 +163,6 @@ watch(() => route.name, () => {
   searchStore.setSearchQuery('');
 });
 
-// Статусы и фильтры
 const availableStatuses = computed(() => {
   const allStatuses = [
     { value: 'accepted', text: orderStore.getStatusText ? orderStore.getStatusText('accepted') : 'Принят' },
@@ -194,34 +185,17 @@ const toggleStatusFilter = (statusValue) => {
   else orderStore.filterStatus.splice(index, 1);
 };
 
-// Синхронизация табов с роутом
-watch(() => route.path, (newPath) => {
-  if (newPath === '/' || newPath.startsWith('/order')) activeTab.value = 'home';
-  else if (newPath.startsWith('/clients')) activeTab.value = 'clients';
-  else if (newPath.startsWith('/base-settings')) activeTab.value = 'base-settings';
-  else if (newPath.startsWith('/settings')) activeTab.value = 'settings';
-}, { immediate: true });
-
-// Глобальная настройка шрифта
-watch(() => settingsStore.appSettings?.baseFontSize, (newSize) => {
-  if (newSize) {
-    document.documentElement.style.fontSize = `${newSize}px`;
-  }
-}, { immediate: true });
-
-// ИНИЦИАЛИЗАЦИЯ
 onMounted(async () => {
   themeStore.loadTheme();
   await settingsStore.loadSettings();
 
   onAuthStateChanged(auth, (user) => {
     if (user) {
-      // Прокидываем юзера в сторы
       orderStore.user = user;
       clientsStore.user = user;
       serviceStore.user = user;
 
-      // ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЕ ИМЕНА МЕТОДОВ (initRealtimeUpdates)
+      // Используем правильные имена методов инициализации
       orderStore.initRealtimeUpdates();
       clientsStore.initRealtimeUpdates();
       serviceStore.initRealtimeUpdates();
@@ -237,28 +211,11 @@ onMounted(async () => {
   --app-base-font-size: 16px;
   --safe-area-bottom: env(safe-area-inset-bottom, 16px); 
 }
-
-html {
-  font-size: var(--app-base-font-size);
-}
-
-.v-application {
-  font-size: 1rem !important; 
-}
-
+html { font-size: var(--app-base-font-size); }
 .app-bottom-nav.safe-area-fix {
   border-top: 1px solid rgba(var(--v-border-color), 0.08);
   height: calc(56px + var(--safe-area-bottom) + 8px) !important;
   padding-bottom: calc(var(--safe-area-bottom) + 8px) !important;
 }
-
-.app-bar-minimal {
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
-}
-
-.search-input .v-field__input {
-  font-size: 1.1rem;
-  padding-top: 0;
-  padding-bottom: 0;
-}
+.app-bar-minimal { border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important; }
 </style>
