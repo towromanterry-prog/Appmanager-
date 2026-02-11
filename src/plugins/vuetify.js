@@ -7,7 +7,7 @@ import 'vuetify/styles'
 
 // Используем тему из theme.js (если она экспортируется как объект)
 // или настраиваем базовые цвета здесь, если нужно
-import { lightTheme, darkTheme } from '../theme/theme' 
+import { light, dark } from '../theme/theme' 
 
 export default createVuetify({
   components,
