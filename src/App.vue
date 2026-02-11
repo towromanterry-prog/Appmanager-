@@ -204,6 +204,13 @@ watch(() => route.path, (newPath) => {
   else if (newPath.startsWith('/base-settings')) activeTab.value = 'base-settings';
   else if (newPath.startsWith('/settings')) activeTab.value = 'settings';
 }, { immediate: true });
+  
+  watch(() => settingsStore.appSettings?.fontSize, (newSize) => {
+  if (newSize) {
+    // Меняем размер шрифта у корня HTML -> все rem-размеры в Vuetify пересчитаются
+    document.documentElement.style.fontSize = `${newSize}px`
+  }
+}, { immediate: true })
 
 // ИНИЦИАЛИЗАЦИЯ ДАННЫХ ПРИ ЗАПУСКЕ
 onMounted(async () => {
