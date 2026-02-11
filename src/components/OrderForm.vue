@@ -343,7 +343,9 @@ const getTags = (tagIds) => {
 
 const getServiceTags = (serviceId, fallbackTagIds) => {
   const liveService = serviceStore.getServiceById(serviceId);
-  const tagIds = liveService ? liveService.tagIds : fallbackTagIds || [];
+  const tagIds = (fallbackTagIds && fallbackTagIds.length > 0)
+    ? fallbackTagIds
+    : (liveService?.tagIds || []);
   return getTags(tagIds);
 };
 
@@ -497,7 +499,7 @@ const handleQuickServiceSelect = (service) => {
     id: service.id,
     name: service.name,
     price: Number(service.price ?? 0),
-    status: settingsStore.appSettings.defaultOrderStatus || 'accepted',
+    status: 'accepted',
     icon: service.icon || '',
     tagIds: service.tagIds || []
   });
