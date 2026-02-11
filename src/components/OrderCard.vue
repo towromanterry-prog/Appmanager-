@@ -48,7 +48,7 @@
 
           <!-- Список деталей -->
           <div v-if="order.details && order.details.length" class="mb-4">
-            <div class="text-caption font-weight-medium text-medium-emphasis mb-2">{{ settingsStore.appSettings.detailsTabLabel }}</div>
+            <div class="text-caption font-weight-medium text-medium-emphasis mb-2">{{ detailsTabLabel }}</div>
             <div v-for="(detail, index) in order.details" :key="`detail-${index}`" class="service-item">
               <span class="text-body-2">{{ detail.name }}</span>
               <v-spacer></v-spacer>
@@ -96,14 +96,14 @@
             <v-icon start>mdi-download</v-icon>
             Скачать чек
           </v-btn>
-          
+
           <!-- Заметки -->
           <div v-if="order.notes" class="notes-section">
-             <div class="text-caption font-weight-medium text-medium-emphasis mb-1">ЗАМЕТКИ</div>
-             <p class="text-body-2">{{ order.notes }}</p>
+            <div class="text-caption font-weight-medium text-medium-emphasis mb-1">ЗАМЕТКИ</div>
+            <p class="text-body-2">{{ order.notes }}</p>
           </div>
-
         </div>
+
         <v-divider></v-divider>
         <!-- Действия -->
         <v-card-actions class="pa-2">
@@ -119,16 +119,16 @@
           <v-btn icon="mdi-message-text" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessageWithHaptic('sms')"></v-btn>
           <v-btn :icon="IconWhatsapp" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessageWithHaptic('whatsapp')"></v-btn>
           <v-btn :icon="IconTelegram" variant="text" size="small" color="on-surface-variant" @click.stop="sendMessageWithHaptic('telegram')"></v-btn>
-           <v-spacer></v-spacer>
-           <v-btn
-              :icon="order.status === 'cancelled' ? 'mdi-restore' : 'mdi-cancel'"
-              :color="order.status === 'cancelled' ? 'success' : 'warning'"
-              variant="text"
-              size="small"
-              @click.stop="handleCancelClick"
-            ></v-btn>
-           <v-btn icon="mdi-delete" color="error" variant="text" size="small" @click.stop="deleteWithHaptic(order.id)"></v-btn>
-           <v-btn icon="mdi-pencil" color="primary" variant="text" size="small" @click.stop="editWithHaptic(order)" :disabled="order.status === 'cancelled'"></v-btn>
+          <v-spacer></v-spacer>
+          <v-btn
+            :icon="order.status === 'cancelled' ? 'mdi-restore' : 'mdi-cancel'"
+            :color="order.status === 'cancelled' ? 'success' : 'warning'"
+            variant="text"
+            size="small"
+            @click.stop="handleCancelClick"
+          ></v-btn>
+          <v-btn icon="mdi-delete" color="error" variant="text" size="small" @click.stop="deleteWithHaptic(order.id)"></v-btn>
+          <v-btn icon="mdi-pencil" color="primary" variant="text" size="small" @click.stop="editWithHaptic(order)" :disabled="order.status === 'cancelled'"></v-btn>
         </v-card-actions>
       </div>
     </v-expand-transition>
@@ -162,7 +162,7 @@
         </div>
 
         <div v-if="order.details && order.details.length" class="mt-2">
-          <div class="font-weight-bold mb-1">{{ settingsStore.appSettings.detailsTabLabel }}:</div>
+          <div class="font-weight-bold mb-1">{{ detailsTabLabel }}:</div>
           <div v-for="(detail, index) in order.details" :key="`rec-det-${index}`" class="receipt-row">
             <span>{{ detail.name }}</span>
             <span>{{ detail.price }}₽</span>
@@ -185,7 +185,6 @@ import { ref, computed, nextTick } from 'vue';
 import { useOrderStore } from '@/stores/orderStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useClientsStore } from '@/stores/clientsStore';
-import { useTemplateSelectionStore } from '@/stores/templateSelectionStore';
 import { useTagsStore } from '@/stores/tagsStore';
 import { useServiceStore } from '@/stores/serviceStore';
 import { useDetailStore } from '@/stores/detailStore';
@@ -204,17 +203,19 @@ const emit = defineEmits(['edit', 'delete']);
 const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
 const clientsStore = useClientsStore();
-const templateSelectionStore = useTemplateSelectionStore();
 const tagsStore = useTagsStore();
 const serviceStore = useServiceStore();
 const detailStore = useDetailStore();
 const { toLongDate, toShortDate } = useFormatDate();
 const { triggerHapticFeedback } = useHapticFeedback();
 
+// Совместимость с разной формой настроек (старое `appSettings` / новое `settings`).
+const appSettings = computed(() => settingsStore.appSettings ?? settingsStore.settings ?? {});
+const detailsTabLabel = computed(() => appSettings.value.detailsTabLabel || 'Детали');
+
 const expanded = ref(false);
 const isGeneratingReceipt = ref(false);
 const receiptRef = ref(null);
-
 
 const STATUS_PICKER_DEFAULT = {
   open: false,
@@ -233,9 +234,9 @@ const statusPickerTitle = computed(() => {
 });
 
 const getActiveStatusesByType = (itemType) => {
-  if (itemType === 'service') return settingsStore.appSettings.serviceStatuses || {};
-  if (itemType === 'detail') return settingsStore.appSettings.detailStatuses || {};
-  return settingsStore.appSettings.orderStatuses || {};
+  if (itemType === 'service') return appSettings.value.serviceStatuses || {};
+  if (itemType === 'detail') return appSettings.value.detailStatuses || {};
+  return appSettings.value.orderStatuses || {};
 };
 
 const openStatusPicker = (itemType, itemIndex = -1) => {
@@ -274,7 +275,8 @@ const applyPickedStatus = (newStatus) => {
 
 const resolvedClient = computed(() => {
   if (!props.order.clientId) return null;
-  return clientsStore.getClientById(props.order.clientId) || null;
+  const clients = clientsStore.clients || [];
+  return clients.find(c => c.id === props.order.clientId) || null;
 });
 
 const displayClientName = computed(() => {
@@ -302,7 +304,8 @@ const allTags = computed(() => {
     }
   });
 
-  return Array.from(tagIds).map(id => tagsStore.getTagById(id)).filter(Boolean);
+  const tags = tagsStore.tags || [];
+  return Array.from(tagIds).map((id) => tags.find(t => t.id === id)).filter(Boolean);
 });
 
 const totalAmount = computed(() => props.order.totalAmount || 0);
@@ -333,23 +336,23 @@ const changeOrderStatus = () => {
 };
 
 const changeServiceStatus = (serviceIndex) => {
-    triggerHapticFeedback('tap');
-    const service = props.order.services[serviceIndex];
-    if (service.status === 'cancelled') return;
-    const nextStatus = orderStore.calculateNextStatus(service.status, 'service');
-    if (nextStatus !== service.status) {
-        orderStore.updateStatus(props.order.id, nextStatus, 'service', serviceIndex);
-    }
+  triggerHapticFeedback('tap');
+  const service = props.order.services[serviceIndex];
+  if (service.status === 'cancelled') return;
+  const nextStatus = orderStore.calculateNextStatus(service.status, 'service');
+  if (nextStatus !== service.status) {
+    orderStore.updateStatus(props.order.id, nextStatus, 'service', serviceIndex);
+  }
 };
 
 const changeDetailStatus = (detailIndex) => {
-    triggerHapticFeedback('tap');
-    const detail = props.order.details[detailIndex];
-    if (detail.status === 'cancelled') return;
-    const nextStatus = orderStore.calculateNextStatus(detail.status, 'detail');
-    if (nextStatus !== detail.status) {
-        orderStore.updateStatus(props.order.id, nextStatus, 'detail', detailIndex);
-    }
+  triggerHapticFeedback('tap');
+  const detail = props.order.details[detailIndex];
+  if (detail.status === 'cancelled') return;
+  const nextStatus = orderStore.calculateNextStatus(detail.status, 'detail');
+  if (nextStatus !== detail.status) {
+    orderStore.updateStatus(props.order.id, nextStatus, 'detail', detailIndex);
+  }
 };
 
 const handleCancelClick = () => {
@@ -398,17 +401,9 @@ const downloadReceipt = async () => {
 };
 
 const sendMessage = async (service) => {
-  const templates = settingsStore.appSettings.messageTemplates;
-  let selectedTemplate;
-
-  if (templates.length > 1) {
-    selectedTemplate = await templateSelectionStore.open(templates);
-    if (!selectedTemplate) return; // User cancelled
-  } else if (templates.length === 1) {
-    selectedTemplate = templates[0];
-  } else {
-    selectedTemplate = { text: '' }; // No templates, use empty message
-  }
+  const templates = appSettings.value.messageTemplates || [];
+  // Выбор шаблона (без зависимости от отдельного store, который мог быть удалён при рефакторинге).
+  const selectedTemplate = templates[0] || { text: '' };
 
   const message = selectedTemplate.text
     .replace('%имя%', displayClientName.value || props.order.clientName || '')
@@ -478,11 +473,10 @@ const editWithHaptic = (order) => {
   flex-wrap: wrap;
   align-items: baseline;
   line-height: 1.2;
-  gap: 0 0.25em; /* Добавляем небольшой отступ между именем и фамилией */
+  gap: 0 0 0.25em;
 }
 
 .client-name-line .text-truncate {
-  /* Позволяет элементу усекаться, если он слишком длинный, но не заставляет его занимать всю ширину */
   min-width: 0;
 }
 
