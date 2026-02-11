@@ -108,56 +108,7 @@
     </v-app>
 </template>
 
-<script setup>
-import { ref, computed, watch, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
 
-// Импорт сторов
-import { useThemeStore } from '@/stores/themeStore';
-import { useSettingsStore } from '@/stores/settingsStore';
-import { useOrderStore } from '@/stores/orderStore';
-import { useSearchStore } from '@/stores/searchStore';
-import { useServiceStore } from '@/stores/serviceStore';
-import { useClientsStore } from '@/stores/clientsStore';
-import { useTagsStore } from '@/stores/tagsStore';
-
-// Импорт компонентов
-import ConfirmationDialog from '@/components/common/ConfirmationDialog.vue';
-// import TemplateSelectionDialog from '@/components/TemplateSelectionDialog.vue'; 
-
-// Инициализация сторов
-const themeStore = useThemeStore();
-const settingsStore = useSettingsStore();
-const orderStore = useOrderStore();
-const searchStore = useSearchStore();
-const servicesStore = useServiceStore();
-const clientsStore = useClientsStore();
-const tagsStore = useTagsStore(); // Просто инициализируем
-
-const route = useRoute();
-
-// UI State
-const activeTab = ref('home');
-const sortMenu = ref(false);
-const showSearch = ref(false);
-
-// Вычисляемые свойства для навигации
-const isHomePage = computed(() => route.name === 'home');
-const isSearchPage = computed(() => ['home', 'clients', 'base-settings'].includes(route.name));
-const showSortMenu = computed(() => isHomePage.value);
-
-const currentTitle = computed(() => {
-  if (route.name === 'home') return 'Мои заказы';
-  if (route.name === 'clients') return 'Клиенты';
-  if (route.name === 'order-edit') return 'Мои заказы';
-  if (route.name === 'settings') return 'Настройки';
-  if (route.name === 'base-settings') return 'Справочники';
-  return '';
-});
-
-// Логика поиска
-const openSearch = () => { showSearch.value = true; };
-const closeSearch = () => {
   showSearch.value = false;
   searchStore.setSearchQuery('');
 };
@@ -182,45 +133,62 @@ const availableStatuses = computed(() => {
     // Безопасный доступ к settingsStore.appSettings
     return settingsStore.appSettings?.orderStatuses?.[s.value] ?? true;
   });
-});
 
-const toggleStatusFilter = (statusValue) => {
-  const index = orderStore.filterStatus.indexOf(statusValue);
-  if (index === -1) orderStore.filterStatus.push(statusValue);
-  else orderStore.filterStatus.splice(index, 1);
-};
+<script setup>
+import { onMounted, ref } from 'vue';
+import { useThemeStore } from './themeStore';
+import { useSettingsStore } from './settingsStore';
+import { useOrderStore } from './orderStore';
+import { useClientsStore } from './clientsStore';
+import { useServiceStore } from './serviceStore';
+import { useTagsStore } from './tagsStore';
+import { auth } from './firebase'; // Импортируем auth напрямую
+import { onAuthStateChanged } from 'firebase/auth';
 
-// Глобальное изменение шрифта (если реализовано в settings)
-watch(() => settingsStore.appSettings?.baseFontSize, (newSize) => {
-  if (newSize) {
-    document.documentElement.style.fontSize = `${newSize}px`;
-  }
-}, { immediate: true });
+const themeStore = useThemeStore();
+const settingsStore = useSettingsStore();
+const orderStore = useOrderStore();
+const clientsStore = useClientsStore();
+const serviceStore = useServiceStore();
+const tagsStore = useTagsStore();
 
-// Синхронизация табов
-watch(() => route.path, (newPath) => {
-  if (newPath === '/' || newPath.startsWith('/order')) activeTab.value = 'home';
-  else if (newPath.startsWith('/clients')) activeTab.value = 'clients';
-  else if (newPath.startsWith('/base-settings')) activeTab.value = 'base-settings';
-  else if (newPath.startsWith('/settings')) activeTab.value = 'settings';
-}, { immediate: true });
+const isReady = ref(false);
 
-// ИНИЦИАЛИЗАЦИЯ ДАННЫХ ПРИ ЗАПУСКЕ
 onMounted(async () => {
-  // 1. Тема и настройки
+  // 1. Загружаем тему и локальные настройки
   themeStore.loadTheme();
   await settingsStore.loadSettings();
 
-  // 2. Подписка на данные (используем методы из твоих новых сторов)
-  // В OrderStore метод называется initRealtimeUpdates
-  orderStore.initRealtimeUpdates();
-  
-  // Для клиентов и сервисов предполагаем аналогичные методы инициализации
-  // Если в твоих замороженных сторах методы называются init() или subscribe(), убедись, что вызываешь верные
-  if (clientsStore.subscribeClients) clientsStore.subscribeClients();
-  if (servicesStore.subscribeServices) servicesStore.subscribeServices();
+  // 2. Слушаем авторизацию (Это "Главный рубильник")
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      console.log('User logged in:', user.uid);
+      
+      // Внедряем юзера в сторы, которым это важно
+      // (даже если в state явно нет поля user, JS его создаст, 
+      // и геттеры типа isLoggedIn заработают, если они проверяют this.user)
+      orderStore.user = user;
+      clientsStore.user = user;
+      serviceStore.user = user;
+      
+      // 3. Запускаем подписки на данные (ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЕ ИМЕНА МЕТОДОВ)
+      orderStore.initRealtimeUpdates();
+      clientsStore.initRealtimeUpdates(); // Было subscribeClients -> стало initRealtimeUpdates
+      serviceStore.initRealtimeUpdates(); // Было subscribeServices -> стало initRealtimeUpdates
+      tagsStore.initRealtimeUpdates();
+      
+    } else {
+      console.log('User logged out');
+      orderStore.user = null;
+      clientsStore.user = null;
+      // Тут можно делать unsubscribe, если нужно
+    }
+    
+    isReady.value = true;
+  });
 });
 </script>
+
 
 <style>
 /* Глобальные стили для App.vue */
