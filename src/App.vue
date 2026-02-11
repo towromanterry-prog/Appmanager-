@@ -114,17 +114,17 @@ import { useRoute } from 'vue-router';
 import { auth } from '@/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
-// Импорт сторов из папки src/store
-import { useThemeStore } from '@/store/themeStore';
-import { useSettingsStore } from '@/store/settingsStore';
-import { useOrderStore } from '@/store/orderStore';
-import { useSearchStore } from '@/store/searchStore';
-import { useServiceStore } from '@/store/serviceStore';
-import { useClientsStore } from '@/store/clientsStore';
-import { useTagsStore } from '@/store/tagsStore';
+// Импорт сторов из папки src/stores
+import { useThemeStore } from '@/stores/themeStore';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { useOrderStore } from '@/stores/orderStore';
+import { useSearchStore } from '@/stores/searchStore';
+import { useServiceStore } from '@/stores/serviceStore';
+import { useClientsStore } from '@/stores/clientsStore';
+import { useTagsStore } from '@/stores/tagsStore';
 
 // Импорт компонентов
-import ConfirmationDialog from '@/ConfirmationDialog.vue';
+import ConfirmationDialog from '@/components/common/ConfirmationDialog.vue';
 
 // Инициализация сторов
 const themeStore = useThemeStore();
@@ -154,11 +154,12 @@ const currentTitle = computed(() => {
     case 'clients': return 'Клиенты';
     case 'settings': return 'Настройки';
     case 'base-settings': return 'Справочники';
+    case 'order-edit': return 'Мои заказы';
     default: return '';
   }
 });
 
-// Поиск
+// Логика поиска
 const openSearch = () => { showSearch.value = true; };
 const closeSearch = () => {
   showSearch.value = false;
@@ -201,27 +202,35 @@ watch(() => route.path, (newPath) => {
   else if (newPath.startsWith('/settings')) activeTab.value = 'settings';
 }, { immediate: true });
 
+// Глобальная настройка шрифта
+watch(() => settingsStore.appSettings?.baseFontSize, (newSize) => {
+  if (newSize) {
+    document.documentElement.style.fontSize = `${newSize}px`;
+  }
+}, { immediate: true });
+
 // Инициализация при монтировании
 onMounted(async () => {
+  // 1. Загрузка темы и базовых настроек
   themeStore.loadTheme();
   await settingsStore.loadSettings();
 
-  // Подписка на авторизацию и запуск обновлений данных
+  // 2. Подписка на авторизацию и запуск обновлений данных
   onAuthStateChanged(auth, (user) => {
     if (user) {
-      // Передаем пользователя в сторы для фильтрации данных
+      // Передаем пользователя в сторы для контекста
       orderStore.user = user;
       clientsStore.user = user;
       serviceStore.user = user;
 
-      // Запускаем подписки реального времени
+      // Запускаем подписки реального времени (единообразные имена методов)
       orderStore.initRealtimeUpdates();
       clientsStore.initRealtimeUpdates();
       serviceStore.initRealtimeUpdates();
       tagsStore.initRealtimeUpdates();
     } else {
-      isReady.value = true;
-      // Здесь можно добавить редирект на страницу логина
+      console.log('Пользователь не авторизован');
+      // Здесь можно добавить логику редиректа на LoginView
     }
     isReady.value = true;
   });
@@ -242,6 +251,7 @@ html {
   font-size: 1rem !important; 
 }
 
+/* Фикс нижней панели для мобилок */
 .app-bottom-nav.safe-area-fix {
   border-top: 1px solid rgba(var(--v-border-color), 0.08);
   height: calc(56px + var(--safe-area-bottom) + 8px) !important;
