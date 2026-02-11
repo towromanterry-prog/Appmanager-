@@ -1,76 +1,85 @@
-/*
- * ==========================================================================
- * Глобальные стили - Тема "Soft Modern"
- * ==========================================================================
- */
+@import 'vuetify/styles';
 
-/* 1. Настройка шрифтов и базовой типографики */
+/* Концепция Minimal Soft */
+:root {
+  --soft-border-radius: 16px;
+  --soft-transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
 body {
   font-family: 'Roboto', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: rgb(var(--v-theme-background));
-  color: rgb(var(--v-theme-on-background));
-  line-height: 1.5;
-  /* Плавный переход цвета фона при смене темы */
-  transition: background-color 0.3s ease, color 0.3s ease;
+  /* Плавный переход размера шрифта при смене настройки */
+  transition: font-size 0.2s ease; 
 }
 
-/* 2. Улучшенная прокрутка */
-html {
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-  /* Базовый размер шрифта, который может масштабироваться через настройки */
-  font-size: calc(16px * var(--app-font-scale, 1));
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-/* Используем цвета из темы для скроллбара */
-::-webkit-scrollbar-thumb {
-  background-color: rgba(var(--v-theme-on-surface), 0.2);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(var(--v-theme-on-surface), 0.4);
-}
-
-/* 3. Кастомизация Vuetify компонентов для соответствия MD3 */
-
-/* Убираем лишние заглавные буквы (Material Design 3 стиль) */
-.v-btn, .v-tab, .v-list-subheader {
-  text-transform: none !important;
-  letter-spacing: normal !important;
-}
-
-/*
- * Более мягкие тени и границы для карточек.
- * Вместо сильной тени используем тонкую рамку, как в MD3.
- */
+/* === КАРТОЧКИ (Minimal Soft) === */
+/* Убираем границы, добавляем "воздушную" тень */
 .v-card {
-  border: 1px solid rgba(var(--v-theme-outline-variant), 0.5) !important;
-  /* Убираем тень по умолчанию, так как мы хотим плоский стиль */
-  box-shadow: none !important;
+  border: none !important;
+  border-radius: var(--soft-border-radius) !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08) !important;
+  transition: var(--soft-transition) !important;
+  overflow: hidden; /* Чтобы контент не вылезал за скругления */
 }
 
-/* 4. Адаптивность и улучшения для мобильных устройств */
-@media (max-width: 600px) {
-  /* Увеличиваем кликабельные области на мобильных */
-  .v-btn, .v-list-item {
-    min-height: 48px !important;
-  }
+/* Эффект при наведении (легкий подъем) */
+.v-card--link:hover, 
+.v-card.hover-effect:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12) !important;
 }
 
-/* 5. Общие хелперы */
-.gap-1 { gap: 4px; }
-.gap-2 { gap: 8px; }
-.gap-3 { gap: 12px; }
-.gap-4 { gap: 16px; }
+/* В темной теме тени делаем менее заметными, работаем на контрасте поверхностей */
+.v-theme--dark .v-card {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3) !important;
+  background-color: #1e1e1e; /* Чуть светлее черного фона */
+}
+
+/* === КНОПКИ === */
+.v-btn {
+  text-transform: none !important; /* Отключаем CAPS LOCK */
+  letter-spacing: 0.3px !important;
+  font-weight: 600 !important;
+  border-radius: 12px !important;
+}
+
+.v-btn--size-large {
+  font-size: 1.1rem !important;
+}
+
+/* Плавающая кнопка (FAB) */
+.v-btn--icon.v-btn--size-x-large {
+  box-shadow: 0 8px 30px rgba(var(--v-theme-primary), 0.4) !important;
+}
+
+/* === ПОЛЯ ВВОДА === */
+/* Делаем инпуты более мягкими */
+.v-field__outline {
+  --v-field-border-opacity: 0.15; /* Бледная рамка в покое */
+}
+
+.v-field--focused .v-field__outline {
+  --v-field-border-opacity: 0.6;
+}
+
+/* Скругление инпутов */
+.v-field--variant-outlined .v-field__outline__start,
+.v-field--variant-outlined .v-field__outline__end {
+  border-radius: 12px !important;
+}
+
+/* === СПИСКИ И ДИАЛОГИ === */
+.v-list-item {
+  border-radius: 8px !important;
+  margin-bottom: 4px;
+}
+
+.v-dialog .v-overlay__content > .v-card {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* === ЧИПЫ (TAGS) === */
+.v-chip {
+  font-weight: 500;
+  border-radius: 8px !important;
+}
