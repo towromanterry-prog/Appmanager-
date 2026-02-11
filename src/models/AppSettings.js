@@ -10,6 +10,7 @@ export default class AppSettings {
     this.theme = theme;
     this.currency = currency;
     this.language = language;
+    this.fontSize = fontSize;
   }
 
   clone() {
@@ -21,13 +22,15 @@ export const settingsConverter = {
   toFirestore: (settings) => ({
     theme: settings.theme,
     currency: settings.currency,
-    language: settings.language
+    language: settings.language,
+    fontSize: settings.fontSize
   }),
   fromFirestore: (snapshot, options) => {
     const data = snapshot.data(options);
     return new AppSettings({ id: snapshot.id, ...data });
   }
 };
+
 
 
 
