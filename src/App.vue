@@ -111,16 +111,16 @@
 <script setup>
 import { onMounted, ref, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useThemeStore } from './themeStore';
-import { useSettingsStore } from './settingsStore';
-import { useOrderStore } from './orderStore';
-import { useClientsStore } from './clientsStore';
-import { useServiceStore } from './serviceStore';
-import { useTagsStore } from './tagsStore';
-import { useSearchStore } from './searchStore'; // Не забудь про этот стор
+import { useThemeStore } from '@/store/themeStore';
+import { useSettingsStore } from '@/store/settingsStore';
+import { useOrderStore } from '@/store/orderStore';
+import { useClientsStore } from '@/store/clientsStore';
+import { useServiceStore } from '@/store/serviceStore';
+import { useTagsStore } from '@/store/tagsStore';
+import { useSearchStore } from '@/store/searchStore';
 import { auth } from './firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
-import ConfirmationDialog from './ConfirmationDialog.vue';
+import ConfirmationDialog from '@/components/ConfirmationDialog.vue';
 
 // Инициализация сторов
 const themeStore = useThemeStore();
