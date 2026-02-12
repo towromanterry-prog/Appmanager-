@@ -1,5 +1,73 @@
+<template>
+  <v-dialog v-model="dialog" fullscreen transition="dialog-bottom-transition">
+    <v-card>
+      <v-toolbar color="primary" dark>
+        <v-btn icon="mdi-close" @click="closeModal"></v-btn>
+        <v-toolbar-title>Выберите детали</v-toolbar-title>
+        <v-spacer></v-spacer>
+        <v-toolbar-items>
+          <v-btn variant="text" @click="confirmSelection">Добавить</v-btn>
+        </v-toolbar-items>
+      </v-toolbar>
+
+      <v-card-text>
+        <v-container fluid>
+          <v-row>
+            <v-col cols="12">
+              <v-text-field
+                v-model="searchQuery"
+                label="Поиск по названию или тегу"
+                prepend-inner-icon="mdi-magnify"
+                variant="outlined"
+                clearable
+                hide-details
+              ></v-text-field>
+            </v-col>
+          </v-row>
+
+          <v-list lines="two" select-strategy="classic">
+            <v-list-item
+              v-for="detail in filteredDetails"
+              :key="detail.id"
+              :value="detail.id"
+              @click="toggleDetail(detail)"
+            >
+              <template v-slot:prepend>
+                <v-list-item-action start>
+                  <v-checkbox-btn :model-value="isSelected(detail)"></v-checkbox-btn>
+                </v-list-item-action>
+              </template>
+
+              <v-list-item-title>{{ detail.name }}</v-list-item-title>
+              <v-list-item-subtitle>
+                <div class="tags-container">
+                  <v-chip
+                    v-for="tag in getTags(detail.tagIds)"
+                    :key="tag.id"
+                    :color="tag.color"
+                    size="small"
+                    class="mr-1"
+                  >
+                    {{ tag.name }}
+                  </v-chip>
+                </div>
+              </v-list-item-subtitle>
+
+              <template v-slot:append>
+                <span class="text-body-1 font-weight-medium">
+                  {{ detail.defaultPrice }} ₽
+                </span>
+              </template>
+            </v-list-item>
+          </v-list>
+        </v-container>
+      </v-card-text>
+    </v-card>
+  </v-dialog>
+</template>
+
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import Fuse from 'fuse.js';
 import { useDetailStore } from '@/stores/detailStore';
 import { useTagsStore } from '@/stores/tagsStore';
@@ -8,7 +76,6 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false },
   previouslySelected: { type: Array, default: () => [] }
 });
-
 const emit = defineEmits(['update:modelValue', 'selection-confirmed']);
 
 const detailStore = useDetailStore();
@@ -16,16 +83,6 @@ const tagsStore = useTagsStore();
 const dialog = ref(props.modelValue);
 const searchQuery = ref('');
 const selected = ref([]);
-
-// Инициализация данных перенесена в onMounted для безопасности
-onMounted(() => {
-  if (detailStore.details.length === 0 && detailStore.initRealtimeUpdates) {
-    detailStore.initRealtimeUpdates();
-  }
-  if (tagsStore.tags.length === 0 && tagsStore.initRealtimeUpdates) {
-    tagsStore.initRealtimeUpdates();
-  }
-});
 
 const availableDetails = computed(() => {
   return detailStore.details.map(detail => ({
@@ -93,93 +150,17 @@ watch(dialog, (newVal) => {
     emit('update:modelValue', false);
   }
 });
+
+if (detailStore.details.length === 0) {
+  detailStore.loadDetails();
+}
+if (tagsStore.tags.length === 0) {
+  tagsStore.loadTags();
+}
 </script>
 
-<template>
-  <v-dialog v-model="dialog" max-width="600px" scrollable>
-    <v-card class="detail-selection-card">
-      <v-card-title class="headline">
-        Выберите детали/работы
-        <v-spacer></v-spacer>
-        <v-text-field
-          v-model="searchQuery"
-          prepend-inner-icon="mdi-magnify"
-          label="Поиск"
-          variant="outlined"
-          density="compact"
-          hide-details
-          class="mt-2"
-        ></v-text-field>
-      </v-card-title>
-
-      <v-card-text style="max-height: 400px;">
-        <v-list density="compact">
-          <v-list-item
-            v-for="detail in filteredDetails"
-            :key="detail.id"
-            @click="toggleDetail(detail)"
-            :class="{ 'selected-item': isSelected(detail) }"
-            class="mb-1 rounded-lg"
-            variant="flat"
-          >
-            <template v-slot:prepend>
-              <v-checkbox-btn
-                :model-value="isSelected(detail)"
-                @click.stop="toggleDetail(detail)"
-                color="primary"
-              ></v-checkbox-btn>
-            </template>
-            
-            <v-list-item-title class="font-weight-medium">
-              {{ detail.name }}
-            </v-list-item-title>
-            
-            <v-list-item-subtitle>
-              <v-chip
-                v-for="tagName in detail.tagNames"
-                :key="tagName"
-                size="x-small"
-                class="mr-1 mt-1"
-                color="secondary"
-                variant="tonal"
-              >
-                {{ tagName }}
-              </v-chip>
-            </v-list-item-subtitle>
-
-            <template v-slot:append>
-               <span class="text-body-2 font-weight-bold text-primary">
-                 {{ detail.defaultPrice }} ₽
-               </span>
-            </template>
-          </v-list-item>
-        </v-list>
-        
-        <div v-if="filteredDetails.length === 0" class="text-center py-4 text-medium-emphasis">
-          Ничего не найдено
-        </div>
-      </v-card-text>
-
-      <v-divider></v-divider>
-
-      <v-card-actions>
-        <v-spacer></v-spacer>
-        <v-btn color="grey-darken-1" variant="text" @click="closeModal">
-          Отмена
-        </v-btn>
-        <v-btn color="primary" variant="elevated" @click="confirmSelection">
-          Готово ({{ selected.length }})
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
-</template>
-
 <style scoped>
-.detail-selection-card {
-  border-radius: 16px;
-}
-.selected-item {
-  background-color: rgb(var(--v-theme-primary), 0.1) !important;
+.v-list-item-subtitle .v-chip {
+  margin-top: 4px;
 }
 </style>
