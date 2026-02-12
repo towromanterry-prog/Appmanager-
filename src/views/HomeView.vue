@@ -17,7 +17,6 @@ const confirmationStore = useConfirmationStore();
 const { orders, loading, user } = storeToRefs(orderStore);
 const { triggerHapticFeedback } = useHapticFeedback();
 
-// ИСПРАВЛЕНИЕ: Безопасный доступ к настройкам через ?.
 const indicatorStatuses = computed(
   () => settingsStore.appSettings?.fullCalendarIndicatorStatuses || []
 );
@@ -70,12 +69,6 @@ const clearQueryParams = () => {
     router.replace({ query: null });
 };
 
-// Конвертация строки YYYY-MM-DD в Date (local)
-const toDateObject = (dateStr) => {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    return new Date(y, m - 1, d);
-};
-
 // Конвертация Date в YYYY-MM-DD
 const toDateKey = (date) => {
     const y = date.getFullYear();
@@ -87,7 +80,6 @@ const toDateKey = (date) => {
 // Определяем дату для группировки заказа (deadline или createdAt)
 const getOrderDateKey = (order) => {
     if (order.deadline) return order.deadline; // уже YYYY-MM-DD
-    // Если deadline нет, берем createdAt
     if (order.createdAt && order.createdAt.seconds) {
         const d = new Date(order.createdAt.seconds * 1000);
         return toDateKey(d);
@@ -122,8 +114,6 @@ const flatCalendarDays = computed(() => {
     const d = new Date(year, month, i);
     const dateStr = toDateKey(d);
     
-    // Подсчет индикаторов
-    // Фильтруем заказы на этот день
     const dayOrders = orders.value.filter(o => {
         if (!showCompletedOrders.value && (normalizeStatus(o.status) === 'delivered' || normalizeStatus(o.status) === 'cancelled')) return false;
         return getOrderDateKey(o) === dateStr;
@@ -131,29 +121,13 @@ const flatCalendarDays = computed(() => {
 
     const indicators = [];
     if (dayOrders.length > 0) {
-        // Проверяем наличие статусов по приоритету или просто наличие
-        // Используем indicatorStatuses из настроек
         const statusesSet = new Set(dayOrders.map(o => normalizeStatus(o.status)));
-        
-        // Порядок проверки из настроек (или дефолтный)
         const checkList = indicatorStatuses.value.length > 0 
            ? indicatorStatuses.value 
            : ['expired', 'today', 'additional', 'accepted', 'in_progress', 'completed', 'delivered'];
 
         checkList.forEach(st => {
-            if (st === 'expired') {
-                 // Логика просрочки сложнее, здесь упрощенно: если есть просроченные в этот день (хотя это день дедлайна)
-                 // Обычно expired смотрят относительно today. Если deadline < today и статус не final.
-                 const hasExpired = dayOrders.some(o => {
-                    const s = normalizeStatus(o.status);
-                    return s !== 'completed' && s !== 'delivered' && s !== 'cancelled' && new Date(dateStr) < new Date(toDateKey(new Date())); 
-                 });
-                 if (hasExpired) indicators.push('expired');
-            } else if (st === 'today') {
-                // pass
-            } else {
-                if (statusesSet.has(st)) indicators.push(st);
-            }
+            if (statusesSet.has(st)) indicators.push(st);
         });
     }
 
@@ -161,7 +135,7 @@ const flatCalendarDays = computed(() => {
       day: i,
       date: d,
       dateStr: dateStr,
-      indicators: [...new Set(indicators)].slice(0, 3) // макс 3 точки
+      indicators: [...new Set(indicators)].slice(0, 3) 
     });
   }
   
@@ -172,16 +146,13 @@ const flatCalendarDays = computed(() => {
 const filteredOrders = computed(() => {
   let list = orders.value;
 
-  // 1. Фильтр по статусу (из стора)
   if (orderStore.filterStatus.length > 0) {
     list = list.filter(o => orderStore.filterStatus.includes(normalizeStatus(o.status)));
   }
 
-  // 2. Если выбрана дата в календаре
   if (selectedDate.value) {
     list = list.filter(o => getOrderDateKey(o) === selectedDate.value);
   } else {
-     // Если дата не выбрана, и включена настройка "скрывать завершенные"
      if (!showCompletedOrders.value) {
         list = list.filter(o => {
             const s = normalizeStatus(o.status);
@@ -190,8 +161,6 @@ const filteredOrders = computed(() => {
      }
   }
 
-  // 3. Сортировка
-  // Сначала по дедлайну (срочные выше), потом по созданию
   return list.sort((a, b) => {
     const dA = a.deadline ? new Date(a.deadline) : new Date(8640000000000000);
     const dB = b.deadline ? new Date(b.deadline) : new Date(8640000000000000);
@@ -199,30 +168,10 @@ const filteredOrders = computed(() => {
   });
 });
 
-const getStatusLabel = (status) => {
-  const normalizedStatus = normalizeStatus(status);
-  const map = {
-    'in_progress': 'В работе',
-    // ИСПРАВЛЕНИЕ: Безопасный доступ
-    'additional': settingsStore.appSettings?.additionalStatusName || 'Доп. статус',
-    'accepted': 'Принят',
-    'completed': 'Готов',
-    'delivered': 'Сдан'
-  };
-  return map[normalizedStatus] || normalizedStatus;
-};
-
-// Обработчики
 const handleDayClick = (day) => {
     if (day.empty) return;
-    
     triggerHapticFeedback('light');
-
-    if (selectedDate.value === day.dateStr) {
-        selectedDate.value = null; // снятие выбора
-    } else {
-        selectedDate.value = day.dateStr;
-    }
+    selectedDate.value = selectedDate.value === day.dateStr ? null : day.dateStr;
 };
 
 const createOrder = () => {
@@ -238,7 +187,7 @@ const createOrder = () => {
 const editOrder = (order) => {
     triggerHapticFeedback('light');
     orderToEditId.value = order.id;
-    initialOrderData.value = { ...order }; // клонируем
+    initialOrderData.value = { ...order };
     showOrderForm.value = true;
 };
 
@@ -261,10 +210,6 @@ const previousMonth = () => {
     currentDate.value = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() - 1, 1);
 };
 
-// Свайпы
-const onSwipeLeft = () => nextMonth();
-const onSwipeRight = () => previousMonth();
-
 // Watchers
 watch(() => route.query.new, (val) => {
     if (val === 'true') {
@@ -285,7 +230,8 @@ watch(() => route.query.edit, (val) => {
 </script>
 
 <template>
-  <div class="fill-height bg-background pb-16"> <div class="px-4 pt-4 pb-2 d-flex align-center justify-space-between">
+  <div class="fill-height bg-background pb-16"> 
+    <div class="px-4 pt-4 pb-2 d-flex align-center justify-space-between">
       <h2 class="text-h5 font-weight-bold text-primary">
         {{ selectedDate ? formatDateFull(selectedDate) : 'Все заказы' }}
       </h2>
@@ -312,7 +258,7 @@ watch(() => route.query.edit, (val) => {
               </v-btn>
            </div>
            
-           <div class="calendar-grid" v-touch="{ left: onSwipeLeft, right: onSwipeRight }">
+           <div class="calendar-grid">
               <div class="text-caption text-center text-grey" v-for="d in ['Пн','Вт','Ср','Чт','Пт','Сб','Вс']" :key="d">{{d}}</div>
               
               <div 
@@ -378,11 +324,15 @@ watch(() => route.query.edit, (val) => {
       @click="createOrder"
     ></v-fab>
 
-    <OrderForm
-      v-model="showOrderForm"
-      :orderId="orderToEditId"
-      :initialData="initialOrderData"
-    />
+    <!-- ИСПРАВЛЕНИЕ: Обертка v-dialog для формы -->
+    <v-dialog v-model="showOrderForm" fullscreen transition="dialog-bottom-transition">
+      <OrderForm
+        :orderId="orderToEditId"
+        :initialData="initialOrderData"
+        @close="showOrderForm = false"
+        @saved="showOrderForm = false"
+      />
+    </v-dialog>
 
   </div>
 </template>
