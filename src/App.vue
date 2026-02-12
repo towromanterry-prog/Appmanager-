@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-// ИСПРАВЛЕНИЕ: Добавлены импорты для отслеживания авторизации
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/firebase';
 
@@ -80,7 +79,7 @@ const toggleStatusFilter = (statusValue) => {
   else orderStore.filterStatus.splice(index, 1);
 };
 
-// Следим за изменением шрифта в настройках
+// Следим за изменением шрифта
 watch(() => settingsStore.appSettings?.baseFontSize, (newSize) => {
   if (newSize) {
     document.documentElement.style.fontSize = `${newSize}px`;
@@ -95,38 +94,36 @@ watch(() => route.path, (newPath) => {
   else if (newPath.startsWith('/settings')) activeTab.value = 'settings';
 }, { immediate: true });
 
-// ИСПРАВЛЕНИЕ: Инициализация данных при монтировании
 onMounted(() => {
-  // 1. Тема и настройки
   themeStore.loadTheme();
 
-  // 2. Ждем авторизации Firebase перед загрузкой данных
   onAuthStateChanged(auth, async (user) => {
     if (user) {
-      // Загружаем настройки пользователя
+      console.log('Пользователь авторизован:', user.email);
+      
+      // ВАЖНО: Обновляем пользователя во всех сторах, чтобы интерфейс знал, что мы вошли
+      if (orderStore) orderStore.user = user;
+      if (clientsStore) clientsStore.user = user;
+      if (servicesStore) servicesStore.user = user;
+      
+      // Загружаем настройки
       await settingsStore.loadSettings();
 
-      // Подписываемся на обновления данных, используя новые имена методов
+      // Инициализируем слушатели Firebase
       if (orderStore.initRealtimeUpdates) orderStore.initRealtimeUpdates();
-      
-      if (clientsStore.initRealtimeUpdates) {
-          clientsStore.initRealtimeUpdates();
-      }
-      
-      if (servicesStore.initRealtimeUpdates) {
-          servicesStore.initRealtimeUpdates();
-      }
-      
-      if (tagsStore.initRealtimeUpdates) {
-        tagsStore.initRealtimeUpdates();
-      }
-
-      if (detailStore.initRealtimeUpdates) {
-        detailStore.initRealtimeUpdates();
-      }
+      if (clientsStore.initRealtimeUpdates) clientsStore.initRealtimeUpdates();
+      if (servicesStore.initRealtimeUpdates) servicesStore.initRealtimeUpdates();
+      if (tagsStore.initRealtimeUpdates) tagsStore.initRealtimeUpdates();
+      if (detailStore.initRealtimeUpdates) detailStore.initRealtimeUpdates();
 
     } else {
       console.log('Пользователь не авторизован');
+      // Очищаем пользователя в сторах при выходе
+      if (orderStore) orderStore.user = null;
+      if (clientsStore) clientsStore.user = null;
+      if (servicesStore) servicesStore.user = null;
+      
+      // Здесь можно вызвать методы очистки данных (unsubscribe), если они реализованы в сторах
     }
   });
 });
