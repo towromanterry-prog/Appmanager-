@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title>{{ editingService ? 'Редактировать услугу' : 'Добавить услугу' }}</v-card-title>
       <v-card-text>
-        <v-form ref="serviceFormRef">
+        <v-form ref="serviceFormRef" @submit.prevent="save">
           <v-text-field
             v-model="serviceForm.name"
             label="Название услуги"
@@ -41,7 +41,8 @@
 
 <script setup>
 import { ref, watch } from 'vue';
-import { useServiceStore } from '@/stores/serviceStore';
+// ИСПРАВЛЕНО: useServicesStore (было useservicesStore)
+import { useServicesStore } from '@/stores/servicesStore';
 import { useHapticFeedback } from '@/composables/useHapticFeedback';
 
 const { triggerHapticFeedback } = useHapticFeedback();
@@ -51,7 +52,8 @@ const props = defineProps({
 });
 const emit = defineEmits(['update:modelValue', 'saved']);
 
-const serviceStore = useServiceStore();
+// ИСПРАВЛЕНО: вызов useServicesStore
+const servicesStore = useServicesStore();
 
 const dialog = ref(props.modelValue);
 const serviceFormRef = ref(null);
@@ -93,13 +95,16 @@ const save = async () => {
   isSaving.value = true;
   try {
     if (editingService.value) {
-      await serviceStore.updateService(editingService.value.id, serviceForm.value);
+      await servicesStore.updateService(editingService.value.id, serviceForm.value);
     } else {
-      await serviceStore.addService(serviceForm.value);
+      await servicesStore.addService(serviceForm.value);
     }
-    triggerHapticFeedback('important');
+    triggerHapticFeedback('success');
     emit('saved');
     closeDialog();
+  } catch (e) {
+    console.error(e);
+    triggerHapticFeedback('error');
   } finally {
     isSaving.value = false;
   }
