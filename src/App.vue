@@ -1,6 +1,5 @@
 <template>
   <v-app :theme="themeStore.theme" class="app-root">
-    
     <v-app-bar app color="surface" flat density="comfortable" class="app-bar-minimal">
       <div class="d-flex align-center px-4 w-100">
         <v-scale-transition mode="out-in">
@@ -26,42 +25,13 @@
           <div v-else class="d-flex align-center flex-grow-1 w-100">
             <span class="text-h6 font-weight-bold">{{ currentTitle }}</span>
             <v-spacer></v-spacer>
-            
-            <v-btn 
-              v-if="isSearchPage" 
-              icon="mdi-magnify" 
-              variant="text" 
+
+            <v-btn
+              v-if="isSearchPage"
+              icon="mdi-magnify"
+              variant="text"
               @click="openSearch"
             ></v-btn>
-
-            <v-menu
-              v-if="showSortMenu"
-              v-model="sortMenu"
-              location="bottom end"
-              :close-on-content-click="false"
-            >
-              <template v-slot:activator="{ props }">
-                <v-btn icon="mdi-sort-variant" variant="text" v-bind="props"></v-btn>
-              </template>
-              <v-card min-width="250" class="rounded-xl">
-                 <div v-if="isHomePage">
-                    <v-list dense>
-                      <v-list-subheader class="text-caption font-weight-bold">СТАТУС</v-list-subheader>
-                      <v-list-item
-                        v-for="status in availableStatuses"
-                        :key="status.value"
-                        @click="toggleStatusFilter(status.value)"
-                        density="compact"
-                      >
-                        <template v-slot:prepend>
-                          <v-checkbox-btn :model-value="orderStore.filterStatus.includes(status.value)"></v-checkbox-btn>
-                        </template>
-                        <v-list-item-title class="text-body-2">{{ status.text }}</v-list-item-title>
-                      </v-list-item>
-                    </v-list>
-                 </div>
-              </v-card>
-            </v-menu>
           </div>
         </v-scale-transition>
       </div>
@@ -103,9 +73,9 @@
         <span class="text-caption mt-1">Меню</span>
       </v-btn>
     </v-bottom-navigation>
-    
+
     <ConfirmationDialog />
-    </v-app>
+  </v-app>
 </template>
 
 <script setup>
@@ -119,11 +89,11 @@ import { useOrderStore } from '@/stores/orderStore';
 import { useSearchStore } from '@/stores/searchStore';
 import { useServiceStore } from '@/stores/serviceStore';
 import { useClientsStore } from '@/stores/clientsStore';
+import { useDetailStore } from '@/stores/detailStore';
 import { useTagsStore } from '@/stores/tagsStore';
 
 // Импорт компонентов
 import ConfirmationDialog from '@/components/common/ConfirmationDialog.vue';
-// import TemplateSelectionDialog from '@/components/TemplateSelectionDialog.vue'; 
 
 // Инициализация сторов
 const themeStore = useThemeStore();
@@ -132,19 +102,17 @@ const orderStore = useOrderStore();
 const searchStore = useSearchStore();
 const servicesStore = useServiceStore();
 const clientsStore = useClientsStore();
-const tagsStore = useTagsStore(); // Просто инициализируем
+const detailStore = useDetailStore();
+const tagsStore = useTagsStore();
 
 const route = useRoute();
 
 // UI State
 const activeTab = ref('home');
-const sortMenu = ref(false);
 const showSearch = ref(false);
 
 // Вычисляемые свойства для навигации
-const isHomePage = computed(() => route.name === 'home');
 const isSearchPage = computed(() => ['home', 'clients', 'base-settings'].includes(route.name));
-const showSortMenu = computed(() => isHomePage.value);
 
 const currentTitle = computed(() => {
   if (route.name === 'home') return 'Мои заказы';
@@ -167,35 +135,18 @@ watch(() => route.name, () => {
   searchStore.setSearchQuery('');
 });
 
-// Статусы для фильтра (берем из orderStore/settingsStore)
-const availableStatuses = computed(() => {
-  const allStatuses = [
-    { value: 'accepted', text: orderStore.getStatusText ? orderStore.getStatusText('accepted') : 'Принят' },
-    { value: 'additional', text: orderStore.getStatusText ? orderStore.getStatusText('additional') : 'Доп.' },
-    { value: 'in_progress', text: orderStore.getStatusText ? orderStore.getStatusText('in_progress') : 'В работе' },
-    { value: 'completed', text: orderStore.getStatusText ? orderStore.getStatusText('completed') : 'Готов' },
-    { value: 'delivered', text: orderStore.getStatusText ? orderStore.getStatusText('delivered') : 'Сдан' },
-    { value: 'cancelled', text: orderStore.getStatusText ? orderStore.getStatusText('cancelled') : 'Отменен' }
-  ];
-  return allStatuses.filter(s => {
-    if (s.value === 'cancelled') return true;
-    // Безопасный доступ к settingsStore.appSettings
-    return settingsStore.appSettings?.orderStatuses?.[s.value] ?? true;
-  });
-});
+// Единый механизм масштаба шрифта: settingsStore.settings.fontSize -> --app-font-scale
+const DEFAULT_FONT_SIZE = 16;
 
-const toggleStatusFilter = (statusValue) => {
-  const index = orderStore.filterStatus.indexOf(statusValue);
-  if (index === -1) orderStore.filterStatus.push(statusValue);
-  else orderStore.filterStatus.splice(index, 1);
-};
-
-// Глобальное изменение шрифта (если реализовано в settings)
-watch(() => settingsStore.appSettings?.baseFontSize, (newSize) => {
-  if (newSize) {
-    document.documentElement.style.fontSize = `${newSize}px`;
-  }
-}, { immediate: true });
+watch(
+  () => settingsStore.settings?.fontSize,
+  (fontSize) => {
+    const size = Number(fontSize) || DEFAULT_FONT_SIZE;
+    const scale = size / DEFAULT_FONT_SIZE;
+    document.documentElement.style.setProperty('--app-font-scale', String(scale));
+  },
+  { immediate: true }
+);
 
 // Синхронизация табов
 watch(() => route.path, (newPath) => {
@@ -207,34 +158,23 @@ watch(() => route.path, (newPath) => {
 
 // ИНИЦИАЛИЗАЦИЯ ДАННЫХ ПРИ ЗАПУСКЕ
 onMounted(async () => {
-  // 1. Тема и настройки
+  // 1) Тема и настройки
   themeStore.loadTheme();
   await settingsStore.loadSettings();
 
-  // 2. Подписка на данные (используем методы из твоих новых сторов)
-  // В OrderStore метод называется initRealtimeUpdates
+  // 2) Realtime подписки (реальные методы из сторов)
   orderStore.initRealtimeUpdates();
-  
-  // Для клиентов и сервисов предполагаем аналогичные методы инициализации
-  // Если в твоих замороженных сторах методы называются init() или subscribe(), убедись, что вызываешь верные
-  if (clientsStore.subscribeClients) clientsStore.subscribeClients();
-  if (servicesStore.subscribeServices) servicesStore.subscribeServices();
+  clientsStore.initRealtimeUpdates();
+  servicesStore.initRealtimeUpdates();
+  detailStore.initRealtimeUpdates();
+  tagsStore.initRealtimeUpdates();
 });
 </script>
 
 <style>
 /* Глобальные стили для App.vue */
 :root {
-  --app-base-font-size: 16px;
-  --safe-area-bottom: env(safe-area-inset-bottom, 16px); 
-}
-
-html {
-  font-size: var(--app-base-font-size);
-}
-
-.v-application {
-  font-size: 1rem !important; 
+  --safe-area-bottom: env(safe-area-inset-bottom, 16px);
 }
 
 /* Фикс нижней панели для мобилок */
