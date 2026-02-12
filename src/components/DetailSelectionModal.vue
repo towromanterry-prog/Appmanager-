@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import Fuse from 'fuse.js';
 import { useDetailStore } from '@/stores/detailStore';
 import { useTagsStore } from '@/stores/tagsStore';
@@ -17,18 +17,15 @@ const dialog = ref(props.modelValue);
 const searchQuery = ref('');
 const selected = ref([]);
 
-// Инициализация данных, если они еще не загружены
-if (detailStore.details.length === 0) {
-  // ИСПРАВЛЕНИЕ: Используем новый метод initRealtimeUpdates вместо loadDetails
-  if (detailStore.initRealtimeUpdates) {
+// Инициализация данных перенесена в onMounted для безопасности
+onMounted(() => {
+  if (detailStore.details.length === 0 && detailStore.initRealtimeUpdates) {
     detailStore.initRealtimeUpdates();
   }
-}
-// Инициализация тегов, если нужно
-if (tagsStore.tags.length === 0 && tagsStore.initRealtimeUpdates) {
-  tagsStore.initRealtimeUpdates();
-}
-
+  if (tagsStore.tags.length === 0 && tagsStore.initRealtimeUpdates) {
+    tagsStore.initRealtimeUpdates();
+  }
+});
 
 const availableDetails = computed(() => {
   return detailStore.details.map(detail => ({
@@ -87,7 +84,6 @@ const closeModal = () => {
 watch(() => props.modelValue, (newVal) => {
   dialog.value = newVal;
   if (newVal) {
-    // Клонируем, чтобы не менять проп напрямую
     selected.value = JSON.parse(JSON.stringify(props.previouslySelected));
   }
 });
