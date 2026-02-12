@@ -1,63 +1,43 @@
-import { db } from '../firebase';
+import { db } from '@/firebase';
 import { 
-  collection, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  onSnapshot,
-  query,
-  orderBy
+  collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, 
+  query, orderBy 
 } from 'firebase/firestore';
-import { orderConverter } from '../models/Order';
+import { Order } from '@/models/Order';
+import { createConverter } from './baseService';
 
 const COLLECTION_NAME = 'orders';
+const converter = createConverter(Order);
 
-class OrderService {
-  constructor() {
-    this.collectionRef = collection(db, COLLECTION_NAME).withConverter(orderConverter);
-  }
-
-  // Получить все заказы (одноразово)
-  async getAll() {
-    const q = query(this.collectionRef, orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => doc.data());
-  }
-
-  // Подписка на обновления в реальном времени
-  subscribe(callback) {
-    const q = query(this.collectionRef, orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+export const orderService = {
+  subscribeToOrders(onData, onError) {
+    const q = query(collection(db, COLLECTION_NAME), orderBy('createDate', 'desc'));
+    
+    return onSnapshot(q.withConverter(converter), (snapshot) => {
       const orders = snapshot.docs.map(doc => doc.data());
-      callback(orders);
+      onData(orders);
+    }, (error) => {
+      if (onError) onError(error);
     });
-    return unsubscribe; // Возвращаем функцию отписки
-  }
+  },
 
-  async create(orderModel) {
-    const docRef = await addDoc(this.collectionRef, orderModel);
-    // Возвращаем объект с присвоенным ID
-    const newOrder = orderModel.clone();
-    newOrder.id = docRef.id;
-    return newOrder;
-  }
+  async addOrder(order) {
+    const colRef = collection(db, COLLECTION_NAME).withConverter(converter);
+    // Используем конвертер, который сам вызовет stripReactivity
+    await addDoc(colRef, order);
+  },
 
-  async update(orderModel) {
-    if (!orderModel.id) throw new Error('Order ID is required for update');
-    const docRef = doc(db, COLLECTION_NAME, orderModel.id).withConverter(orderConverter);
-    // toFirestore вызывается автоматически конвертером, но updateDoc требует plain object иногда,
-    // если мы хотим обновить только часть полей. Но с конвертером проще передать весь объект.
-    await updateDoc(docRef, orderConverter.toFirestore(orderModel));
-    return orderModel;
-  }
+  async updateOrder(order) {
+    if (!order.id) throw new Error('Order ID is missing');
+    const docRef = doc(db, COLLECTION_NAME, order.id).withConverter(converter);
+    // Важно: toFirestore вызывается автоматически внутри updateDoc если передан instance,
+    // но updateDoc часто требует plain object. 
+    // Наш createConverter.toFirestore делает это.
+    await updateDoc(docRef, converter.toFirestore(order));
+  },
 
-  async delete(id) {
-    const docRef = doc(db, COLLECTION_NAME, id);
+  async deleteOrder(orderId) {
+    const docRef = doc(db, COLLECTION_NAME, orderId);
     await deleteDoc(docRef);
-    return id;
   }
-}
-
-export default new OrderService();
+};
