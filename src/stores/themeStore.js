@@ -1,67 +1,34 @@
-// src/stores/themeStore.js
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
-import { light, dark } from '@/theme/theme'; // Импортируем темы для получения метаданных
+import { computed } from 'vue';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { light, dark } from '@/theme/theme';
 
 export const useThemeStore = defineStore('theme', () => {
-  // 'light' или 'dark'
-  const theme = ref('light');
+  const settingsStore = useSettingsStore();
 
-  /**
-   * Загружает сохраненную тему из localStorage.
-   */
+  const theme = computed(() => settingsStore.theme || 'light');
+
   function loadTheme() {
-    const savedTheme = localStorage.getItem('app-theme');
-    if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
-      theme.value = savedTheme;
-    }
+    // settingsStore сам подхватывает localStorage + снапшоты (init уже вызывается внутри него)
+    settingsStore.init?.();
   }
 
-  /**
-   * Устанавливает и сохраняет новую тему.
-   * @param {'light' | 'dark'} newTheme 
-   */
   function setTheme(newTheme) {
-    if (newTheme === 'light' || newTheme === 'dark') {
-      theme.value = newTheme;
-      localStorage.setItem('app-theme', newTheme);
-    }
-  }
-  
-  /**
-   * Переключает тему между светлой и темной.
-   */
-  function toggleTheme() {
-    setTheme(theme.value === 'light' ? 'dark' : 'light');
+    return settingsStore.updateSetting('theme', newTheme === 'dark' ? 'dark' : 'light');
   }
 
-  // Данные для страницы настроек, чтобы показать доступные темы.
+  function toggleTheme() {
+    return setTheme(theme.value === 'light' ? 'dark' : 'light');
+  }
+
   const themesList = [
-    {
-      key: 'light',
-      name: 'Светлая',
-      emoji: '☀️',
-      colors: light.colors,
-      mode: 'light',
-    },
-    {
-      key: 'dark',
-      name: 'Темная',
-      emoji: '🌙',
-      colors: dark.colors,
-      mode: 'dark',
-    },
+    { key: 'light', name: 'Светлая', emoji: '☀️', colors: light.colors, mode: 'light' },
+    { key: 'dark', name: 'Темная', emoji: '🌙', colors: dark.colors, mode: 'dark' },
   ];
 
   function getThemesList() {
     return themesList;
   }
 
-  return {
-    theme,
-    loadTheme,
-    setTheme,
-    toggleTheme,
-    getThemesList,
-  };
+  return { theme, loadTheme, setTheme, toggleTheme, getThemesList };
 });

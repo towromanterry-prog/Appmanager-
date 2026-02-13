@@ -58,3 +58,20 @@ export async function updateSettings(uid, data) {
 
   return setDoc(ref, patch, { merge: true });
 }
+
+/**
+ * Полная перезапись настроек (используется для сброса к заводским).
+ * @param {string} uid
+ * @param {SettingsModel | object} data
+ */
+export async function setAllSettings(uid, data) {
+  if (!uid) throw new Error('settingsService.setAllSettings: uid is required');
+  const ref = settingsDocRef(uid);
+
+  const payload = data instanceof SettingsModel ? data.toFirestore() : data;
+  
+  // ВАЖНО: Здесь специально НЕ используем { merge: true }.
+  // Это заставит Firestore полностью затереть старый документ 
+  // и записать чистые дефолтные настройки.
+  return setDoc(ref, payload);
+}

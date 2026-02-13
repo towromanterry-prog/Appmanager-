@@ -3,7 +3,6 @@
     <v-app-bar app color="surface" flat density="comfortable" class="app-bar-minimal">
       <div class="d-flex align-center px-4 w-100">
         <v-scale-transition mode="out-in">
-          <!-- SEARCH MODE -->
           <div v-if="showSearch" class="d-flex align-center flex-grow-1 w-100">
             <v-text-field
               v-model="searchStore.searchQuery"
@@ -23,7 +22,6 @@
             <v-btn icon="mdi-close" variant="text" size="small" @click="closeSearch"></v-btn>
           </div>
 
-          <!-- NORMAL MODE -->
           <div v-else class="d-flex align-center flex-grow-1 w-100">
             <span class="text-h6 font-weight-bold">{{ currentTitle }}</span>
             <v-spacer></v-spacer>
@@ -183,16 +181,9 @@ watch(
   }
 );
 
-// ВАЖНО: searchStore -> orderStore (фильтрация остаётся внутри orderStore.getters)
-watch(
-  () => searchStore.searchQuery,
-  (q) => {
-    orderStore.setSearchQuery?.(q ?? '');
-  },
-  { immediate: true }
-);
+// ВАЖНО: Убран watch на searchStore.searchQuery, теперь геттер в store читает его напрямую.
 
-// Статусы для фильтра (cancelled зависит от настроек)
+// Статусы для фильтра
 const availableStatuses = computed(() => {
   const allStatuses = [
     { value: 'accepted', text: orderStore.getStatusText ? orderStore.getStatusText('accepted') : 'Принят' },
@@ -208,11 +199,9 @@ const availableStatuses = computed(() => {
     settingsStore.appSettings?.orderStatuses ??
     null;
 
-  // cancelled НЕ форсим — показываем строго по настройкам (или по умолчанию true, если настроек нет)
   return allStatuses.filter((s) => (cfg?.[s.value] ?? true));
 });
 
-// Мультивыбор статусов: дергаем action стора (или fallback на прямой массив)
 const toggleStatusFilter = (statusValue) => {
   if (orderStore.toggleStatusFilter) {
     orderStore.toggleStatusFilter(statusValue);
@@ -221,17 +210,14 @@ const toggleStatusFilter = (statusValue) => {
     if (index === -1) orderStore.filterStatus.push(statusValue);
     else orderStore.filterStatus.splice(index, 1);
   }
-  // меню НЕ закрываем, чтобы удобно нащёлкать несколько статусов
 };
 
-// Глобальное изменение шрифта (совместимо: appSettings или settings)
+// Глобальное изменение шрифта
 watch(
   () => settingsStore.settings?.fontSize ?? settingsStore.appSettings?.baseFontSize,
   (newSize) => {
     if (!newSize) return;
-
     document.documentElement.style.setProperty('--app-base-font-size', `${newSize}px`);
-
     const scale = Number(newSize) / 16;
     if (Number.isFinite(scale) && scale > 0) {
       document.documentElement.style.setProperty('--app-font-scale', String(scale));
@@ -252,10 +238,10 @@ watch(
   { immediate: true }
 );
 
-// Тема (локально)
+// Тема
 themeStore.loadTheme();
 
-// ===== Главное: user-scoped данные только при наличии UID =====
+// ===== Главное: user-scoped данные =====
 let startedForUid = null;
 let startPromise = null;
 
@@ -266,19 +252,20 @@ async function startUserScopedData(uid) {
   startedForUid = uid;
 
   startPromise = (async () => {
-    // настройки
-    await settingsStore.loadSettings();
+    try {
+  await settingsStore.initRealtimeUpdates(uid);
 
-    // realtime заказы: НОВЫЙ API — uid обязателен
-    await orderStore.initRealtimeUpdates(uid);
-
-    // справочники: 4 подписки
-    await Promise.all([
-      clientsStore.subscribe(),
-      servicesStore.subscribe(),
-      detailsStore.subscribe(),
-      tagsStore.subscribe(),
-    ]);
+  // ВОТ ЗДЕСЬ БЫЛА ОШИБКА: нужно передать (uid) во все методы
+  await Promise.all([
+    orderStore.initRealtimeUpdates(uid), // тут было правильно
+    clientsStore.subscribe(uid),         // <--- БЫЛО ПУСТО, НАДО (uid)
+    servicesStore.subscribe(uid),        // <--- БЫЛО ПУСТО, НАДО (uid)
+    detailsStore.subscribe(uid),         // <--- БЫЛО ПУСТО, НАДО (uid)
+    tagsStore.subscribe(uid),            // <--- БЫЛО ПУСТО, НАДО (uid)
+  ]);
+} catch (e) {
+  console.error("Ошибка инициализации данных:", e);
+}
   })();
 
   return startPromise;
@@ -289,7 +276,6 @@ function stopUserScopedData() {
   startPromise = null;
 
   orderStore.stopRealtimeUpdates?.();
-
   clientsStore.stop?.();
   servicesStore.stop?.();
   detailsStore.stop?.();

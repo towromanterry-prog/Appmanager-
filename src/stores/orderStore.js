@@ -2,6 +2,7 @@
 import { defineStore } from 'pinia';
 import { orderService } from '@/services/orderService';
 import { OrderModel } from '@/models/OrderModel';
+import { useSearchStore } from '@/stores/searchStore';
 
 export const useOrderStore = defineStore('order', {
   state: () => ({
@@ -14,7 +15,7 @@ export const useOrderStore = defineStore('order', {
      */
     filterStatus: /** @type {string[]} */ ([]),
 
-    // Поисковая строка (можно связывать с searchStore)
+    // Поисковая строка (для совместимости)
     searchQuery: '',
 
     // Realtime
@@ -29,58 +30,62 @@ export const useOrderStore = defineStore('order', {
     /**
      * Полная логика фильтрации:
      * - по мульти-статусам (filterStatus)
-     * - по поиску (searchQuery)
+     * - по поиску (берем из useSearchStore)
      */
     filteredOrders(state) {
-  const statuses = Array.isArray(state.filterStatus) ? state.filterStatus : [];
-  const q = (state.searchQuery || '').trim().toLowerCase();
+      const searchStore = useSearchStore();
+      const statuses = Array.isArray(state.filterStatus) ? state.filterStatus : [];
+      const q = (searchStore.searchQuery || '').trim().toLowerCase();
 
-  let list = Array.isArray(state.orders) ? state.orders : [];
+      let list = Array.isArray(state.orders) ? state.orders : [];
 
-  // 1) Фильтр по статусам
-  if (statuses.length > 0) {
-    const set = new Set(statuses.map((s) => String(s).toLowerCase()));
-    list = list.filter((o) => set.has(String(o?.status || '').toLowerCase()));
-  }
+      // 1) Фильтр по статусам
+      if (statuses.length > 0) {
+        const set = new Set(statuses.map((s) => String(s).toLowerCase()));
+        list = list.filter((o) => set.has(String(o?.status || '').toLowerCase()));
+      }
 
-  // 2) Поиск (multi-term)
-  if (q) {
-    const terms = q.split(/\s+/).filter(Boolean);
-    list = list.filter((o) => {
-      const hay =
-        o instanceof OrderModel ? o.searchText : new OrderModel(o).searchText;
-      return terms.every((t) => (hay || '').includes(t));
-    });
-  }
+      // 2) Поиск (multi-term)
+      if (q) {
+        const terms = q.split(/\s+/).filter(Boolean);
+        list = list.filter((o) => {
+          const hay =
+            o instanceof OrderModel ? o.searchText : new OrderModel(o).searchText;
+          return terms.every((t) => (hay || '').includes(t));
+        });
+      }
 
-  // 3) СОРТИРОВКА (как обычно в списке заказов):
-  //    - по дате визита/заказа (startAt/date) DESC
-  //    - затем createdAt DESC
-  //    - затем id (стабильность)
-  const getTime = (d) => (d instanceof Date ? d.getTime() : 0);
+      // 3) СОРТИРОВКА
+      const getTime = (val) => {
+        if (!val) return 0;
+        if (val instanceof Date) return val.getTime();
+        if (typeof val.toDate === 'function') return val.toDate().getTime();
+        if (typeof val.seconds === 'number') return val.seconds * 1000;
+        return 0;
+      };
 
-  const timeForList = (o) =>
-    getTime(o?.startAt) ||
-    getTime(o?.date) ||
-    getTime(o?.createdAt) ||
-    0;
+      const timeForList = (o) =>
+        getTime(o?.startAt) ||
+        getTime(o?.date) ||
+        getTime(o?.createdAt) ||
+        0;
 
-  list = [...list].sort((a, b) => {
-    const ta = timeForList(a);
-    const tb = timeForList(b);
-    if (tb !== ta) return tb - ta;
+      list = [...list].sort((a, b) => {
+        const ta = timeForList(a);
+        const tb = timeForList(b);
+        if (tb !== ta) return tb - ta;
 
-    const ca = getTime(a?.createdAt);
-    const cb = getTime(b?.createdAt);
-    if (cb !== ca) return cb - ca;
+        const ca = getTime(a?.createdAt);
+        const cb = getTime(b?.createdAt);
+        if (cb !== ca) return cb - ca;
 
-    const ia = String(a?.id || '');
-    const ib = String(b?.id || '');
-    return ia.localeCompare(ib);
-  });
+        const ia = String(a?.id || '');
+        const ib = String(b?.id || '');
+        return ia.localeCompare(ib);
+      });
 
-  return list;
-},
+      return list;
+    },
 
     /**
      * Группировка для календаря: { 'YYYY-MM-DD': OrderModel[] }
@@ -89,8 +94,12 @@ export const useOrderStore = defineStore('order', {
       const map = {};
 
       for (const o of this.filteredOrders) {
-        const dateObj = o?.date instanceof Date ? o.date : null;
-        if (!dateObj) continue;
+        let dateObj = o?.date;
+        // Firebase Timestamp handling
+        if (dateObj && typeof dateObj.toDate === 'function') dateObj = dateObj.toDate();
+        else if (dateObj && typeof dateObj.seconds === 'number') dateObj = new Date(dateObj.seconds * 1000);
+
+        if (!(dateObj instanceof Date)) continue;
 
         const key = [
           dateObj.getFullYear(),
@@ -104,8 +113,14 @@ export const useOrderStore = defineStore('order', {
 
       for (const key of Object.keys(map)) {
         map[key].sort((a, b) => {
-          const at = (a.startAt || a.date || a.createdAt)?.getTime?.() ?? 0;
-          const bt = (b.startAt || b.date || b.createdAt)?.getTime?.() ?? 0;
+          const getTime = (val) => {
+             if (!val) return 0;
+             if (val instanceof Date) return val.getTime();
+             if (typeof val.toDate === 'function') return val.toDate().getTime();
+             return 0;
+          };
+          const at = getTime(a.startAt || a.date || a.createdAt);
+          const bt = getTime(b.startAt || b.date || b.createdAt);
           return at - bt;
         });
       }
@@ -139,11 +154,6 @@ export const useOrderStore = defineStore('order', {
   },
 
   actions: {
-    /**
-     * Мульти-переключатель статусов (как было раньше).
-     * Поведение:
-     * - клик добавляет/удаляет статус из filterStatus
-     */
     toggleStatusFilter(statusValue) {
       const v = String(statusValue || '').trim();
       if (!v) return;
@@ -153,16 +163,10 @@ export const useOrderStore = defineStore('order', {
       else this.filterStatus.splice(idx, 1);
     },
 
-    /**
-     * Если нужно “сбросить” все статусы (показать всё)
-     */
     clearStatusFilter() {
       this.filterStatus = [];
     },
 
-    /**
-     * Поиск
-     */
     setSearchQuery(query) {
       this.searchQuery = query ?? '';
     },

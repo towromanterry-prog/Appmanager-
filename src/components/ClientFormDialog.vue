@@ -17,11 +17,12 @@
 
           <v-text-field
             v-model="form.phone"
-            label="Телефон"
+            label="Телефон *"
             variant="outlined"
             type="tel"
             placeholder="+7"
             class="mb-3"
+            :rules="[v => !!String(v || '').trim() || 'Телефон обязателен']"
           ></v-text-field>
 
           <v-textarea

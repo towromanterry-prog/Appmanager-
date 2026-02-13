@@ -44,10 +44,10 @@
         <v-divider />
 
         <div class="pa-4">
-          <div v-if="(order.services || []).length" class="mb-4">
+          <div v-if="orderServices.length" class="mb-4">
             <div class="text-caption font-weight-medium text-medium-emphasis mb-2">УСЛУГИ</div>
 
-            <div v-for="(service, index) in order.services" :key="`service-${index}`" class="service-item">
+            <div v-for="(service, index) in orderServices" :key="`service-${index}`" class="service-item">
               <span class="text-body-2">{{ service.name }}</span>
               <v-spacer />
               <span class="text-body-2 mr-4">{{ service.price }}₽</span>
@@ -67,12 +67,12 @@
             </div>
           </div>
 
-          <div v-if="(order.details || []).length" class="mb-4">
+          <div v-if="orderDetails.length" class="mb-4">
             <div class="text-caption font-weight-medium text-medium-emphasis mb-2">
               {{ detailsLabel }}
             </div>
 
-            <div v-for="(detail, index) in order.details" :key="`detail-${index}`" class="service-item">
+            <div v-for="(detail, index) in orderDetails" :key="`detail-${index}`" class="service-item">
               <span class="text-body-2">{{ detail.name }}</span>
               <v-spacer />
               <span class="text-body-2 mr-4">{{ detail.price }}₽</span>
@@ -153,6 +153,10 @@ const { triggerHapticFeedback } = useHapticFeedback();
 
 const expanded = ref(false);
 
+// Безопасный доступ
+const orderServices = computed(() => props.order.services || []);
+const orderDetails = computed(() => props.order.details || []);
+
 const detailsLabel = computed(() => settingsStore.appSettings?.detailsTabLabel || 'Детали');
 
 const normalize = (s) => String(s || '').trim().toLowerCase();
@@ -210,7 +214,14 @@ const formattedPhone = computed(() => {
 });
 const phoneHref = computed(() => (formattedPhone.value ? `tel:${formattedPhone.value}` : ''));
 
-const toDate = (v) => (v instanceof Date ? v : v ? new Date(v) : null);
+const toDate = (v) => {
+  if (v instanceof Date) return v;
+  // Firebase timestamp
+  if (v && typeof v.toDate === 'function') return v.toDate();
+  if (v && typeof v.seconds === 'number') return new Date(v.seconds * 1000);
+  if (v) return new Date(v);
+  return null;
+};
 
 const orderDateObj = computed(() => toDate(props.order.date) || toDate(props.order.startAt) || null);
 const createdDateObj = computed(() => toDate(props.order.createdAt) || null);
@@ -228,11 +239,14 @@ const formattedCreateDate = computed(() => {
 });
 
 const totalAmount = computed(() => {
-  const direct = props.order.computedTotal ?? props.order.total;
+  if (props.order.price !== undefined) return props.order.price;
+  if (props.order.total !== undefined) return props.order.total;
+
+  const direct = props.order.computedTotal;
   if (typeof direct === 'number') return direct;
 
-  const s = (props.order.services || []).reduce((acc, x) => acc + (Number(x.price) || 0), 0);
-  const d = (props.order.details || []).reduce((acc, x) => acc + (Number(x.price) || 0), 0);
+  const s = orderServices.value.reduce((acc, x) => acc + (Number(x.price) || 0), 0);
+  const d = orderDetails.value.reduce((acc, x) => acc + (Number(x.price) || 0), 0);
   return s + d;
 });
 
@@ -263,7 +277,8 @@ const updateOrderStatus = async (newStatus) => {
 
 const updateServiceStatus = async (index, newStatus) => {
   triggerHapticFeedback('tap');
-  const list = Array.isArray(props.order.services) ? [...props.order.services] : [];
+  // Используем вычисляемое свойство, но клонируем оригинал для мутации
+  const list = [...orderServices.value];
   if (!list[index]) return;
   list[index] = { ...list[index], status: newStatus };
   await orderStore.updateOrder(props.order.id, { services: list });
@@ -271,7 +286,7 @@ const updateServiceStatus = async (index, newStatus) => {
 
 const updateDetailStatus = async (index, newStatus) => {
   triggerHapticFeedback('tap');
-  const list = Array.isArray(props.order.details) ? [...props.order.details] : [];
+  const list = [...orderDetails.value];
   if (!list[index]) return;
   list[index] = { ...list[index], status: newStatus };
   await orderStore.updateOrder(props.order.id, { details: list });

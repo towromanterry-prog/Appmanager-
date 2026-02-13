@@ -57,6 +57,7 @@
             hide-details
             clearable
             :custom-filter="clientFilter"
+            class="mb-3"
           >
             <template #item="{ props, item }">
               <v-list-item v-bind="props" :title="item.raw.name" :subtitle="item.raw.phone" />
@@ -315,6 +316,9 @@ const clientFilter = (itemTitle, queryText, item) => {
   return name.includes(text) || last.includes(text) || phone.includes(text);
 };
 
+// Helper safeArray
+const safeArray = (arr) => Array.isArray(arr) ? arr : [];
+
 // hydrate from selected client
 watch(
   () => formData.clientPhone,
@@ -323,7 +327,7 @@ watch(
     const c = clients.value.find((x) => x.phone === phone);
     if (!c) return;
 
-    // 1в1: подставляем денормализованные поля как раньше
+    // 1в1: подставляем денормализованные поля
     formData.clientName = c.name || '';
     formData.lastName = c.lastName || '';
     formData.phone = c.phone || '';
@@ -337,8 +341,11 @@ const loadOrderData = () => {
 
     formData.status = o.status || 'accepted';
 
-    // date может быть Date — приводим к YYYY-MM-DD
-    const d = o.date instanceof Date ? o.date : o.date ? new Date(o.date) : null;
+    // date handling
+    let d = o.date;
+    if (d && typeof d.toDate === 'function') d = d.toDate(); // timestamp
+    else if (typeof d === 'string') d = new Date(d);
+
     formData.date = d && !Number.isNaN(d.getTime()) ? d.toISOString().split('T')[0] : todayStr();
 
     formData.notes = o.notes || '';
@@ -348,15 +355,16 @@ const loadOrderData = () => {
     formData.lastName = o.lastName || '';
     formData.phone = o.phone || o.clientPhone || '';
 
-    formData.services = Array.isArray(o.services) ? o.services.map((s) => ({ ...s })) : [];
-    formData.details = Array.isArray(o.details) ? o.details.map((d) => ({ ...d })) : [];
+    // Safe copy
+    formData.services = safeArray(o.services).map((s) => ({ ...s }));
+    formData.details = safeArray(o.details).map((d) => ({ ...d }));
   } else {
     // новый заказ
     if (props.initialData?.date) formData.date = props.initialData.date;
     if (props.initialData?.clientName) formData.clientName = props.initialData.clientName;
     if (props.initialData?.lastName) formData.lastName = props.initialData.lastName;
     if (props.initialData?.phone) formData.phone = props.initialData.phone;
-    if (props.initialData?.clientId) formData.clientPhone = props.initialData.clientId; // если передаешь phone как id
+    if (props.initialData?.clientId) formData.clientPhone = props.initialData.clientId;
   }
 };
 
@@ -367,7 +375,7 @@ const saveOrder = async () => {
 
     const payload = {
       status: formData.status,
-      date: formData.date, // стор/сервис сам решит как хранить
+      date: formData.date,
       notes: formData.notes,
 
       clientPhone: clientPhone || '',
@@ -388,14 +396,13 @@ const saveOrder = async () => {
       await orderStore.createOrder(payload);
     }
 
-    // 1в1: обновляем клиента через “умную” логику (история/totalOrders/lastOrderDate)
     if (clientPhone) {
       await clientsStore.addOrUpdateClient({
         name: formData.clientName || 'Клиент',
         lastName: formData.lastName || '',
         phone: clientPhone,
         services: formData.services.map((s) => s.name),
-        notes: '', // не трогаем заметки клиента
+        notes: '',
       });
     }
 

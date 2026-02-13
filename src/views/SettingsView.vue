@@ -40,324 +40,332 @@
         </v-card-text>
       </v-card>
 
-      <v-expansion-panels variant="accordion" class="mb-4">
-        <v-expansion-panel>
-          <v-expansion-panel-title>
-            <v-icon class="mr-3">mdi-form-select</v-icon>
-            Обязательные поля
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <v-card flat>
-              <v-card-text>
-                <p class="text-body-2 text-medium-emphasis mb-4">
-                  Выберите поля, обязательные при создании заказа.
-                </p>
+      <div v-if="settingsStore.appSettings && !settingsStore.loading">
+        <v-expansion-panels variant="accordion" class="mb-4">
+          <v-expansion-panel>
+            <v-expansion-panel-title>
+              <v-icon class="mr-3">mdi-form-select</v-icon>
+              Обязательные поля
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <v-card flat>
+                <v-card-text>
+                  <p class="text-body-2 text-medium-emphasis mb-4">
+                    Выберите поля, обязательные при создании заказа.
+                  </p>
 
-                <div class="required-fields-grid">
-                  <v-checkbox
-                    v-for="(label, key) in requiredFieldLabels"
-                    :key="key"
-                    v-model="settingsStore.requiredFields[key]"
-                    :label="label"
-                    color="primary"
-                    hide-details
-                    @change="onSettingChange"
-                  />
-                </div>
-                
-                <div class="d-flex align-center mt-4">
+                  <div class="required-fields-grid">
+                    <v-checkbox
+                      v-for="(label, key) in requiredFieldLabels"
+                      :key="key"
+                      v-model="settingsStore.requiredFields[key]"
+                      :label="label"
+                      color="primary"
+                      hide-details
+                      @change="onSettingChange"
+                    />
+                  </div>
+                  
+                  <div class="d-flex align-center mt-4">
+                    <v-text-field
+                      v-model="settingsStore.appSettings.orderFormLastNameLabel"
+                      label="Название поля 'Фамилия'"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      class="flex-grow-1"
+                      @update:modelValue="onSettingChange"
+                    />
+                    <v-checkbox
+                      v-model="settingsStore.requiredFields.lastName"
+                      label="Обязательное"
+                      color="primary"
+                      hide-details
+                      class="ml-4"
+                      @change="onSettingChange"
+                    />
+                  </div>
+                </v-card-text>
+              </v-card>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+
+          <v-expansion-panel>
+            <v-expansion-panel-title>
+              <v-icon class="mr-3">mdi-swap-horizontal-bold</v-icon>
+              Статусы и синхронизация
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <v-card flat>
+                <v-card-text>
                   <v-text-field
-                    v-model="settingsStore.appSettings.orderFormLastNameLabel"
-                    label="Название поля 'Фамилия'"
+                    v-model="settingsStore.appSettings.additionalStatusName"
+                    label="Название статуса 'Additional'"
                     variant="outlined"
                     density="compact"
-                    hide-details
-                    class="flex-grow-1"
+                    class="mb-4"
                     @update:modelValue="onSettingChange"
                   />
-                  <v-checkbox
-                    v-model="settingsStore.requiredFields.lastName"
-                    label="Обязательное"
-                    color="primary"
-                    hide-details
-                    class="ml-4"
-                    @change="onSettingChange"
-                  />
-                </div>
-              </v-card-text>
-            </v-card>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
 
-        <v-expansion-panel>
-          <v-expansion-panel-title>
-            <v-icon class="mr-3">mdi-swap-horizontal-bold</v-icon>
-            Статусы и синхронизация
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <v-card flat>
-              <v-card-text>
-                <v-text-field
-                  v-model="settingsStore.appSettings.additionalStatusName"
-                  label="Название статуса 'Additional'"
-                  variant="outlined"
-                  density="compact"
-                  class="mb-4"
-                  @update:modelValue="onSettingChange"
-                />
-
-                <v-divider class="my-4" />
-                
-                <p class="text-subtitle-1 mb-2">Активные статусы</p>
-                <p class="text-caption text-medium-emphasis">Для заказов:</p>
-                <div class="d-flex flex-wrap ga-2 mb-4">
-                  <v-checkbox
-                    v-for="(label, key) in orderStatusLabels"
-                    :key="key"
-                    v-model="settingsStore.appSettings.orderStatuses[key]"
-                    :label="label"
-                    :disabled="key === 'accepted'"
-                    color="primary"
-                    hide-details
-                    @change="onSettingChange"
-                  />
-                </div>
-
-                <p class="text-caption text-medium-emphasis">Для услуг:</p>
-                <div class="d-flex flex-wrap ga-2 mb-4">
-                  <v-checkbox
-                    v-for="(label, key) in serviceStatusLabels"
-                    :key="key"
-                    v-model="settingsStore.appSettings.serviceStatuses[key]"
-                    :label="label"
-                    :disabled="key === 'accepted'"
-                    color="primary"
-                    hide-details
-                    @change="onSettingChange"
-                  />
-                </div>
-
-                <p class="text-caption text-medium-emphasis">
-                  Для "{{ settingsStore.appSettings.detailsTabLabel || 'Деталей' }}":
-                </p>
-                <div class="d-flex flex-wrap ga-2 mb-4">
-                  <v-checkbox
-                    v-for="(label, key) in detailStatusLabels"
-                    :key="key"
-                    v-model="settingsStore.appSettings.detailStatuses[key]"
-                    :label="label"
-                    :disabled="key === 'accepted'"
-                    color="primary"
-                    hide-details
-                    @change="onSettingChange"
-                  />
-                </div>
-
-                <v-divider class="my-4" />
-                
-                <p class="text-subtitle-1 mb-2">Авто-смена статуса заказа</p>
-                <p class="text-body-2 mb-3 text-medium-emphasis">
-                  Менять статус заказа, если ВСЕ услуги перешли в:
-                </p>
-                <div class="sync-settings mb-4">
-                  <div
-                    v-for="(label, key) in syncableServiceStatuses"
-                    :key="key"
-                    class="sync-status-row"
-                    :class="{ 'disabled-row': !settingsStore.appSettings.orderStatuses[key] }"
-                  >
+                  <v-divider class="my-4" />
+                  
+                  <p class="text-subtitle-1 mb-2">Активные статусы</p>
+                  <p class="text-caption text-medium-emphasis">Для заказов:</p>
+                  <div class="d-flex flex-wrap ga-2 mb-4">
                     <v-checkbox
-                      v-model="settingsStore.appSettings.syncServiceToOrderStatus[key]"
+                      v-for="(label, key) in orderStatusLabels"
+                      :key="key"
+                      v-model="settingsStore.appSettings.orderStatuses[key]"
                       :label="label"
-                      :disabled="!settingsStore.appSettings.orderStatuses[key]"
+                      :disabled="key === 'accepted'"
                       color="primary"
                       hide-details
                       @change="onSettingChange"
                     />
                   </div>
-                </div>
 
-                <v-divider class="my-4" />
-
-                <p class="text-subtitle-1 mb-2">Массовая смена услуг</p>
-                <p class="text-body-2 mb-3 text-medium-emphasis">
-                  При смене статуса заказа менять статус услуг:
-                </p>
-                <div class="sync-settings">
-                  <div
-                    v-for="(label, key) in syncableOrderStatuses"
-                    :key="key"
-                    class="sync-status-row"
-                    :class="{ 'disabled-row': !settingsStore.appSettings.serviceStatuses[key] }"
-                  >
+                  <p class="text-caption text-medium-emphasis">Для услуг:</p>
+                  <div class="d-flex flex-wrap ga-2 mb-4">
                     <v-checkbox
-                      v-model="settingsStore.appSettings.syncOrderToServiceStatus[key].enabled"
+                      v-for="(label, key) in serviceStatusLabels"
+                      :key="key"
+                      v-model="settingsStore.appSettings.serviceStatuses[key]"
                       :label="label"
-                      :disabled="!settingsStore.appSettings.serviceStatuses[key]"
+                      :disabled="key === 'accepted'"
                       color="primary"
                       hide-details
                       @change="onSettingChange"
                     />
-                    <v-checkbox
-                      v-model="settingsStore.appSettings.syncOrderToServiceStatus[key].confirm"
-                      label="С подтверждением"
-                      :disabled="!settingsStore.appSettings.serviceStatuses[key] || !settingsStore.appSettings.syncOrderToServiceStatus[key].enabled"
-                      color="secondary"
-                      hide-details
-                      class="ml-8"
-                      @change="onSettingChange"
-                    />
                   </div>
-                </div>
 
-                <v-divider class="my-4" />
-                
-                <p class="text-subtitle-1 mb-2">Индикаторы календаря</p>
-                <p class="text-body-2 mb-2 text-medium-emphasis">
-                  Какие статусы показывать точками в календаре:
-                </p>
-                <div class="d-flex flex-column ga-2">
-                  <v-checkbox
-                    v-for="(label, key) in orderStatusLabels"
-                    :key="key"
-                    v-model="settingsStore.appSettings.fullCalendarIndicatorStatuses"
-                    :label="label"
-                    :value="key"
-                    color="primary"
-                    hide-details
-                    @change="onSettingChange"
-                  />
-                </div>
-
-              </v-card-text>
-            </v-card>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
-
-        <v-expansion-panel>
-          <v-expansion-panel-title>
-            <v-icon class="mr-3">mdi-palette</v-icon>
-            Внешний вид
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <v-card flat>
-              <v-card-text>
-                <v-btn-toggle
-                  :model-value="themeStore.theme"
-                  @update:model-value="handleThemeChange"
-                  mandatory
-                  class="d-flex justify-center w-100 mb-4"
-                  color="primary"
-                  variant="outlined"
-                >
-                  <v-btn value="light" class="flex-grow-1">
-                    <v-icon start>mdi-white-balance-sunny</v-icon>
-                    Светлая
-                  </v-btn>
-                  <v-btn value="dark" class="flex-grow-1">
-                    <v-icon start>mdi-weather-night</v-icon>
-                    Темная
-                  </v-btn>
-                </v-btn-toggle>
-
-                <v-text-field
-                  v-model="settingsStore.appSettings.detailsTabLabel"
-                  label="Название вкладки 'Детали'"
-                  variant="outlined"
-                  density="compact"
-                  class="mt-2"
-                  @update:modelValue="onSettingChange"
-                />
-              </v-card-text>
-            </v-card>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
-
-        <v-expansion-panel>
-          <v-expansion-panel-title>
-            <v-icon class="mr-3">mdi-message-cog</v-icon>
-            Шаблоны сообщений
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <v-card flat>
-              <v-card-text>
-                <div class="d-flex justify-space-between align-center mb-4">
-                  <p class="text-body-2 text-medium-emphasis">
-                    Шаблоны для WhatsApp/Telegram.
+                  <p class="text-caption text-medium-emphasis">
+                    Для "{{ settingsStore.appSettings.detailsTabLabel || 'Деталей' }}":
                   </p>
-                  <v-btn
+                  <div class="d-flex flex-wrap ga-2 mb-4">
+                    <v-checkbox
+                      v-for="(label, key) in detailStatusLabels"
+                      :key="key"
+                      v-model="settingsStore.appSettings.detailStatuses[key]"
+                      :label="label"
+                      :disabled="key === 'accepted'"
+                      color="primary"
+                      hide-details
+                      @change="onSettingChange"
+                    />
+                  </div>
+
+                  <v-divider class="my-4" />
+                  
+                  <p class="text-subtitle-1 mb-2">Авто-смена статуса заказа</p>
+                  <p class="text-body-2 mb-3 text-medium-emphasis">
+                    Менять статус заказа, если ВСЕ услуги перешли в:
+                  </p>
+                  <div class="sync-settings mb-4">
+                    <div
+                      v-for="(label, key) in syncableServiceStatuses"
+                      :key="key"
+                      class="sync-status-row"
+                      :class="{ 'disabled-row': !settingsStore.appSettings.orderStatuses[key] }"
+                    >
+                      <v-checkbox
+                        v-model="settingsStore.appSettings.syncServiceToOrderStatus[key]"
+                        :label="label"
+                        :disabled="!settingsStore.appSettings.orderStatuses[key]"
+                        color="primary"
+                        hide-details
+                        @change="onSettingChange"
+                      />
+                    </div>
+                  </div>
+
+                  <v-divider class="my-4" />
+
+                  <p class="text-subtitle-1 mb-2">Массовая смена услуг</p>
+                  <p class="text-body-2 mb-3 text-medium-emphasis">
+                    При смене статуса заказа менять статус услуг:
+                  </p>
+                  <div class="sync-settings">
+                    <div
+                      v-for="(label, key) in syncableOrderStatuses"
+                      :key="key"
+                      class="sync-status-row"
+                      :class="{ 'disabled-row': !settingsStore.appSettings.serviceStatuses[key] }"
+                    >
+                      <v-checkbox
+                        v-model="settingsStore.appSettings.syncOrderToServiceStatus[key].enabled"
+                        :label="label"
+                        :disabled="!settingsStore.appSettings.serviceStatuses[key]"
+                        color="primary"
+                        hide-details
+                        @change="onSettingChange"
+                      />
+                      <v-checkbox
+                        v-model="settingsStore.appSettings.syncOrderToServiceStatus[key].confirm"
+                        label="С подтверждением"
+                        :disabled="!settingsStore.appSettings.serviceStatuses[key] || !settingsStore.appSettings.syncOrderToServiceStatus[key].enabled"
+                        color="secondary"
+                        hide-details
+                        class="ml-8"
+                        @change="onSettingChange"
+                      />
+                    </div>
+                  </div>
+
+                  <v-divider class="my-4" />
+                  
+                  <p class="text-subtitle-1 mb-2">Индикаторы календаря</p>
+                  <p class="text-body-2 mb-2 text-medium-emphasis">
+                    Какие статусы показывать точками в календаре:
+                  </p>
+                  <div class="d-flex flex-column ga-2">
+                    <v-checkbox
+                      v-for="(label, key) in orderStatusLabels"
+                      :key="key"
+                      v-model="settingsStore.appSettings.fullCalendarIndicatorStatuses"
+                      :label="label"
+                      :value="key"
+                      color="primary"
+                      hide-details
+                      @change="onSettingChange"
+                    />
+                  </div>
+
+                </v-card-text>
+              </v-card>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+
+          <v-expansion-panel>
+            <v-expansion-panel-title>
+              <v-icon class="mr-3">mdi-palette</v-icon>
+              Внешний вид
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <v-card flat>
+                <v-card-text>
+                  <v-btn-toggle
+                    :model-value="themeStore.theme"
+                    @update:model-value="handleThemeChange"
+                    mandatory
+                    class="d-flex justify-center w-100 mb-4"
                     color="primary"
-                    size="small"
-                    prepend-icon="mdi-plus"
-                    @click="openTemplateDialog()"
+                    variant="outlined"
                   >
-                    Добавить
+                    <v-btn value="light" class="flex-grow-1">
+                      <v-icon start>mdi-white-balance-sunny</v-icon>
+                      Светлая
+                    </v-btn>
+                    <v-btn value="dark" class="flex-grow-1">
+                      <v-icon start>mdi-weather-night</v-icon>
+                      Темная
+                    </v-btn>
+                  </v-btn-toggle>
+
+                  <v-text-field
+                    v-model="settingsStore.appSettings.detailsTabLabel"
+                    label="Название вкладки 'Детали'"
+                    variant="outlined"
+                    density="compact"
+                    class="mt-2"
+                    @update:modelValue="onSettingChange"
+                  />
+                </v-card-text>
+              </v-card>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+
+          <v-expansion-panel>
+            <v-expansion-panel-title>
+              <v-icon class="mr-3">mdi-message-cog</v-icon>
+              Шаблоны сообщений
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <v-card flat>
+                <v-card-text>
+                  <div class="d-flex justify-space-between align-center mb-4">
+                    <p class="text-body-2 text-medium-emphasis">
+                      Шаблоны для WhatsApp/Telegram.
+                    </p>
+                    <v-btn
+                      color="primary"
+                      size="small"
+                      prepend-icon="mdi-plus"
+                      @click="openTemplateDialog()"
+                    >
+                      Добавить
+                    </v-btn>
+                  </div>
+
+                  <v-list lines="two" v-if="settingsStore.appSettings.messageTemplates?.length">
+                    <v-list-item
+                      v-for="template in settingsStore.appSettings.messageTemplates"
+                      :key="template.id"
+                      :title="template.text"
+                      class="pl-0"
+                    >
+                      <template #append>
+                        <v-btn icon="mdi-pencil" variant="text" size="small" @click="openTemplateDialog(template)" />
+                        <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteTemplate(template.id)" />
+                      </template>
+                    </v-list-item>
+                  </v-list>
+                  <p v-else class="text-center text-caption text-medium-emphasis py-2">Нет шаблонов</p>
+                </v-card-text>
+              </v-card>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+
+          <v-expansion-panel>
+            <v-expansion-panel-title>
+              <v-icon class="mr-3">mdi-cog</v-icon>
+              Дополнительно
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <v-card flat>
+                <v-card-text>
+                  <v-switch
+                    v-model="settingsStore.appSettings.enableHapticFeedback"
+                    label="Тактильная отдача"
+                    color="primary"
+                    inset
+                    hide-details
+                    class="mb-2"
+                    @change="onSettingChange"
+                  />
+                  <v-switch
+                    v-model="settingsStore.appSettings.enablePullToRefresh"
+                    label="Обновление потягиванием"
+                    color="primary"
+                    inset
+                    hide-details
+                    class="mb-2"
+                    @change="onSettingChange"
+                  />
+                  <v-switch
+                    v-model="settingsStore.appSettings.showCompletedOrders"
+                    label="Показывать выполненные"
+                    color="primary"
+                    inset
+                    hide-details
+                    @change="onSettingChange"
+                  />
+
+                  <v-divider class="my-4" />
+                  <v-btn color="error" variant="outlined" block @click="resetAllSettings">
+                    Сбросить настройки
                   </v-btn>
-                </div>
+                </v-card-text>
+              </v-card>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
+      </div>
+      
+      <div v-else class="pa-4 text-center">
+        <v-progress-circular indeterminate color="primary"></v-progress-circular>
+        <div class="mt-2 text-caption">Загрузка настроек...</div>
+      </div>
 
-                <v-list lines="two" v-if="settingsStore.appSettings.messageTemplates?.length">
-                  <v-list-item
-                    v-for="template in settingsStore.appSettings.messageTemplates"
-                    :key="template.id"
-                    :title="template.text"
-                    class="pl-0"
-                  >
-                    <template #append>
-                      <v-btn icon="mdi-pencil" variant="text" size="small" @click="openTemplateDialog(template)" />
-                      <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteTemplate(template.id)" />
-                    </template>
-                  </v-list-item>
-                </v-list>
-                <p v-else class="text-center text-caption text-medium-emphasis py-2">Нет шаблонов</p>
-              </v-card-text>
-            </v-card>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
-
-        <v-expansion-panel>
-          <v-expansion-panel-title>
-            <v-icon class="mr-3">mdi-cog</v-icon>
-            Дополнительно
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <v-card flat>
-              <v-card-text>
-                <v-switch
-                  v-model="settingsStore.appSettings.enableHapticFeedback"
-                  label="Тактильная отдача"
-                  color="primary"
-                  inset
-                  hide-details
-                  class="mb-2"
-                  @change="onSettingChange"
-                />
-                <v-switch
-                  v-model="settingsStore.appSettings.enablePullToRefresh"
-                  label="Обновление потягиванием"
-                  color="primary"
-                  inset
-                  hide-details
-                  class="mb-2"
-                  @change="onSettingChange"
-                />
-                <v-switch
-                  v-model="settingsStore.appSettings.showCompletedOrders"
-                  label="Показывать выполненные"
-                  color="primary"
-                  inset
-                  hide-details
-                  @change="onSettingChange"
-                />
-
-                <v-divider class="my-4" />
-                <v-btn color="error" variant="outlined" block @click="resetAllSettings">
-                  Сбросить настройки
-                </v-btn>
-              </v-card-text>
-            </v-card>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
-      </v-expansion-panels>
     </v-card-text>
 
     <v-dialog v-model="templateDialog.show" max-width="500">

@@ -2,28 +2,26 @@ import { defineStore } from 'pinia';
 
 export const useConfirmationStore = defineStore('confirmation', {
   state: () => ({
-    isOpen: false,
+    // UI ждёт именно это поле:
+    dialog: false,
+
     title: '',
     message: '',
-    confirmText: 'Подтвердить',
+    confirmText: 'ОК',
     cancelText: 'Отмена',
-    color: 'primary', // Для изменения цвета кнопки (например, 'error' для удаления)
-    resolve: null, // Ссылка на resolve промиса
+    color: 'primary',
+    resolve: null,
   }),
 
   actions: {
-    /**
-     * Открывает диалог подтверждения
-     * @param {Object} options - { title, message, confirmText, cancelText, color }
-     * @returns {Promise<boolean>} - true если нажали "Да", false если "Нет"
-     */
-    ask({ title, message, confirmText, cancelText, color } = {}) {
+    // UI вызывает confirmationStore.open(title, message)
+    open(title, message, opts = {}) {
       this.title = title || 'Подтверждение';
-      this.message = message || 'Вы уверены, что хотите продолжить?';
-      this.confirmText = confirmText || 'Да';
-      this.cancelText = cancelText || 'Нет';
-      this.color = color || 'primary';
-      this.isOpen = true;
+      this.message = message || 'Вы уверены?';
+      this.confirmText = opts.confirmText || 'ОК';
+      this.cancelText = opts.cancelText || 'Отмена';
+      this.color = opts.color || 'primary';
+      this.dialog = true;
 
       return new Promise((resolve) => {
         this.resolve = resolve;
@@ -31,19 +29,15 @@ export const useConfirmationStore = defineStore('confirmation', {
     },
 
     confirm() {
-      this.isOpen = false;
-      if (this.resolve) {
-        this.resolve(true);
-        this.resolve = null;
-      }
+      this.dialog = false;
+      this.resolve?.(true);
+      this.resolve = null;
     },
 
     cancel() {
-      this.isOpen = false;
-      if (this.resolve) {
-        this.resolve(false);
-        this.resolve = null;
-      }
-    }
-  }
+      this.dialog = false;
+      this.resolve?.(false);
+      this.resolve = null;
+    },
+  },
 });
