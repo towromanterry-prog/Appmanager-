@@ -4,7 +4,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  addDoc,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -31,7 +30,7 @@ function orderDocRef(uid, orderId) {
 
 export const orderService = {
   /**
-   * Create: добавляем doc + выставляем createdAt/updatedAt на сервере
+   * Create: генерируем ID локально, сохраняем в фоне (offline-first)
    */
   async create(uid, payload) {
     const model = payload instanceof OrderModel ? payload : new OrderModel(payload);
@@ -40,13 +39,26 @@ export const orderService = {
     data.createdAt = data.createdAt ?? serverTimestamp();
     data.updatedAt = serverTimestamp();
 
-    const ref = await addDoc(ordersColRef(uid), data);
-    const snap = await getDoc(ref);
-    return OrderModel.fromFirestore(snap);
+    // 1. Генерируем ссылку и ID документа синхронно
+    const newRef = doc(ordersColRef(uid));
+
+    // 2. Отправляем запрос в кэш/сеть в фоне, НЕ блокируя выполнение через await
+    setDoc(newRef, data).catch((err) => {
+      console.error('Ошибка фоновой синхронизации create:', err);
+    });
+
+    // 3. Сразу возвращаем оптимистичную модель для UI
+    return new OrderModel({
+      id: newRef.id,
+      ...data,
+      // Подменяем маркеры сервера на локальное время, чтобы не было проблем с отображением до синхронизации
+      createdAt: new Date(), 
+      updatedAt: new Date(),
+    });
   },
 
   /**
-   * Upsert: setDoc с merge
+   * Upsert: setDoc с merge в фоне
    */
   async upsert(uid, orderId, payload) {
     const model = payload instanceof OrderModel ? payload : new OrderModel({ id: orderId, ...payload });
@@ -55,45 +67,74 @@ export const orderService = {
     data.updatedAt = serverTimestamp();
     if (!data.createdAt) data.createdAt = serverTimestamp();
 
-    await setDoc(orderDocRef(uid, orderId), data, { merge: true });
-    const snap = await getDoc(orderDocRef(uid, orderId));
-    return OrderModel.fromFirestore(snap);
+    const ref = orderDocRef(uid, orderId);
+
+    // Выполняем запись в фоне
+    setDoc(ref, data, { merge: true }).catch((err) => {
+      console.error('Ошибка фоновой синхронизации upsert:', err);
+    });
+
+    return new OrderModel({
+      id: orderId,
+      ...data,
+      updatedAt: new Date(),
+      ...(data.createdAt ? {} : { createdAt: new Date() })
+    });
   },
 
   /**
-   * Update: частичный updateDoc
+   * Update: частичный updateDoc в фоне
    */
   async update(uid, orderId, patch) {
-    const data = { ...patch, updatedAt: serverTimestamp() };
-
-    // Если в patch есть даты как Date/ISO — конвертим через модель
+    // Подготавливаем данные через модель, чтобы отсечь лишнее
     const model = new OrderModel({ id: orderId, ...patch });
     const normalized = model.toFirestore();
 
-    // ВАЖНО: берём только те поля, которые действительно пришли в patch
-    // чтобы не перетирать остальное null-ами
     const out = {};
     for (const key of Object.keys(patch)) {
-      out[key] = normalized[key];
+      out[key] = Object.prototype.hasOwnProperty.call(normalized, key)
+        ? normalized[key]
+        : patch[key];
     }
     out.updatedAt = serverTimestamp();
 
-    await updateDoc(orderDocRef(uid, orderId), out);
-    const snap = await getDoc(orderDocRef(uid, orderId));
-    return OrderModel.fromFirestore(snap);
-  },
+    const ref = orderDocRef(uid, orderId);
 
-  async remove(uid, orderId) {
-    await deleteDoc(orderDocRef(uid, orderId));
-  },
+    // Выполняем частичное обновление в фоне
+    updateDoc(ref, out).catch((err) => {
+      console.error('Ошибка фоновой синхронизации update:', err);
+    });
 
-  async getById(uid, orderId) {
-    const snap = await getDoc(orderDocRef(uid, orderId));
-    return snap.exists() ? OrderModel.fromFirestore(snap) : null;
+    return new OrderModel({ id: orderId, ...patch });
   },
 
   /**
-   * List: разовая загрузка (если нужно)
+   * Remove: удаление в фоне
+   */
+  async remove(uid, orderId) {
+    const ref = orderDocRef(uid, orderId);
+    
+    // Удаляем в фоне
+    deleteDoc(ref).catch((err) => {
+      console.error('Ошибка фоновой синхронизации remove:', err);
+    });
+  },
+
+  /**
+   * GetById: прямое чтение (в оффлайне достанет из кэша, если он там есть)
+   */
+  async getById(uid, orderId) {
+    try {
+      const snap = await getDoc(orderDocRef(uid, orderId));
+      return snap.exists() ? OrderModel.fromFirestore(snap) : null;
+    } catch (err) {
+      console.error('Ошибка чтения getById (возможно, нет сети и кэша):', err);
+      return null;
+    }
+  },
+
+  /**
+   * List: разовая загрузка
    */
   async list(uid, { status = null } = {}) {
     let q = query(ordersColRef(uid), orderBy('date', 'desc'));
@@ -102,20 +143,26 @@ export const orderService = {
       q = query(ordersColRef(uid), where('status', '==', status), orderBy('date', 'desc'));
     }
 
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => OrderModel.fromFirestore(d));
+    try {
+      const snap = await getDocs(q);
+      return snap.docs.map((d) => OrderModel.fromFirestore(d));
+    } catch (err) {
+      console.error('Ошибка загрузки list:', err);
+      return [];
+    }
   },
 
   /**
    * Realtime: подписка на все заказы.
-   * Возвращает unsubscribe().
+   * onSnapshot отлично работает в оффлайне, отдавая данные из локального кэша IndexedDB.
    */
   subscribe(uid, { onChange, onError } = {}) {
-    // Сортируем так, как чаще всего нужно UI (последние сверху)
     const q = query(ordersColRef(uid), orderBy('date', 'desc'));
 
     return onSnapshot(
       q,
+      // Включаем реакцию на локальные изменения (pending writes) до их отправки на сервер
+      { includeMetadataChanges: true },
       (snap) => {
         const orders = snap.docs.map((d) => OrderModel.fromFirestore(d));
         onChange?.(orders, snap);

@@ -1,117 +1,43 @@
 <template>
-  <div class="home-view-wrapper">
-    <div class="filter-header px-4 py-3 d-flex align-center justify-space-between bg-surface">
-      <div class="d-flex align-center" @click="showFullCalendar = true">
-        <v-icon color="primary" class="mr-2">mdi-calendar-month</v-icon>
+  <AppPage>
+    <AppSection>
+      <AppCard>
+        <OrdersToolbar
+          :selected-date="selectedDate"
+          @open-calendar="showFullCalendar = true"
+          @clear-date="setSelectedDate(null)"
+        />
+      </AppCard>
+    </AppSection>
 
-        <div v-if="selectedDate">
-          <div class="text-caption text-medium-emphasis lh-1">Просмотр</div>
-          <div class="text-subtitle-1 font-weight-bold lh-1 text-primary">
-            {{ formatDateFull(selectedDate) }}
-          </div>
-        </div>
-        <div v-else>
-          <div class="text-subtitle-1 font-weight-bold">Все заказы</div>
-        </div>
-
-        <v-icon icon="mdi-chevron-down" size="small" class="ml-1 text-medium-emphasis"></v-icon>
-      </div>
-
-      <v-btn
-        v-if="selectedDate"
-        icon="mdi-close"
-        variant="text"
-        size="small"
-        color="medium-emphasis"
-        @click.stop="selectedDate = null"
-      />
-    </div>
-
-    <div class="orders-list-container" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
-      <div v-if="!isLoggedIn" class="empty-state">
-        <v-icon size="64" color="surface-variant" class="mb-4">mdi-lock-outline</v-icon>
-        <div class="text-h6 text-medium-emphasis">Нужен вход</div>
-        <div class="text-body-2 text-disabled mt-2">Войдите, чтобы видеть заказы.</div>
-        <v-btn class="mt-4" color="primary" to="/settings">Перейти в настройки</v-btn>
-      </div>
-
-      <div v-else-if="isLoading && !orders.length" class="empty-state">
-        <v-icon size="64" color="surface-variant" class="mb-4">mdi-timer-sand</v-icon>
-        <div class="text-h6 text-medium-emphasis">Загрузка...</div>
-        <div class="text-body-2 text-disabled mt-2">Подготавливаем список заказов.</div>
-      </div>
-
-      <div v-else-if="viewOrders.length" class="pa-2 pb-16">
-        <OrderCard
-          v-for="order in viewOrders"
-          :key="order.id"
-          :order="order"
+    <AppSection class="flex-grow-1 min-h-0">
+      <AppCard class="h-100">
+        <OrdersList
+          :is-logged-in="isLoggedIn"
+          :is-loading="isLoading"
+          :orders="viewOrders"
+          :selected-date="selectedDate"
+          :format-date-full="formatDateFull"
+          :format-date-short="formatDateShort"
+          @create="createOrder"
           @edit="editOrder"
           @delete="confirmDeleteOrder"
-          class="mb-3"
         />
-      </div>
+      </AppCard>
+    </AppSection>
 
-      <div v-else class="empty-state">
-        <v-icon size="64" color="surface-variant" class="mb-4">mdi-clipboard-text-outline</v-icon>
-        <div class="text-h6 text-medium-emphasis">Нет заказов</div>
-        <div class="text-body-2 text-disabled mt-2">
-          {{ selectedDate ? 'На эту дату ничего нет' : 'Список пуст' }}
-        </div>
-        <v-btn v-if="selectedDate" variant="text" color="primary" class="mt-4" @click="createOrder">
-          Создать на {{ formatDateShort(selectedDate) }}
-        </v-btn>
-      </div>
-    </div>
-
-    <transition name="calendar-slide">
-      <div v-if="showFullCalendar" class="fullscreen-calendar">
-        <div class="calendar-header d-flex align-center justify-space-between px-4">
-          <div class="d-flex align-center">
-            <span class="text-h5 font-weight-bold mr-2">{{ currentMonthName }}</span>
-            <span class="text-h5 text-medium-emphasis">{{ currentYear }}</span>
-          </div>
-          <div class="d-flex align-center">
-            <v-btn icon="mdi-chevron-left" variant="text" @click="previousMonth"></v-btn>
-            <v-btn icon="mdi-chevron-right" variant="text" @click="nextMonth"></v-btn>
-            <v-btn icon="mdi-close" variant="text" class="ml-2" @click="showFullCalendar = false"></v-btn>
-          </div>
-        </div>
-
-        <div class="weekdays-grid">
-          <div v-for="day in ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']" :key="day" class="weekday-label">
-            {{ day }}
-          </div>
-        </div>
-
-        <div class="days-grid">
-          <div
-            v-for="(day, index) in flatCalendarDays"
-            :key="day.date || index"
-            class="day-cell"
-            :class="{
-              'other-month': day.otherMonth,
-              'is-today': day.isToday,
-              'is-selected': day.date === selectedDate
-            }"
-            @click="handleDayClick(day)"
-          >
-            <div class="day-number">{{ day.number }}</div>
-
-            <div class="status-stack" v-if="day.date">
-              <div
-                v-for="(count, status) in day.orderStats.statuses"
-                :key="status"
-                class="status-bar"
-                :class="status"
-              >
-                <span class="status-text">{{ getStatusLabel(status) }} {{ count }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </transition>
+    <OrdersCalendar
+      v-model:open="showFullCalendar"
+      :selected-date="selectedDate"
+      :current-date="currentDate"
+      :flat-days="flatCalendarDays"
+      :current-month-name="currentMonthName"
+      :current-year="currentYear"
+      :get-status-label="getStatusLabel"
+      @select-day="handleDayClick"
+      @prev-month="previousMonth"
+      @next-month="nextMonth"
+    />
 
     <v-fab-transition>
       <v-btn
@@ -129,9 +55,20 @@
     </v-fab-transition>
 
     <v-dialog v-model="showOrderForm" fullscreen transition="dialog-bottom-transition">
-      <OrderForm :order-id="orderToEditId" :initial-data="initialOrderData" @close="showOrderForm = false" />
+      <OrderForm
+        :order-id="orderToEditId"
+        :initial-data="initialOrderData"
+        @close="onOrderFormClose"
+        @saved="onOrderSaved"
+        @created="onOrderCreated"
+        @updated="onOrderUpdated"
+      />
     </v-dialog>
-  </div>
+
+    <v-snackbar v-model="snackbar.show" :timeout="2200" location="bottom">
+      {{ snackbar.text }}
+    </v-snackbar>
+  </AppPage>
 </template>
 
 <script setup>
@@ -144,9 +81,13 @@ import { useOrderStore } from '@/stores/orderStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useConfirmationStore } from '@/stores/confirmationStore';
 
-import OrderCard from '@/components/OrderCard.vue';
+import OrdersToolbar from '@/components/home/OrdersToolbar.vue';
+import OrdersCalendar from '@/components/home/OrdersCalendar.vue';
+import OrdersList from '@/components/home/OrdersList.vue';
+
 import OrderForm from '@/components/OrderForm.vue';
 import { useHapticFeedback } from '@/composables/useHapticFeedback';
+import { useFormatDate } from '@/composables/useDateUtils';
 
 const route = useRoute();
 const router = useRouter();
@@ -156,23 +97,31 @@ const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
 const confirmationStore = useConfirmationStore();
 
-const { orders, isLoading } = storeToRefs(orderStore);
+const { isLoading } = storeToRefs(orderStore);
 const { triggerHapticFeedback } = useHapticFeedback();
+const { toLongDate, toShortDate } = useFormatDate();
 
 const isLoggedIn = computed(() => authStore.isAuthenticated);
 
-const indicatorStatuses = computed(() => settingsStore.appSettings?.fullCalendarIndicatorStatuses || []);
-const showCompletedOrders = computed(() => !!settingsStore.appSettings?.showCompletedOrders);
+// showCancelled — берём из settingsStore (поддержка обоих вариантов структуры)
+const showCancelled = computed(() => {
+  const s = settingsStore?.settings;
+  return !!(s?.showCancelled ?? s?.appSettings?.showCancelled ?? settingsStore?.appSettings?.showCancelled);
+});
 
 // UI
 const showFullCalendar = ref(false);
 const showOrderForm = ref(false);
-const selectedDate = ref(null); // YYYY-MM-DD | null
-const currentDate = ref(new Date());
 const orderToEditId = ref(null);
 const initialOrderData = ref({});
 
-// ---- date helpers
+const snackbar = ref({ show: false, text: '' });
+const toast = (text) => {
+  snackbar.value.text = text;
+  snackbar.value.show = true;
+};
+
+// ---- date helpers (YYYY-MM-DD)
 const getLocalDateString = (date) => {
   const offset = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - offset).toISOString().split('T')[0];
@@ -200,29 +149,72 @@ const toDateKey = (value) => {
 // В новой модели приоритет: date -> startAt -> createdAt
 const getOrderDateKey = (o) => toDateKey(o?.date) || toDateKey(o?.startAt) || toDateKey(o?.createdAt);
 
+// ---- selectedDate в URL (?date=YYYY-MM-DD)
+const selectedDate = ref(null); // YYYY-MM-DD | null
+
+const setSelectedDate = (val) => {
+  selectedDate.value = val;
+};
+
+watch(
+  () => route.query.date,
+  (qDate) => {
+    const raw = Array.isArray(qDate) ? qDate[0] : qDate;
+    const next = typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+    if (selectedDate.value !== next) selectedDate.value = next;
+  },
+  { immediate: true }
+);
+
+watch(
+  selectedDate,
+  (val) => {
+    const nextQuery = { ...route.query };
+    if (val) nextQuery.date = val;
+    else delete nextQuery.date;
+
+    // чтобы не плодить history
+    router.replace({ query: nextQuery });
+  },
+  { flush: 'post' }
+);
+
+// ---- formatters
 const formatDateFull = (dateStr) => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  return toLongDate(d).replace(/\s*г\.\s*$/, '');
 };
 
 const formatDateShort = (dateStr) => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  return toShortDate(d);
 };
 
 const normalizeStatus = (s) => String(s || '').trim().toLowerCase();
 
-// ---- Calendar
+// ---- Calendar data
+const currentDate = ref(new Date());
 const currentYear = computed(() => currentDate.value.getFullYear());
 const currentMonthName = computed(() => currentDate.value.toLocaleDateString('ru-RU', { month: 'long' }));
+
+// Индикаторные статусы (как было), безопасно — если настроек нет
+const indicatorStatuses = computed(() => {
+  const s = settingsStore?.settings;
+  return (
+    s?.fullCalendarIndicatorStatuses ||
+    s?.appSettings?.fullCalendarIndicatorStatuses ||
+    settingsStore?.appSettings?.fullCalendarIndicatorStatuses ||
+    []
+  );
+});
 
 const flatCalendarDays = computed(() => {
   const year = currentDate.value.getFullYear();
   const month = currentDate.value.getMonth();
 
-  const indicatorList = indicatorStatuses.value.map((s) => String(s || '').trim()).filter(Boolean);
+  const indicatorList = (indicatorStatuses.value || []).map((s) => String(s || '').trim()).filter(Boolean);
   const indicatorSet = new Set(indicatorList.map((s) => s.toLowerCase()));
 
   const firstDayOfMonth = new Date(year, month, 1);
@@ -240,12 +232,12 @@ const flatCalendarDays = computed(() => {
     d.setDate(startDate.getDate() + i);
     const dateStr = getLocalDateString(d);
 
-    const dayOrdersAll = orders.value.filter((o) => getOrderDateKey(o) === dateStr);
+    const dayOrdersAll = orderStore.filteredOrders.filter((o) => getOrderDateKey(o) === dateStr);
 
-    // Учитываем showCompletedOrders так же, как и в списке
-    const dayOrders = showCompletedOrders.value
+    // showCancelled влияет и на календарь (чтобы совпадало со списком)
+    const dayOrders = showCancelled.value
       ? dayOrdersAll
-      : dayOrdersAll.filter((o) => !['delivered', 'cancelled'].includes(normalizeStatus(o?.status)));
+      : dayOrdersAll.filter((o) => normalizeStatus(o?.status) !== 'cancelled');
 
     const indicatorOrders = dayOrders.filter((o) => indicatorSet.has(normalizeStatus(o?.status)));
 
@@ -274,18 +266,14 @@ const flatCalendarDays = computed(() => {
   return days;
 });
 
-// ---- List
+// ---- List (обязательно от orderStore.filteredOrders + уважать showCancelled)
 const viewOrders = computed(() => {
-  // base: store getter (multi-status + search + sorting)
   let list = orderStore.filteredOrders;
 
-  // hide completed/cancelled (если выключено)
-  if (!showCompletedOrders.value) {
-    const hidden = new Set(['delivered', 'cancelled']);
-    list = list.filter((o) => !hidden.has(normalizeStatus(o?.status)));
+  if (!showCancelled.value) {
+    list = list.filter((o) => normalizeStatus(o?.status) !== 'cancelled');
   }
 
-  // date filter from calendar
   if (selectedDate.value) {
     list = list.filter((o) => getOrderDateKey(o) === selectedDate.value);
   }
@@ -293,13 +281,13 @@ const viewOrders = computed(() => {
   return list;
 });
 
-// ---- Status labels (как было)
+// ---- Status labels
 const getStatusLabel = (status) => {
   const s = normalizeStatus(status);
   const map = {
     in_progress: 'В работе',
     accepted: 'Принят',
-    additional: settingsStore.appSettings?.additionalStatusName || 'Доп. статус',
+    additional: settingsStore?.settings?.additionalStatusName || settingsStore?.appSettings?.additionalStatusName || 'Доп. статус',
     completed: 'Готов',
     delivered: 'Сдан',
     cancelled: 'Отменен',
@@ -310,7 +298,7 @@ const getStatusLabel = (status) => {
 // ---- Actions
 const handleDayClick = (day) => {
   triggerHapticFeedback('tap');
-  selectedDate.value = day.date;
+  setSelectedDate(day.date);
   showFullCalendar.value = false;
 };
 
@@ -338,151 +326,34 @@ const confirmDeleteOrder = async (orderId) => {
     orderToEditId.value = null;
     initialOrderData.value = {};
   }
+
+  toast('Удалено');
 };
 
 const nextMonth = () => (currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() + 1)));
 const previousMonth = () => (currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() - 1)));
 
-// swipe-down open
-const touchStartY = ref(0);
-const handleTouchStart = (e) => (touchStartY.value = e.touches[0].clientY);
-const handleTouchEnd = (e) => {
-  const dy = e.changedTouches[0].clientY - touchStartY.value;
-  if (dy > 120 && window.scrollY < 50) {
-    triggerHapticFeedback('light');
-    showFullCalendar.value = true;
+// ---- OrderForm hooks (на случай разных emit-ов)
+const onOrderCreated = () => toast('Заказ создан');
+const onOrderUpdated = () => toast('Сохранено');
+const onOrderSaved = (payload) => {
+  // Если OrderForm шлёт что-то вроде { mode: 'create' | 'update' }
+  const mode = payload?.mode;
+  if (mode === 'create') toast('Заказ создан');
+  else if (mode === 'update') toast('Сохранено');
+  else {
+    // fallback по контексту
+    toast(orderToEditId.value ? 'Сохранено' : 'Заказ создан');
   }
 };
 
-// query helpers
-const clearQueryParams = (keys) => {
-  const q = { ...route.query };
-  keys.forEach((k) => delete q[k]);
-  router.replace({ query: q });
+const onOrderFormClose = (payload) => {
+  // payload опционален — просто закрываем
+  showOrderForm.value = false;
+
+  // если вдруг close сообщает результат
+  if (payload?.action === 'created') toast('Заказ создан');
+  if (payload?.action === 'updated') toast('Сохранено');
+  if (payload?.action === 'deleted') toast('Удалено');
 };
-
-watch(
-  () => route.query.newOrder,
-  (flag) => {
-    const f = Array.isArray(flag) ? flag[0] : flag;
-    if (!f) return;
-
-    const date = selectedDate.value || getLocalDateString(new Date());
-    orderToEditId.value = null;
-
-    initialOrderData.value = {
-      date,
-      clientId: (Array.isArray(route.query.clientId) ? route.query.clientId[0] : route.query.clientId) || '',
-      clientName: (Array.isArray(route.query.clientName) ? route.query.clientName[0] : route.query.clientName) || '',
-      lastName: (Array.isArray(route.query.clientLastName) ? route.query.clientLastName[0] : route.query.clientLastName) || '',
-      phone: (Array.isArray(route.query.clientPhone) ? route.query.clientPhone[0] : route.query.clientPhone) || '',
-    };
-
-    showOrderForm.value = true;
-    clearQueryParams(['newOrder', 'clientId', 'clientName', 'clientLastName', 'clientPhone']);
-  },
-  { immediate: true }
-);
-
-watch(
-  () => route.query.editOrderId,
-  (orderId) => {
-    const id = Array.isArray(orderId) ? orderId[0] : orderId;
-    if (!id) return;
-
-    orderToEditId.value = id;
-    initialOrderData.value = {};
-    showOrderForm.value = true;
-    clearQueryParams(['editOrderId']);
-  },
-  { immediate: true }
-);
 </script>
-
-<style scoped>
-.home-view-wrapper {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.orders-list-container {
-  flex-grow: 1;
-  background-color: rgb(var(--v-theme-background));
-  min-height: 0;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 60vh;
-}
-
-.lh-1 { line-height: 1.1; }
-
-.fullscreen-calendar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100vh;
-  background-color: rgb(var(--v-theme-surface));
-  z-index: 2000;
-  display: flex;
-  flex-direction: column;
-}
-
-.calendar-header {
-  height: 60px;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.1);
-}
-
-.weekdays-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  text-align: center;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.1);
-}
-
-.weekday-label {
-  font-size: 14px !important;
-  font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-}
-
-.days-grid {
-  flex-grow: 1;
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(6, 1fr);
-}
-
-.day-cell {
-  border-right: 1px solid rgba(var(--v-border-color), 0.08);
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.08);
-  padding: 2px;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  transition: background-color 0.1s;
-}
-
-.day-cell:active { background-color: rgba(var(--v-theme-primary), 0.1); }
-.day-cell.other-month { background-color: rgba(0,0,0,0.02); }
-.day-cell.other-month .day-number { opacity: 0.3; }
-.day-cell.is-selected { background-color: rgba(var(--v-theme-primary), 0.08); }
-
-.day-number {
-  font-size: 20px !important;
-  font-weight: 700;
-  margin-left: 4px;
-  margin-top: 2px;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.day-cell.is-today .day-number { color: rgb(var(--v-theme-primary)); }
-</style>

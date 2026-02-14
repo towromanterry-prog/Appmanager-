@@ -1,5 +1,5 @@
 <template>
-  <v-app :theme="themeStore.theme" class="app-root">
+  <v-app :theme="appTheme" class="app-root">
     <v-app-bar app color="surface" flat density="comfortable" class="app-bar-minimal">
       <div class="d-flex align-center px-4 w-100">
         <v-scale-transition mode="out-in">
@@ -106,19 +106,35 @@
       </v-btn>
     </v-bottom-navigation>
 
+    <!-- ConfirmationDialog оставляем как есть (через confirmationStore) -->
     <ConfirmationDialog />
+
+    <!-- Global toast / snackbar layer (queue) -->
+    <v-snackbar
+      v-model="snackbarOpen"
+      :timeout="snackbarTimeout"
+      :color="snackbarColor"
+      location="bottom"
+      variant="tonal"
+      rounded="lg"
+      class="app-toast"
+    >
+      {{ snackbarText }}
+      <template #actions>
+        <v-btn variant="text" icon="mdi-close" @click="snackbarOpen = false" />
+      </template>
+    </v-snackbar>
   </v-app>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, provide, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
 
 // Auth
 import { useAuthStore } from '@/stores/authStore';
 
 // Stores
-import { useThemeStore } from '@/stores/themeStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useOrderStore } from '@/stores/orderStore';
 import { useSearchStore } from '@/stores/searchStore';
@@ -133,7 +149,6 @@ import ConfirmationDialog from '@/components/common/ConfirmationDialog.vue';
 
 // init
 const authStore = useAuthStore();
-const themeStore = useThemeStore();
 const settingsStore = useSettingsStore();
 const orderStore = useOrderStore();
 const searchStore = useSearchStore();
@@ -149,6 +164,9 @@ const route = useRoute();
 const activeTab = ref('home');
 const sortMenu = ref(false);
 const showSearch = ref(false);
+
+// Theme strictly from settingsStore
+const appTheme = computed(() => (settingsStore.theme === 'dark' ? 'dark' : 'light'));
 
 // Навигация
 const isHomePage = computed(() => route.name === 'home');
@@ -181,8 +199,6 @@ watch(
   }
 );
 
-// ВАЖНО: Убран watch на searchStore.searchQuery, теперь геттер в store читает его напрямую.
-
 // Статусы для фильтра
 const availableStatuses = computed(() => {
   const allStatuses = [
@@ -212,18 +228,19 @@ const toggleStatusFilter = (statusValue) => {
   }
 };
 
-// Глобальное изменение шрифта
+// 1) Font scale: --app-font-scale = fontSize / 16
 watch(
-  () => settingsStore.settings?.fontSize ?? settingsStore.appSettings?.baseFontSize,
-  (newSize) => {
-    if (!newSize) return;
-    document.documentElement.style.setProperty('--app-base-font-size', `${newSize}px`);
-    const scale = Number(newSize) / 16;
-    if (Number.isFinite(scale) && scale > 0) {
+  () => settingsStore.settings?.fontSize,
+  (fontSize) => {
+    const fs = Number(fontSize);
+    if (!Number.isFinite(fs) || fs <= 0) return;
+
+    const scale = fs / 16;
+    if (scale > 0) {
       document.documentElement.style.setProperty('--app-font-scale', String(scale));
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // Синхронизация табов
@@ -238,10 +255,7 @@ watch(
   { immediate: true }
 );
 
-// Тема
-themeStore.loadTheme();
-
-// ===== Главное: user-scoped данные =====
+// 3) User-scoped subscriptions after auth (без несуществующих методов)
 let startedForUid = null;
 let startPromise = null;
 
@@ -253,19 +267,17 @@ async function startUserScopedData(uid) {
 
   startPromise = (async () => {
     try {
-  await settingsStore.initRealtimeUpdates(uid);
-
-  // ВОТ ЗДЕСЬ БЫЛА ОШИБКА: нужно передать (uid) во все методы
-  await Promise.all([
-    orderStore.initRealtimeUpdates(uid), // тут было правильно
-    clientsStore.subscribe(uid),         // <--- БЫЛО ПУСТО, НАДО (uid)
-    servicesStore.subscribe(uid),        // <--- БЫЛО ПУСТО, НАДО (uid)
-    detailsStore.subscribe(uid),         // <--- БЫЛО ПУСТО, НАДО (uid)
-    tagsStore.subscribe(uid),            // <--- БЫЛО ПУСТО, НАДО (uid)
-  ]);
-} catch (e) {
-  console.error("Ошибка инициализации данных:", e);
-}
+      // settingsStore сам подписывается на authStore.currentUserId (см. init() внутри стора)
+      await Promise.all([
+        orderStore.initRealtimeUpdates(uid),
+        clientsStore.subscribe(uid),
+        servicesStore.subscribe(uid),
+        detailsStore.subscribe(uid),
+        tagsStore.subscribe(uid),
+      ]);
+    } catch (e) {
+      console.error('Ошибка инициализации данных:', e);
+    }
   })();
 
   return startPromise;
@@ -293,17 +305,66 @@ watch(
   },
   { immediate: true }
 );
+
+// 4) Global snackbar/toast queue
+const toastQueue = ref([]);
+const snackbarOpen = ref(false);
+const snackbarText = ref('');
+const snackbarColor = ref('surface');
+const snackbarTimeout = ref(2500);
+
+function showNextToast() {
+  if (snackbarOpen.value) return;
+  const next = toastQueue.value.shift();
+  if (!next) return;
+
+  snackbarText.value = next.text;
+  snackbarColor.value = next.color || 'surface';
+  snackbarTimeout.value = typeof next.timeout === 'number' ? next.timeout : 2500;
+  snackbarOpen.value = true;
+}
+
+watch(snackbarOpen, (open) => {
+  if (!open) showNextToast();
+});
+
+function notify(payload) {
+  // notify('text') or notify({ text, color, timeout })
+  const msg = typeof payload === 'string' ? { text: payload } : payload || {};
+  const text = String(msg.text || '').trim();
+  if (!text) return;
+
+  toastQueue.value.push({
+    text,
+    color: msg.color,
+    timeout: msg.timeout,
+  });
+
+  showNextToast();
+}
+
+// Можно inject('notify') в компонентах/вьюхах
+provide('notify', notify);
+
+// Доп. мост (не меняет контракты стор/сервисов):
+// window.dispatchEvent(new CustomEvent('app:toast', { detail: { text: '...', color: 'success' } }))
+let _toastHandler = null;
+onMounted(() => {
+  if (typeof window === 'undefined') return;
+  _toastHandler = (e) => notify(e?.detail || e);
+  window.addEventListener('app:toast', _toastHandler);
+  globalThis.$toast = notify;
+});
+onBeforeUnmount(() => {
+  if (typeof window === 'undefined') return;
+  if (_toastHandler) window.removeEventListener('app:toast', _toastHandler);
+  _toastHandler = null;
+});
 </script>
 
 <style>
 :root {
-  --app-base-font-size: 16px;
-  --app-font-scale: 1;
   --safe-area-bottom: env(safe-area-inset-bottom, 16px);
-}
-
-html {
-  font-size: var(--app-base-font-size);
 }
 
 .v-application {
@@ -324,5 +385,9 @@ html {
   font-size: 1.1rem;
   padding-top: 0;
   padding-bottom: 0;
+}
+
+.app-toast {
+  margin-bottom: calc(var(--safe-area-bottom) + 8px);
 }
 </style>

@@ -1,5 +1,8 @@
 // src/services/clientsService.js
+import { doc, setDoc } from 'firebase/firestore';
+
 import { FirestoreCrudService } from './firestoreCrudService';
+import { db } from '@/services/firebase';
 import { ClientModel } from '@/models/ClientModel';
 
 export const clientsService = new FirestoreCrudService({
@@ -9,9 +12,25 @@ export const clientsService = new FirestoreCrudService({
   toDoc: (model) => new ClientModel(model).toFirestore(),
 });
 
-// 1-в-1 как раньше: docId = phone, setDoc(..., {merge:true}) 7
-export async function setClientByPhoneMerge(uid, phone, payload) {
-  const model = new ClientModel({ ...payload, phone, id: phone });
-  await clientsService.set(uid, phone, model, { merge: true });
-  return phone;
+/**
+ * setClientByIdMerge
+ * ЖЕСТКОЕ ТРЕБОВАНИЕ:
+ * - вместо setClientByPhoneMerge
+ * - внутри используем напрямую setDoc(..., { merge: true })
+ * - FirestoreCrudService.set() не используем
+ */
+export async function setClientByIdMerge(uid, clientId, payload) {
+  if (!uid) throw new Error('setClientByIdMerge: uid is required');
+  if (!clientId) throw new Error('setClientByIdMerge: clientId is required');
+
+  const model = new ClientModel({ ...payload, id: clientId });
+
+  const ref = doc(db, 'users', uid, 'clients', clientId);
+
+  // offline-first: запись отправляем в фоне
+  setDoc(ref, model.toFirestore(), { merge: true }).catch((e) => {
+    console.error('Ошибка фоновой синхронизации клиента:', e);
+  });
+
+  return clientId;
 }

@@ -36,6 +36,13 @@ function applyTheme(themeKey) {
     document.documentElement.setAttribute('data-theme', t);
     document.documentElement.style.colorScheme = t;
   }
+  
+function applyFontScale(scale) {
+  if (typeof document === 'undefined') return;
+  const n = Number(scale);
+  const safe = Number.isFinite(n) && n > 0 ? n : 1;
+  document.documentElement.style.setProperty('--app-font-scale', String(safe));
+}  
 
   // Vuetify (если проброшен глобально)
   const v = globalThis.__vuetify || globalThis.vuetify;
@@ -58,6 +65,34 @@ export const useSettingsStore = defineStore('settings', () => {
   const theme = computed(() => settings.value?.theme ?? 'light');
   const appSettings = computed(() => settings.value?.appSettings ?? {});
   const requiredFields = computed(() => settings.value?.requiredFields ?? {});
+  const fontScale = computed(() => {
+    const fs = Number(settings.value?.appSettings?.fontSize ?? 16);
+    return Number.isFinite(fs) && fs > 0 ? fs / 16 : 1;
+  });
+  // === Order status colors (single source of truth) ===
+  // Правишь ТОЛЬКО тут — и дальше используешь settingsStore.getOrderStatusColor(status) в компонентах.
+  const DEFAULT_ORDER_STATUS_COLORS = {
+    accepted: '#4F8CFF',
+    in_progress: '#F2B24C',
+    additional: '#7C6CFF',
+    completed: '#39C37D',
+    delivered: '#9AA4B2',
+    cancelled: '#FF5D73',
+  };
+
+  const _normStatus = (s) => String(s || '').trim().toLowerCase();
+
+  // Мердж: кастом из Firebase/настроек (если есть) перекрывает дефолт
+  const orderStatusColors = computed(() => ({
+    ...DEFAULT_ORDER_STATUS_COLORS,
+    ...(settings.value?.orderStatusColors || {}),
+    ...(settings.value?.appSettings?.orderStatusColors || {}),
+  }));
+
+  const getOrderStatusColor = (status) => {
+    const key = _normStatus(status);
+    return orderStatusColors.value[key] || DEFAULT_ORDER_STATUS_COLORS.delivered;
+  };
 
   function _loadFromLocalStorage() {
     const cachedApp = safeParse(localStorage.getItem(LS_APP_SETTINGS) || 'null');
@@ -259,7 +294,10 @@ export const useSettingsStore = defineStore('settings', () => {
     addMessageTemplate,
     updateMessageTemplate,
     deleteMessageTemplate,
-
+    
+    // цвета
+    orderStatusColors,
+    getOrderStatusColor,
     // reset
     resetSettings,
   };

@@ -1,32 +1,88 @@
 /*
  * ==========================================================================
- * Глобальные стили - Тема "Soft Modern"
+ * Глобальные стили - Тема "Soft Modern" + Design Tokens
  * ==========================================================================
  */
 
-/* 1. Настройка шрифтов и базовой типографики */
+/* 0) Design tokens */
+:root {
+  /* масштаб шрифта (меняется из настроек приложения) */
+  --app-font-scale: 1;
+
+  /* плотная шкала отступов (rem) */
+  --s-1: 0.25rem; /* 4px */
+  --s-2: 0.5rem;  /* 8px */
+  --s-3: 0.75rem; /* 12px  ← базовый */
+  --s-4: 1rem;    /* 16px  ← базовый */
+  --s-5: 1.25rem; /* 20px */
+  --s-6: 1.5rem;  /* 24px */
+  --s-7: 2rem;    /* 32px */
+  --s-8: 2.5rem;  /* 40px */
+
+  /* радиусы под “soft minimal” */
+  --radius-sm: 0.5rem;  /* 8px */
+  --radius: 0.75rem;    /* 12px */
+  --radius-lg: 1rem;    /* 16px */
+
+  /* мягкая тень */
+  --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.06);
+
+  /* контейнер (можно переопределять при необходимости) */
+  --app-container-max: 72rem; /* 1152px */
+}
+
+/* 0.1) База / reset (минимально, чтобы ничего не ломать) */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
-  font-family: 'Roboto', sans-serif;
+  margin: 0;
+}
+
+/* 1) Настройка шрифтов и базовой типографики */
+body {
+  font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
   background-color: rgb(var(--v-theme-background));
   color: rgb(var(--v-theme-on-background));
   line-height: 1.5;
+
   /* Плавный переход цвета фона при смене темы */
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* 2. Улучшенная прокрутка */
+/* Типографика для обычных html-элементов (Vuetify типографику не ломает) */
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+p {
+  margin: 0;
+}
+
+small {
+  font-size: 0.875em;
+}
+
+/* 2) Улучшенная прокрутка + масштаб шрифта */
 html {
   overflow-y: auto;
   scrollbar-gutter: stable;
-  /* Базовый размер шрифта, который может масштабироваться через настройки */
+
+  /* Требование: масштабируем базовый размер через переменную */
   font-size: calc(16px * var(--app-font-scale, 1));
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: var(--s-2);
+  height: var(--s-2);
 }
 
 ::-webkit-scrollbar-track {
@@ -36,17 +92,19 @@ html {
 /* Используем цвета из темы для скроллбара */
 ::-webkit-scrollbar-thumb {
   background-color: rgba(var(--v-theme-on-surface), 0.2);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(var(--v-theme-on-surface), 0.4);
 }
 
-/* 3. Кастомизация Vuetify компонентов для соответствия MD3 */
+/* 3) Кастомизация Vuetify компонентов для соответствия MD3 */
 
 /* Убираем лишние заглавные буквы (Material Design 3 стиль) */
-.v-btn, .v-tab, .v-list-subheader {
+.v-btn,
+.v-tab,
+.v-list-subheader {
   text-transform: none !important;
   letter-spacing: normal !important;
 }
@@ -61,16 +119,63 @@ html {
   box-shadow: none !important;
 }
 
-/* 4. Адаптивность и улучшения для мобильных устройств */
+/* 4) Утилити-классы (примитивы) */
+
+/* Отступ страницы + safe-area снизу */
+.app-page {
+  padding: var(--s-3);
+  padding-bottom: calc(var(--s-3) + env(safe-area-inset-bottom, 0px));
+}
+
+/* Ограничение ширины + центрирование */
+.app-container {
+  width: 100%;
+  max-width: var(--app-container-max);
+  margin-inline: auto;
+}
+
+/* Вертикальный stack */
+.app-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+/* Горизонтальный stack */
+.app-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+/* Стандартный padding “карточки” (12px) */
+.app-card-pad {
+  padding: var(--s-3);
+}
+
+/* Приглушенный текст */
+.app-muted {
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+/* Разделитель */
+.app-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(var(--v-theme-outline-variant), 0.6);
+}
+
+/* 5) Адаптивность и улучшения для мобильных устройств */
 @media (max-width: 600px) {
   /* Увеличиваем кликабельные области на мобильных */
-  .v-btn, .v-list-item {
+  .v-btn,
+  .v-list-item {
     min-height: 48px !important;
   }
 }
 
-/* 5. Общие хелперы */
-.gap-1 { gap: 4px; }
-.gap-2 { gap: 8px; }
-.gap-3 { gap: 12px; }
-.gap-4 { gap: 16px; }
+/* 6) Общие хелперы (оставлены, но привязаны к токенам) */
+.gap-1 { gap: var(--s-1); }
+.gap-2 { gap: var(--s-2); }
+.gap-3 { gap: var(--s-3); }
+.gap-4 { gap: var(--s-4); }

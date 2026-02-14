@@ -23,6 +23,8 @@ async function bootstrap() {
   app.use(pinia);
   app.use(router);
   app.use(vuetify);
+  // даём settingsStore доступ к Vuetify для переключения темы (см. settingsStore.applyTheme)
+  globalThis.__vuetify = vuetify;
 
   // ждём первый onAuthStateChanged
   const authStore = useAuthStore(pinia);

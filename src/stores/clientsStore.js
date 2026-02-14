@@ -2,19 +2,22 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { useAuthStore } from './authStore';
-import { clientsService, setClientByPhoneMerge } from '@/services/clientsService';
+
+import { clientsService, setClientByIdMerge } from '@/services/clientsService';
+import { generateId } from '@/models/ClientModel';
+
+const normalizePhone = (val) => String(val ?? '').replace(/\D/g, '').replace(/^7/, '');
+const isNonEmpty = (v) => String(v ?? '').trim().length > 0;
 
 export const useClientsStore = defineStore('clients', () => {
-  const clients = ref([]);     // ClientModel[]
+  const clients = ref([]); // ClientModel[]
   const loading = ref(false);
   let unsubscribe = null;
 
   const auth = useAuthStore();
 
-  // Добавлено (не ломает старое): активные неархивные
   const activeItems = computed(() => clients.value.filter((c) => !c.isArchived));
 
-  // === 1. Подписка (как раньше onSnapshot, но через authStore/init) ===
   async function subscribe() {
     await auth.init();
     const uid = auth.currentUserId;
@@ -40,22 +43,66 @@ export const useClientsStore = defineStore('clients', () => {
     );
   }
 
-  // === 2. Добавление или Обновление (Умная логика) — 1-в-1 со старым addOrUpdateClient === 8
-  async function addOrUpdateClient(clientData) {
+  /**
+   * addOrUpdateClient (умный)
+   * ЖЕСТКОЕ ТРЕБОВАНИЕ: приоритет поиска строго:
+   * 1) по id (если передан)
+   * 2) по oldPhone (для старых заказов без clientId)
+   * 3) по phone (защита от дублей)
+   *
+   * Принимает объект: { id, oldPhone, phone, name, lastName, services, notes, isArchived }
+   * Возвращает итоговый clientId (существующий или новый).
+   */
+  async function addOrUpdateClient(clientData = {}) {
     await auth.init();
     const uid = auth.currentUserId;
-    if (!uid) return;
+    if (!uid) return null;
 
-    const { name, lastName = '', phone, services = [], notes = '' } = clientData || {};
-    if (!phone) return;
+    const {
+      id = null,
+      oldPhone = '',
+      phone = '',
+      name = '',
+      lastName = '',
+      services = [],
+      notes = '',
+      isArchived,
+    } = clientData || {};
 
-    const existingClient = clients.value.find((c) => c.phone === phone);
+    const idStr = isNonEmpty(id) ? String(id) : null;
+    const oldPhoneNorm = normalizePhone(oldPhone);
+    const phoneNorm = normalizePhone(phone);
 
-    const totalOrders = existingClient ? (existingClient.totalOrders || 0) + 1 : 1;
+    // если вообще нечем идентифицировать — ничего не делаем
+    if (!idStr && !oldPhoneNorm && !phoneNorm) return null;
+
+    // 1) по id
+    let existingClient = null;
+    if (idStr) {
+      existingClient = clients.value.find((c) => String(c?.id || '') === idStr) || null;
+    }
+
+    // 2) по oldPhone
+    if (!existingClient && oldPhoneNorm) {
+      existingClient =
+        clients.value.find((c) => normalizePhone(c?.phone) === oldPhoneNorm) ||
+        clients.value.find((c) => String(c?.id || '') === String(oldPhone)) ||
+        null;
+    }
+
+    // 3) по phone
+    if (!existingClient && phoneNorm) {
+      existingClient =
+        clients.value.find((c) => normalizePhone(c?.phone) === phoneNorm) ||
+        clients.value.find((c) => String(c?.id || '') === String(phone)) ||
+        null;
+    }
+
+    const clientId = existingClient?.id || generateId('cl');
 
     const newHistoryEntry = {
       date: new Date().toISOString(),
-      services: services,
+      services: Array.isArray(services) ? services : [],
     };
 
     let history = [];
@@ -66,39 +113,62 @@ export const useClientsStore = defineStore('clients', () => {
     }
 
     const clientRecord = {
-      name,
-      lastName,
-      phone,
+      id: clientId,
+      name: isNonEmpty(name) ? name : (existingClient?.name || ''),
+      lastName: isNonEmpty(lastName) ? lastName : (existingClient?.lastName || ''),
+
+      // сохраняем актуальный телефон (если ввели новый — он главный)
+      phone: isNonEmpty(phone) ? phone : (existingClient?.phone || oldPhone || ''),
+
       lastOrderDate: new Date().toISOString(),
-      totalOrders,
-      favoriteServices: services,
-      notes: notes || (existingClient ? existingClient.notes : ''),
+      favoriteServices: Array.isArray(services) ? services : [],
+      notes: isNonEmpty(notes) ? notes : (existingClient?.notes || ''),
       history,
-      // архив не трогаем, если не передали явно
-      isArchived: clientData?.isArchived ?? existingClient?.isArchived ?? false,
+
+      // архив: если передали явно — уважаем, иначе сохраняем текущее
+      isArchived: isArchived ?? existingClient?.isArchived ?? false,
     };
 
     try {
-      await setClientByPhoneMerge(uid, phone, clientRecord);
+      await setClientByIdMerge(uid, clientId, clientRecord);
     } catch (e) {
       console.error('Ошибка сохранения клиента:', e);
     }
+
+    // Оптимистично обновим локально (чтобы UI не ждал snapshot)
+    try {
+      if (existingClient) {
+        const idx = clients.value.findIndex((c) => String(c?.id || '') === String(existingClient.id));
+        if (idx !== -1) clients.value[idx] = { ...clients.value[idx], ...clientRecord };
+      } else {
+        clients.value.push(clientRecord);
+      }
+    } catch (_) {}
+
+    return clientId;
   }
 
-  // === 3. Удаление — 1-в-1 со старым deleteClient(phone) === 9
-  async function deleteClient(phone) {
+  // Удаление: принимаем id ИЛИ телефон (для совместимости)
+  async function deleteClient(idOrPhone) {
     await auth.init();
     const uid = auth.currentUserId;
-    if (!uid || !phone) return;
+    if (!uid || !isNonEmpty(idOrPhone)) return;
+
+    const key = String(idOrPhone);
+    const found =
+      clients.value.find((c) => String(c?.id || '') === key) ||
+      clients.value.find((c) => normalizePhone(c?.phone) === normalizePhone(key)) ||
+      null;
+
+    const clientId = found?.id || key;
 
     try {
-      await clientsService.delete(uid, phone);
+      await clientsService.delete(uid, clientId);
     } catch (e) {
       console.error('Ошибка удаления клиента:', e);
     }
   }
 
-  // === 4. Поиск (как было): sort by lastOrderDate desc + slice(0,10) === 10
   const searchClients = computed(() => (query) => {
     if (!query || query.length < 2) return [];
 
@@ -107,6 +177,7 @@ export const useClientsStore = defineStore('clients', () => {
       .filter(
         (client) =>
           (client.name && client.name.toLowerCase().includes(lowerQuery)) ||
+          (client.lastName && client.lastName.toLowerCase().includes(lowerQuery)) ||
           (client.phone && String(client.phone).includes(query))
       )
       .sort((a, b) => new Date(b.lastOrderDate || 0) - new Date(a.lastOrderDate || 0))
@@ -114,18 +185,19 @@ export const useClientsStore = defineStore('clients', () => {
   });
 
   function getClientByPhone(phone) {
-    return clients.value.find((c) => c.phone === phone);
+    const norm = normalizePhone(phone);
+    return clients.value.find((c) => normalizePhone(c?.phone) === norm);
   }
 
   function getClientByName(name) {
     if (!name) return undefined;
-    return clients.value.find((c) => c.name && c.name.toLowerCase() === name.toLowerCase());
+    const n = String(name).toLowerCase();
+    return clients.value.find((c) => String(c?.name || '').toLowerCase() === n);
   }
 
-  // Исправление бага старого стора: было return [.clients.value] 11
   function getTopClients(limit = 10) {
     return [...clients.value]
-      .sort((a, b) => (b.totalOrders || 0) - (a.totalOrders || 0))
+      .sort((a, b) => new Date(b.lastOrderDate || 0) - new Date(a.lastOrderDate || 0))
       .slice(0, limit);
   }
 
@@ -135,21 +207,36 @@ export const useClientsStore = defineStore('clients', () => {
       .slice(0, limit);
   }
 
-  // === Архивация (добавили по твоему требованию) ===
-  async function archiveClient(phone) {
+  async function archiveClient(idOrPhone) {
     await auth.init();
     const uid = auth.currentUserId;
-    if (!uid || !phone) return;
-    await clientsService.update(uid, phone, { isArchived: true });
+    if (!uid || !isNonEmpty(idOrPhone)) return;
+
+    const key = String(idOrPhone);
+    const found =
+      clients.value.find((c) => String(c?.id || '') === key) ||
+      clients.value.find((c) => normalizePhone(c?.phone) === normalizePhone(key)) ||
+      null;
+
+    const clientId = found?.id || key;
+    await clientsService.update(uid, clientId, { isArchived: true });
   }
 
-  async function unarchiveClient(phone) {
+  async function unarchiveClient(idOrPhone) {
     await auth.init();
     const uid = auth.currentUserId;
-    if (!uid || !phone) return;
-    await clientsService.update(uid, phone, { isArchived: false });
+    if (!uid || !isNonEmpty(idOrPhone)) return;
+
+    const key = String(idOrPhone);
+    const found =
+      clients.value.find((c) => String(c?.id || '') === key) ||
+      clients.value.find((c) => normalizePhone(c?.phone) === normalizePhone(key)) ||
+      null;
+
+    const clientId = found?.id || key;
+    await clientsService.update(uid, clientId, { isArchived: false });
   }
-  
+
   function stop() {
     if (unsubscribe) unsubscribe();
     unsubscribe = null;
@@ -160,11 +247,8 @@ export const useClientsStore = defineStore('clients', () => {
   return {
     clients,
     loading,
-
-    // новый API (не мешает старому)
     activeItems,
 
-    // старый API (1-в-1)
     subscribe,
     addOrUpdateClient,
     deleteClient,
@@ -173,11 +257,8 @@ export const useClientsStore = defineStore('clients', () => {
     getClientByName,
     getTopClients,
     getRecentClients,
-
-    // новое (архив)
     archiveClient,
     unarchiveClient,
-    
     stop,
   };
 });
