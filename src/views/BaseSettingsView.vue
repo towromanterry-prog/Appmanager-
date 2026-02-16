@@ -12,7 +12,6 @@
         >
           <v-tab value="services">Услуги</v-tab>
           <v-tab value="details">Детали</v-tab>
-          <v-tab value="tags">Теги</v-tab>
         </v-tabs>
       </AppCard>
     </AppSection>
@@ -176,47 +175,6 @@
           </AppCard>
         </AppSection>
       </v-window-item>
-
-      <!-- TAGS -->
-      <v-window-item value="tags">
-        <AppSection title="Теги">
-          <AppCard>
-            <div class="row gap-sm align-center mb">
-              <v-text-field
-                v-model="newTagName"
-                label="Новый тег"
-                variant="outlined"
-                density="compact"
-                hide-details
-                class="flex-1"
-                @keydown.enter="addTag"
-              />
-              <v-btn color="primary" prepend-icon="mdi-plus" @click="addTag">
-                Добавить
-              </v-btn>
-            </div>
-
-            <v-list bg-color="transparent" class="pa-0">
-              <v-card v-for="t in tags" :key="t.id" class="mb-2" flat border>
-                <v-list-item class="py-2">
-                  <v-list-item-title class="text-body-2 font-weight-bold">
-                    {{ t.name }}
-                  </v-list-item-title>
-                  <template #append>
-                    <v-btn
-                      size="x-small"
-                      variant="text"
-                      color="error"
-                      icon="mdi-delete"
-                      @click="deleteTag(t)"
-                    />
-                  </template>
-                </v-list-item>
-              </v-card>
-            </v-list>
-          </AppCard>
-        </AppSection>
-      </v-window-item>
     </v-window>
   </AppPage>
 </template>
@@ -227,7 +185,6 @@ import { useRoute } from 'vue-router';
 
 import { useServicesStore } from '@/stores/servicesStore';
 import { useDetailsStore } from '@/stores/detailsStore';
-import { useTagsStore } from '@/stores/tagsStore';
 import { useConfirmationStore } from '@/stores/confirmationStore';
 
 import ServiceFormDialog from '@/components/ServiceFormDialog.vue';
@@ -239,7 +196,6 @@ import AppCard from '@/components/ui/AppCard.vue';
 
 const servicesStore = useServicesStore();
 const detailsStore = useDetailsStore();
-const tagsStore = useTagsStore();
 const confirmationStore = useConfirmationStore();
 
 const route = useRoute();
@@ -258,14 +214,11 @@ const detailForm = reactive({
   defaultPrice: 0,
 });
 
-const newTagName = ref('');
-
 const servicesLoading = computed(() => servicesStore.loading);
 const detailsLoading = computed(() => detailsStore.loading);
 
 const services = computed(() => servicesStore.services || []);
 const details = computed(() => detailsStore.details || []);
-const tags = computed(() => tagsStore.tags || []);
 
 const displayedServices = computed(() => {
   const list = services.value;
@@ -340,20 +293,6 @@ const deleteDetail = async (detail) => {
   const ok = await confirmationStore.open('Удаление', 'Удалить эту деталь?');
   if (!ok) return;
   await detailsStore.remove(detail.id);
-};
-
-// --- Tags
-const addTag = async () => {
-  const name = String(newTagName.value || '').trim();
-  if (!name) return;
-  await tagsStore.add({ name });
-  newTagName.value = '';
-};
-
-const deleteTag = async (tag) => {
-  const ok = await confirmationStore.open('Удаление', 'Удалить этот тег?');
-  if (!ok) return;
-  await tagsStore.remove(tag.id);
 };
 
 onMounted(() => {
