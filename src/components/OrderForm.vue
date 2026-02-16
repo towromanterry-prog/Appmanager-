@@ -516,7 +516,6 @@ const addService = (service) => {
     name: service.name,
     price: Number(service.defaultPrice) || 0,
     status: 'accepted',
-    tagIds: service.tagIds || [],
   });
   serviceToAdd.value = null;
 };

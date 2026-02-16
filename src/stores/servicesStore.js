@@ -46,7 +46,6 @@ export const useServicesStore = defineStore('services', () => {
     await servicesService.add(uid, {
       name: serviceData.name,
       defaultPrice: Number(serviceData.defaultPrice),
-      tagIds: serviceData.tagIds || [],
       isArchived: !!serviceData.isArchived,
     });
   }
@@ -59,7 +58,6 @@ export const useServicesStore = defineStore('services', () => {
     await servicesService.update(uid, id, {
       name: serviceData.name,
       defaultPrice: Number(serviceData.defaultPrice),
-      tagIds: serviceData.tagIds || [],
       // isArchived можно обновлять отдельно
     });
   }
@@ -75,11 +73,6 @@ export const useServicesStore = defineStore('services', () => {
   // 1-в-1 геттеры из старого serviceStore 12
   function getServiceById(id) {
     return services.value.find((s) => s.id === id);
-  }
-
-  function getServicesByTag(tagId) {
-    if (!tagId) return services.value;
-    return services.value.filter((s) => s.tagIds && s.tagIds.includes(tagId));
   }
 
   // Архив (добавили)
@@ -113,7 +106,6 @@ export const useServicesStore = defineStore('services', () => {
     updateService,
     deleteService,
     getServiceById,
-    getServicesByTag,
     archiveService,
     unarchiveService,
     
