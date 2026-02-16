@@ -3,7 +3,6 @@
     <v-tabs v-model="activeTab" bg-color="surface" color="primary" grow density="comfortable" class="border-b">
       <v-tab value="services">Услуги</v-tab>
       <v-tab value="details">Детали</v-tab>
-      <v-tab value="tags">Теги</v-tab>
     </v-tabs>
 
     <v-window v-model="activeTab" class="flex-grow-1 overflow-y-auto">
@@ -114,52 +113,10 @@
         </div>
       </v-window-item>
 
-      <!-- TAGS -->
-      <v-window-item value="tags" class="fill-height">
-        <div class="pa-4">
-          <v-card class="pa-4" flat border>
-            <div class="text-subtitle-1 font-weight-bold mb-3">Управление тегами</div>
-
-            <div class="d-flex gap-2 mb-4">
-              <v-text-field
-                v-model="newTagName"
-                label="Новый тег"
-                placeholder="Например: Срочно"
-                density="compact"
-                hide-details
-                variant="outlined"
-                @keyup.enter="createTag"
-              />
-              <v-btn color="primary" height="40" @click="createTag" :disabled="!newTagName.trim()">
-                <v-icon>mdi-plus</v-icon>
-              </v-btn>
-            </div>
-
-            <div class="d-flex flex-wrap gap-2">
-              <v-chip
-                v-for="tag in tags"
-                :key="tag.id"
-                closable
-                label
-                color="primary"
-                variant="tonal"
-                @click:close="deleteTag(tag)"
-              >
-                {{ tag.name }}
-              </v-chip>
-
-              <div v-if="!tags.length" class="text-caption text-medium-emphasis w-100 mt-2">
-                Теги пока не добавлены
-              </div>
-            </div>
-          </v-card>
-        </div>
-      </v-window-item>
     </v-window>
 
     <v-fab-transition>
       <v-btn
-        v-if="activeTab !== 'tags'"
         position="fixed"
         location="bottom right"
         icon="mdi-plus"
@@ -202,14 +159,12 @@ import { useRoute } from 'vue-router';
 
 import { useServicesStore } from '@/stores/servicesStore';
 import { useDetailsStore } from '@/stores/detailsStore';
-import { useTagsStore } from '@/stores/tagsStore';
 import { useConfirmationStore } from '@/stores/confirmationStore';
 
 import ServiceFormDialog from '@/components/ServiceFormDialog.vue';
 
 const servicesStore = useServicesStore();
 const detailsStore = useDetailsStore();
-const tagsStore = useTagsStore();
 const confirmationStore = useConfirmationStore();
 
 const route = useRoute();
@@ -228,14 +183,11 @@ const detailForm = reactive({
   defaultPrice: 0,
 });
 
-const newTagName = ref('');
-
 const servicesLoading = computed(() => servicesStore.loading);
 const detailsLoading = computed(() => detailsStore.loading);
 
 const services = computed(() => servicesStore.services || []);
 const details = computed(() => detailsStore.details || []);
-const tags = computed(() => tagsStore.tags || []);
 
 const displayedServices = computed(() => {
   const list = services.value;
@@ -321,22 +273,6 @@ const deleteDetail = async (detail) => {
   await detailsStore.deleteDetail(detail.id);
 };
 
-// --- Tags
-const createTag = async () => {
-  const name = newTagName.value.trim();
-  if (!name) return;
-
-  await tagsStore.addTag({ name, color: '#grey' });
-  newTagName.value = '';
-};
-
-const deleteTag = async (tag) => {
-  const ok = await confirmationStore.open('Удаление тега', `Удалить тег "${tag.name}"?`);
-  if (!ok) return;
-
-  await tagsStore.deleteTag(tag.id);
-};
-
 // --- Common
 const handleFabClick = () => {
   if (activeTab.value === 'services') openServiceDialog();
@@ -346,13 +282,11 @@ const handleFabClick = () => {
 onMounted(async () => {
   await servicesStore.subscribe();
   await detailsStore.subscribe();
-  await tagsStore.subscribe();
 });
 
 onUnmounted(() => {
   servicesStore.stop();
   detailsStore.stop();
-  tagsStore.stop();
 });
 </script>
 

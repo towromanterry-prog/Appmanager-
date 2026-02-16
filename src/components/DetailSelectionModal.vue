@@ -16,7 +16,7 @@
             <v-col cols="12">
               <v-text-field
                 v-model="searchQuery"
-                label="Поиск по названию или тегу"
+                label="Поиск по названию"
                 prepend-inner-icon="mdi-magnify"
                 variant="outlined"
                 clearable
@@ -39,19 +39,6 @@
               </template>
 
               <v-list-item-title>{{ detail.name }}</v-list-item-title>
-              <v-list-item-subtitle>
-                <div class="tags-container">
-                  <v-chip
-                    v-for="tag in getTags(detail.tagIds)"
-                    :key="tag.id"
-                    :color="tag.color"
-                    size="small"
-                    class="mr-1"
-                  >
-                    {{ tag.name }}
-                  </v-chip>
-                </div>
-              </v-list-item-subtitle>
 
               <template v-slot:append>
                 <span class="text-body-1 font-weight-medium">
@@ -70,7 +57,6 @@
 import { ref, computed, watch } from 'vue';
 import Fuse from 'fuse.js';
 import { useDetailStore } from '@/stores/detailStore';
-import { useTagsStore } from '@/stores/tagsStore';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -79,7 +65,6 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'selection-confirmed']);
 
 const detailStore = useDetailStore();
-const tagsStore = useTagsStore();
 const dialog = ref(props.modelValue);
 const searchQuery = ref('');
 const selected = ref([]);
@@ -87,13 +72,12 @@ const selected = ref([]);
 const availableDetails = computed(() => {
   return detailStore.details.map(detail => ({
     ...detail,
-    tagNames: getTags(detail.tagIds).map(t => t.name)
   }));
 });
 
 const fuse = computed(() => {
   return new Fuse(availableDetails.value, {
-    keys: ['name', 'tagNames'],
+    keys: ['name'],
     threshold: 0.3,
   });
 });
@@ -109,10 +93,6 @@ const isSelected = (detail) => {
   return selected.value.some(s => s.id === detail.id);
 };
 
-const getTags = (tagIds) => {
-  if (!tagIds) return [];
-  return tagIds.map(id => tagsStore.tags.find(t => t.id === id)).filter(Boolean);
-};
 
 const toggleDetail = (detail) => {
   const index = selected.value.findIndex(s => s.id === detail.id);
@@ -124,7 +104,6 @@ const toggleDetail = (detail) => {
       name: detail.name,
       price: detail.defaultPrice,
       status: 'accepted',
-      tagIds: detail.tagIds || []
     });
   }
 };
@@ -154,13 +133,5 @@ watch(dialog, (newVal) => {
 if (detailStore.details.length === 0) {
   detailStore.loadDetails();
 }
-if (tagsStore.tags.length === 0) {
-  tagsStore.loadTags();
-}
 </script>
 
-<style scoped>
-.v-list-item-subtitle .v-chip {
-  margin-top: 4px;
-}
-</style>
