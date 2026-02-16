@@ -16,7 +16,7 @@ import { db } from '@/services/firebase';
 export class FirestoreCrudService {
   /**
    * @param {object} cfg
-   * @param {string} cfg.collectionKey - clients | services | details | tags
+   * @param {string} cfg.collectionKey - clients | services | details
    * @param {(docSnap:any)=>any} cfg.fromDoc
    * @param {(model:any)=>object} cfg.toDoc
    * @param {string=} cfg.orderByField - поле сортировки (обычно 'name')
