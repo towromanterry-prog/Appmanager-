@@ -36,6 +36,8 @@
                   :hide-details="'auto'"
                   :rules="rulesFor('status')"
                   class="flex-grow-1 dynamic-font-input"
+                  @update:menu="val => val && hapticTap()"
+                  @update:model-value="hapticTap()"
                 >
                   <template #selection="{ item }">
                     <div class="of-status-row">
@@ -66,6 +68,8 @@
                   :rules="rulesFor('date')"
                   style="max-width: 170px;"
                   class="dynamic-font-input"
+                  @click="hapticTap()"
+                  @update:model-value="hapticTap()"
                 />
               </div>
             </AppCard>
@@ -89,6 +93,8 @@
                 clearable
                 :custom-filter="clientFilter"
                 :menu-props="menuProps"
+                @update:menu="val => val && hapticTap()"
+                @update:model-value="hapticTap()"
                 class="dynamic-font-input"
               >
                 <template #item="{ props, item }">
@@ -122,6 +128,7 @@
                   density="comfortable"
                   :hide-details="'auto'"
                   :rules="rulesFor('clientName')"
+                  @click="hapticTap()"
                   class="dynamic-font-input"
                 />
                 <v-text-field
@@ -131,6 +138,7 @@
                   density="comfortable"
                   :hide-details="'auto'"
                   :rules="rulesFor('lastName')"
+                  @click="hapticTap()"
                   class="dynamic-font-input"
                 />
               </div>
@@ -147,7 +155,7 @@
                 placeholder="+7 000 000 00 00"
                 style="margin-top: var(--s-3);"
                 class="dynamic-font-input"
-                @focus="ensurePhonePrefix"
+                @focus="() => { ensurePhonePrefix(); hapticTap(); }"
                 @update:model-value="onPhoneInput"
                 @keydown="onPhoneKeydown"
               />
@@ -213,6 +221,7 @@
                 :menu-props="menuProps"
                 class="dynamic-font-input"
                 @update:model-value="addService"
+                @update:menu="val => val && hapticTap()"
                 style="margin-top: var(--s-3);"
               >
                 <template #item="{ props, item }">
@@ -285,6 +294,7 @@
                 :menu-props="menuProps"
                 class="dynamic-font-input"
                 @update:model-value="addDetail"
+                @update:menu="val => val && hapticTap()"
                 style="margin-top: var(--s-3);"
               >
                 <template #item="{ props, item }">
@@ -307,6 +317,7 @@
                 auto-grow
                 rows="2"
                 :hide-details="'auto'"
+                @click="hapticTap()"
                 class="dynamic-font-input"
               />
             </AppCard>
@@ -352,6 +363,7 @@ const servicesStore = useServicesStore();
 const detailsStore = useDetailsStore();
 const settingsStore = useSettingsStore();
 const { triggerHapticFeedback } = useHapticFeedback();
+const hapticTap = () => { try { triggerHapticFeedback('tap'); } catch {} };
 
 const notifyInject = inject('notify', null);
 const notify = (payload) => {
@@ -498,6 +510,7 @@ const detailToAdd = ref(null);
 
 const addService = (service) => {
   if (!service) return;
+  hapticTap();
   formData.services.push({
     id: service.id,
     name: service.name,
@@ -512,6 +525,7 @@ const removeService = (index) => formData.services.splice(index, 1);
 
 const addDetail = (detail) => {
   if (!detail) return;
+  hapticTap();
   formData.details.push({
     id: detail.id,
     name: detail.name,

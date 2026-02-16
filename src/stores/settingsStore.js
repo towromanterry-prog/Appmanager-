@@ -17,6 +17,20 @@ function safeParse(json) {
   }
 }
 
+function isPlainObject(v) {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+function getByPath(obj, path) {
+  const parts = String(path || '').split('.').filter(Boolean);
+  let cur = obj;
+  for (const p of parts) {
+    if (!cur || typeof cur !== 'object') return undefined;
+    cur = cur[p];
+  }
+  return cur;
+}
+
 function setByPath(obj, path, value) {
   const parts = String(path).split('.');
   const last = parts.pop();
@@ -28,21 +42,46 @@ function setByPath(obj, path, value) {
   cur[last] = value;
 }
 
+// Делает nested patch из "a.b.c" => { a: { b: { c: value } } }
+function buildPatchFromPath(path, value) {
+  const parts = String(path).split('.').filter(Boolean);
+  if (parts.length === 0) return {};
+  if (parts.length === 1) return { [parts[0]]: value };
+
+  const root = {};
+  let cur = root;
+  for (let i = 0; i < parts.length; i++) {
+    const key = parts[i];
+    if (i === parts.length - 1) {
+      cur[key] = value;
+    } else {
+      cur[key] = isPlainObject(cur[key]) ? cur[key] : {};
+      cur = cur[key];
+    }
+  }
+  return root;
+}
+
+function mergeDeep(target, src) {
+  if (!isPlainObject(target) || !isPlainObject(src)) return target;
+  for (const [k, v] of Object.entries(src)) {
+    if (isPlainObject(v)) {
+      if (!isPlainObject(target[k])) target[k] = {};
+      mergeDeep(target[k], v);
+    } else {
+      target[k] = v; // массивы/примитивы — заменяем целиком
+    }
+  }
+  return target;
+}
+
 function applyTheme(themeKey) {
   const t = themeKey === 'dark' ? 'dark' : 'light';
 
-  // DOM
   if (typeof document !== 'undefined') {
     document.documentElement.setAttribute('data-theme', t);
     document.documentElement.style.colorScheme = t;
   }
-  
-function applyFontScale(scale) {
-  if (typeof document === 'undefined') return;
-  const n = Number(scale);
-  const safe = Number.isFinite(n) && n > 0 ? n : 1;
-  document.documentElement.style.setProperty('--app-font-scale', String(safe));
-}  
 
   // Vuetify (если проброшен глобально)
   const v = globalThis.__vuetify || globalThis.vuetify;
@@ -50,6 +89,21 @@ function applyFontScale(scale) {
   if (nameRef && typeof nameRef.value !== 'undefined') {
     nameRef.value = t;
   }
+}
+
+function applyFontScale(scale) {
+  if (typeof document === 'undefined') return;
+  const n = Number(scale);
+  const safe = Number.isFinite(n) && n > 0 ? n : 1;
+  document.documentElement.style.setProperty('--app-font-scale', String(safe));
+}
+
+function effectiveFontPx(appSettings) {
+  // В модели дефолт — baseFontSize 3,
+  // а UI пишет appSettings.fontSize 4
+  const raw = appSettings?.fontSize ?? appSettings?.baseFontSize ?? 16;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 16;
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -62,39 +116,37 @@ export const useSettingsStore = defineStore('settings', () => {
   let _unsub = null;
   let _bootstrapped = false;
 
-  const theme = computed(() => settings.value?.theme ?? 'light');
-  const appSettings = computed(() => settings.value?.appSettings ?? {});
-  const requiredFields = computed(() => settings.value?.requiredFields ?? {});
-  const fontScale = computed(() => {
-    const fs = Number(settings.value?.appSettings?.fontSize ?? 16);
-    return Number.isFinite(fs) && fs > 0 ? fs / 16 : 1;
-  });
-  // === Order status colors (single source of truth) ===
-  // Правишь ТОЛЬКО тут — и дальше используешь settingsStore.getOrderStatusColor(status) в компонентах.
-  const DEFAULT_ORDER_STATUS_COLORS = {
-    accepted: '#4F8CFF',
-    in_progress: '#F2B24C',
-    additional: '#7C6CFF',
-    completed: '#39C37D',
-    delivered: '#9AA4B2',
-    cancelled: '#FF5D73',
-  };
+  // === buffered persistence state ===
+  let _lsTimer = null;
 
-  const _normStatus = (s) => String(s || '').trim().toLowerCase();
+  let _flushTimer = null;
+  let _flushing = false;
+  let _needsFlushAfter = false;
 
-  // Мердж: кастом из Firebase/настроек (если есть) перекрывает дефолт
-  const orderStatusColors = computed(() => ({
-    ...DEFAULT_ORDER_STATUS_COLORS,
-    ...(settings.value?.orderStatusColors || {}),
-    ...(settings.value?.appSettings?.orderStatusColors || {}),
-  }));
+  let _pendingUid = null;
+  let _pendingPatch = {};           // nested patch object
+  const _pendingPaths = new Set();  // paths like "appSettings.showCancelled"
+  let _pendingWaiters = [];
 
-  const getOrderStatusColor = (status) => {
-    const key = _normStatus(status);
-    return orderStatusColors.value[key] || DEFAULT_ORDER_STATUS_COLORS.delivered;
-  };
+  function _scheduleLocalSave(delay = 250) {
+    if (typeof localStorage === 'undefined') return;
+    if (_lsTimer) clearTimeout(_lsTimer);
+    _lsTimer = setTimeout(() => {
+      _lsTimer = null;
+      _saveToLocalStorage();
+    }, delay);
+  }
+
+  function _saveToLocalStorage() {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(LS_APP_SETTINGS, JSON.stringify(settings.value.appSettings));
+    localStorage.setItem(LS_REQUIRED_FIELDS, JSON.stringify(settings.value.requiredFields));
+    localStorage.setItem(LS_THEME, settings.value.theme);
+  }
 
   function _loadFromLocalStorage() {
+    if (typeof localStorage === 'undefined') return;
+
     const cachedApp = safeParse(localStorage.getItem(LS_APP_SETTINGS) || 'null');
     const cachedReq = safeParse(localStorage.getItem(LS_REQUIRED_FIELDS) || 'null');
     const cachedTheme = localStorage.getItem(LS_THEME);
@@ -106,22 +158,136 @@ export const useSettingsStore = defineStore('settings', () => {
     });
 
     applyTheme(settings.value.theme);
+    applyFontScale(effectiveFontPx(settings.value.appSettings) / 16);
   }
 
-  function _saveToLocalStorage() {
-    localStorage.setItem(LS_APP_SETTINGS, JSON.stringify(settings.value.appSettings));
-    localStorage.setItem(LS_REQUIRED_FIELDS, JSON.stringify(settings.value.requiredFields));
-    localStorage.setItem(LS_THEME, settings.value.theme);
+  function _clearBuffered() {
+    if (_lsTimer) clearTimeout(_lsTimer);
+    _lsTimer = null;
+
+    if (_flushTimer) clearTimeout(_flushTimer);
+    _flushTimer = null;
+
+    _pendingUid = null;
+    _pendingPatch = {};
+    _pendingPaths.clear();
+
+    // чтобы await-ы не зависали
+    const waiters = _pendingWaiters;
+    _pendingWaiters = [];
+    waiters.forEach(({ resolve }) => resolve());
   }
 
   function _stopRealtime() {
     if (_unsub) _unsub();
     _unsub = null;
     _uid = null;
+    _clearBuffered();
   }
 
+  async function _flushRemoteNow() {
+    if (_flushing) {
+      _needsFlushAfter = true;
+      return;
+    }
+
+    const effectiveUid = _pendingUid || _uid || authStore.currentUserId;
+    if (!effectiveUid) {
+      const waiters = _pendingWaiters;
+      _pendingWaiters = [];
+      waiters.forEach(({ resolve }) => resolve());
+      _pendingPatch = {};
+      _pendingPaths.clear();
+      return;
+    }
+
+    const hasPatch = isPlainObject(_pendingPatch) && Object.keys(_pendingPatch).length > 0;
+    if (!hasPatch) {
+      const waiters = _pendingWaiters;
+      _pendingWaiters = [];
+      waiters.forEach(({ resolve }) => resolve());
+      return;
+    }
+
+    _flushing = true;
+
+    const patch = _pendingPatch;
+    const waiters = _pendingWaiters;
+
+    // сбрасываем очередь ДО await, чтобы новые апдейты собирались отдельно
+    _pendingPatch = {};
+    _pendingWaiters = [];
+    _pendingPaths.clear();
+
+    try {
+      await settingsService.updateSettings(effectiveUid, patch);
+      waiters.forEach(({ resolve }) => resolve());
+    } catch (e) {
+      console.error('settings flush failed:', e);
+      waiters.forEach(({ reject }) => reject(e));
+    } finally {
+      _flushing = false;
+      if (_needsFlushAfter) {
+        _needsFlushAfter = false;
+        // без setTimeout: добиваем хвост
+        _flushRemoteNow();
+      }
+    }
+  }
+
+  function _delayForKey(path) {
+    // Тексты/много символов — дольше
+    if (
+      path === 'appSettings.additionalStatusName' ||
+      path === 'appSettings.detailsTabLabel' ||
+      path === 'appSettings.orderFormLastNameLabel'
+    ) return 450;
+
+    // Слайдер шрифта — часто дергается
+    if (path === 'appSettings.fontSize') return 250;
+
+    // По умолчанию (switch/select/checkbox)
+    return 180;
+  }
+
+  function _scheduleFlush(delay) {
+    if (_flushTimer) clearTimeout(_flushTimer);
+    _flushTimer = setTimeout(() => {
+      _flushTimer = null;
+      _flushRemoteNow();
+    }, delay);
+  }
+
+  const theme = computed(() => settings.value?.theme ?? 'light');
+  const appSettings = computed(() => settings.value?.appSettings ?? {});
+  const requiredFields = computed(() => settings.value?.requiredFields ?? {});
+
+  const fontScale = computed(() => effectiveFontPx(settings.value?.appSettings) / 16);
+
+  // === Order status colors (single source of truth) ===
+  const DEFAULT_ORDER_STATUS_COLORS = {
+    accepted: '#4F8CFF',
+    in_progress: '#F2B24C',
+    additional: '#7C6CFF',
+    completed: '#39C37D',
+    delivered: '#9AA4B2',
+    cancelled: '#FF5D73',
+  };
+
+  const _normStatus = (s) => String(s || '').trim().toLowerCase();
+
+  const orderStatusColors = computed(() => ({
+    ...DEFAULT_ORDER_STATUS_COLORS,
+    ...(settings.value?.orderStatusColors || {}),
+    ...(settings.value?.appSettings?.orderStatusColors || {}),
+  }));
+
+  const getOrderStatusColor = (status) => {
+    const key = _normStatus(status);
+    return orderStatusColors.value[key] || DEFAULT_ORDER_STATUS_COLORS.delivered;
+  };
+
   function initRealtimeUpdates(uid) {
-    // быстрый старт из кэша
     _loadFromLocalStorage();
 
     if (!uid) return;
@@ -136,14 +302,21 @@ export const useSettingsStore = defineStore('settings', () => {
       uid,
       (model) => {
         // merge: облако главнее, но кэш добавляет новые поля/дефолты
-        settings.value = new SettingsModel({
+        const merged = new SettingsModel({
           theme: model.theme,
           appSettings: { ...settings.value.appSettings, ...model.appSettings },
           requiredFields: { ...settings.value.requiredFields, ...model.requiredFields },
         });
 
-        _saveToLocalStorage();
-        applyTheme(settings.value.theme);
+        // не затираем то, что прямо сейчас правит пользователь (до flush)
+        for (const p of _pendingPaths) {
+          const localVal = getByPath(settings.value, p);
+          if (localVal !== undefined) setByPath(merged, p, localVal);
+        }
+
+        settings.value = merged;
+
+        _scheduleLocalSave(250);
         loading.value = false;
       },
       (err) => {
@@ -153,10 +326,6 @@ export const useSettingsStore = defineStore('settings', () => {
     );
   }
 
-  /**
-   * Авто-инициализация (как в старом сторе): слушаем authStore.currentUserId
-   * Важно: main.js уже делает await authStore.init() до mount(). 
-   */
   function init() {
     if (_bootstrapped) return;
     _bootstrapped = true;
@@ -172,15 +341,21 @@ export const useSettingsStore = defineStore('settings', () => {
       { immediate: true },
     );
 
-    // если тему поменяли локально (например из UI) — применяем сразу
     watch(
       () => settings.value.theme,
       (t) => applyTheme(t),
       { immediate: true },
     );
+
+    watch(
+      () => effectiveFontPx(settings.value?.appSettings),
+      (px) => applyFontScale(px / 16),
+      { immediate: true },
+    );
   }
 
-  async function updateSetting(key, value, uid) {
+  // Главное: local меняем мгновенно, а в Firestore/LS пишем буфером
+  function updateSetting(key, value, uid) {
     const k = String(key);
 
     // оптимистично локально
@@ -192,20 +367,28 @@ export const useSettingsStore = defineStore('settings', () => {
       applyTheme(settings.value.theme);
     }
 
-    _saveToLocalStorage();
+    // localStorage — тоже буфером (иначе фризы)
+    _scheduleLocalSave(250);
 
     const effectiveUid = uid || _uid || authStore.currentUserId;
-    if (!effectiveUid) return;
+    if (!effectiveUid) return Promise.resolve();
 
-    try {
-      await settingsService.updateSettings(effectiveUid, { [k]: value });
-    } catch (e) {
-      console.error('updateSetting failed:', e);
-    }
+    _pendingUid = effectiveUid;
+
+    // собираем patch без dotted keys, чтобы сервис делал 1 setDoc(merge)
+    _pendingPaths.add(k);
+    const patch = buildPatchFromPath(k, value);
+    mergeDeep(_pendingPatch, patch);
+
+    const delay = _delayForKey(k);
+    _scheduleFlush(delay);
+
+    return new Promise((resolve, reject) => {
+      _pendingWaiters.push({ resolve, reject });
+    });
   }
 
-  // === Совместимость со старым API === 3
-
+  // === Совместимость со старым API ===
   function updateAppSettings(newSettings, uid) {
     return updateSetting('appSettings', newSettings, uid);
   }
@@ -251,23 +434,24 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function resetSettings(uid) {
+    _clearBuffered();
+
     const def = SettingsModel.defaults();
     settings.value = def;
     _saveToLocalStorage();
     applyTheme(def.theme);
+    applyFontScale(effectiveFontPx(def.appSettings) / 16);
 
     const effectiveUid = uid || _uid || authStore.currentUserId;
     if (!effectiveUid) return;
 
     try {
-      // сброс в облако целиком (через merge внутри сервиса можно расширять)
       await settingsService.setAllSettings(effectiveUid, def);
     } catch (e) {
       console.error('resetSettings failed:', e);
     }
   }
 
-  // стартуем автоматически (как раньше)
   init();
 
   return {
@@ -279,6 +463,7 @@ export const useSettingsStore = defineStore('settings', () => {
     theme,
     appSettings,
     requiredFields,
+    fontScale,
 
     // realtime
     init,
@@ -294,10 +479,11 @@ export const useSettingsStore = defineStore('settings', () => {
     addMessageTemplate,
     updateMessageTemplate,
     deleteMessageTemplate,
-    
+
     // цвета
     orderStatusColors,
     getOrderStatusColor,
+
     // reset
     resetSettings,
   };

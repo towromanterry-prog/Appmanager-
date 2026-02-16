@@ -72,5 +72,9 @@ const hasTitle = computed(() => !!props.title || !!props.subtitle);
 <style scoped>
 .app-dialog-card {
   background: rgb(var(--v-theme-surface));
+  /* Добавляем внутренний отступ. 
+     Используем CSS-переменную var(--s-4) для сохранения единого стиля с остальным интерфейсом, 
+     как это сделано в SettingsView.vue */
+  padding: var(--s-4); 
 }
 </style>

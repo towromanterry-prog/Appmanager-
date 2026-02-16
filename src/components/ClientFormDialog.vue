@@ -1,63 +1,60 @@
 <template>
-  <v-dialog v-model="dialog" max-width="500">
-    <v-card>
-      <v-card-title class="text-h6 font-weight-bold">
-        {{ isEditMode ? 'Редактировать клиента' : 'Новый клиент' }}
-      </v-card-title>
+  <AppDialog 
+    v-model="dialog" 
+    :max-width="500"
+    :title="isEditMode ? 'Редактировать клиента' : 'Новый клиент'"
+  >
+    <v-form ref="formRef" @submit.prevent="save">
+      <v-text-field
+        v-model="form.name"
+        label="Имя клиента *"
+        variant="outlined"
+        :rules="[v => !!v || 'Имя обязательно']"
+        class="mb-3"
+      ></v-text-field>
 
-      <v-card-text>
-        <v-form ref="formRef" @submit.prevent="save">
-          <v-text-field
-            v-model="form.name"
-            label="Имя клиента *"
-            variant="outlined"
-            :rules="[v => !!v || 'Имя обязательно']"
-            class="mb-3"
-          ></v-text-field>
+      <v-text-field
+        v-model="form.phone"
+        label="Телефон *"
+        variant="outlined"
+        type="tel"
+        placeholder="+7"
+        class="mb-3"
+        :rules="[v => !!String(v || '').trim() || 'Телефон обязателен']"
+      ></v-text-field>
 
-          <v-text-field
-            v-model="form.phone"
-            label="Телефон *"
-            variant="outlined"
-            type="tel"
-            placeholder="+7"
-            class="mb-3"
-            :rules="[v => !!String(v || '').trim() || 'Телефон обязателен']"
-          ></v-text-field>
+      <v-textarea
+        v-model="form.notes"
+        label="Примечание"
+        variant="outlined"
+        rows="3"
+        auto-grow
+        hide-details
+      ></v-textarea>
+    </v-form>
 
-          <v-textarea
-            v-model="form.notes"
-            label="Примечание"
-            variant="outlined"
-            rows="3"
-            auto-grow
-          ></v-textarea>
-        </v-form>
-      </v-card-text>
-
-      <v-card-actions>
-        <v-spacer></v-spacer>
-        <v-btn variant="text" @click="close">Отмена</v-btn>
-        <v-btn 
-          color="primary" 
-          :loading="saving" 
-          @click="save"
-        >
-          Сохранить
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+    <template #actions>
+      <v-btn variant="text" @click="close">Отмена</v-btn>
+      <v-btn 
+        color="primary" 
+        :loading="saving" 
+        @click="save"
+      >
+        Сохранить
+      </v-btn>
+    </template>
+  </AppDialog>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useClientsStore } from '@/stores/clientsStore';
 import { useHapticFeedback } from '@/composables/useHapticFeedback';
+import AppDialog from '@/components/ui/AppDialog.vue'; // <-- Добавили импорт
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
-  client: { type: Object, default: null } // Если null - создание, иначе редактирование
+  client: { type: Object, default: null }
 });
 
 const emit = defineEmits(['update:modelValue', 'saved']);
@@ -82,7 +79,6 @@ const dialog = computed({
   set: (val) => emit('update:modelValue', val)
 });
 
-// Заполнение формы при открытии
 watch(
   () => props.client,
   (newVal) => {
@@ -110,15 +106,12 @@ const save = async () => {
 
   saving.value = true;
   try {
-    // Используем стор для сохранения
     await clientsStore.addOrUpdateClient({
       ...form.value,
-      // Если редактируем, сохраняем старый телефон как идентификатор (если логика позволяет)
-      // В текущей логике phone = id
     });
 
     triggerHapticFeedback('success');
-    emit('saved'); // Уведомляем родителя (если нужно обновить список)
+    emit('saved');
     close();
   } catch (e) {
     console.error(e);

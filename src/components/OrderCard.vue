@@ -295,23 +295,21 @@
   </v-card>
 
   <!-- Выбор шаблона -->
-  <AppDialog v-model="templateDialogOpen" :title="templateDialogTitle" :max-width="420">
-    <v-sheet class="oc-template-sheet">
-      <v-list class="oc-template-list" density="compact" bg-color="surface">
-        <v-list-item
-          v-for="t in templateItems"
-          :key="t.id"
-          @click="pickTemplateAndSend(t)"
-        >
-          <v-list-item-title class="text-body-2">
-            {{ t.title }}
-          </v-list-item-title>
-          <v-list-item-subtitle v-if="t.subtitle" class="text-caption">
-            {{ t.subtitle }}
-          </v-list-item-subtitle>
-        </v-list-item>
-      </v-list>
-    </v-sheet>
+    <AppDialog v-model="templateDialogOpen" :title="templateDialogTitle" :max-width="420">
+    <v-list class="oc-template-list" density="compact" bg-color="transparent">
+      <v-list-item
+        v-for="t in templateItems"
+        :key="t.id"
+        @click="pickTemplateAndSend(t)"
+      >
+        <v-list-item-title class="text-body-2">
+          {{ t.title }}
+        </v-list-item-title>
+        <v-list-item-subtitle v-if="t.subtitle" class="text-caption">
+          {{ t.subtitle }}
+        </v-list-item-subtitle>
+      </v-list-item>
+    </v-list>
 
     <template #actions>
       <v-btn variant="text" @click="closeTemplateDialog">Отмена</v-btn>
@@ -323,7 +321,6 @@
 import { ref, computed, unref, inject } from 'vue';
 import { useOrderStore } from '@/stores/orderStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { useConfirmationStore } from '@/stores/confirmationStore.js';
 import { useHapticFeedback } from '@/composables/useHapticFeedback';
 import AppDialog from '@/components/ui/AppDialog.vue';
 
@@ -334,7 +331,6 @@ const emit = defineEmits(['edit', 'delete']);
 
 const orderStore = useOrderStore();
 const settingsStore = useSettingsStore();
-const confirmationStore = useConfirmationStore();
 const { triggerHapticFeedback } = useHapticFeedback();
 
 const expanded = ref(false);
@@ -408,6 +404,19 @@ const textMain = computed(() => `${currentFontSize.value}px`);
 const textSub = computed(() => `${Math.max(12, currentFontSize.value - 2)}px`);
 const textCaption = computed(() => `${Math.max(11, currentFontSize.value - 4)}px`);
 const textTotal = computed(() => `${Math.max(14, currentFontSize.value + 4)}px`);
+
+const formattedCheckList = computed(() => {
+  const items = [...(orderServices.value || []), ...(orderDetails.value || [])];
+  
+  if (!items.length) return '';
+  
+  return items.map(item => {
+    const name = item.name || item.title || 'Без названия';
+    const price = formatMoney(item.price);
+    return `• ${name} — ${price}${currencySymbol.value}`;
+  }).join('\n');
+});
+
 
 const detailsLabel = computed(() => getAppSetting('detailsTabLabel', 'Детали'));
 
@@ -603,21 +612,64 @@ const formattedPhone = computed(() => {
 const phoneHref = computed(() => (formattedPhone.value ? `tel:${formattedPhone.value}` : ''));
 
 /** ===== Templates + send ===== */
+const useReceiptTemplate = computed(() => !!getAppSetting('useReceiptTemplate', false));
+
 const rawMessageTemplates = computed(() => {
   const v = getAppSetting('messageTemplates', []);
   return Array.isArray(v) ? v : [];
 });
 
-const messageTemplates = computed(() =>
-  rawMessageTemplates.value
+const normalizeTemplateList = (rawList) =>
+  (rawList || [])
     .map((t, idx) => {
       if (typeof t === 'string') return { id: idx, text: t };
       if (t && typeof t === 'object') return { id: t.id ?? idx, text: t.text ?? t.template ?? '' };
       return { id: idx, text: '' };
     })
     .map((t) => ({ ...t, text: String(t.text || '').trim() }))
-    .filter((t) => !!t.text),
-);
+    .filter((t) => !!t.text);
+
+const applyTemplateTokens = (srcText) => {
+  let text = String(srcText || '').replace(/\r\n/g, '\n');
+
+  const fullName = [displayClientName.value, displayClientLastName.value]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+
+  // $name / $price
+  text = text
+    .replace(/\$name/g, fullName || displayClientName.value || 'Клиент')
+    .replace(/\$price/g, `${totalAmount.value}${currencySymbol.value}`);
+
+  // $check
+  if (formattedCheckList.value) {
+    text = text.replace(/\$check/g, formattedCheckList.value);
+  } else {
+    // если нечего показывать — убираем строку целиком
+    text = text.replace(/^.*\$check.*\n?/gm, '');
+  }
+
+  return text.replace(/\n{3,}/g, '\n\n').trim();
+};
+
+const messageTemplates = computed(() => {
+  const base = normalizeTemplateList(rawMessageTemplates.value);
+
+  // Встроенный «чек» (не редактируется/не удаляется) — управляется тумблером в настройках
+  const list = [...base];
+  if (useReceiptTemplate.value && formattedCheckList.value) {
+    list.unshift({
+      id: '__receipt__',
+      text: 'Ваш заказ готов:\n$check\n\nИтого: $price',
+      __builtin: true,
+    });
+  }
+
+  return list
+    .map((t) => ({ ...t, text: applyTemplateTokens(t.text) }))
+    .filter((t) => !!String(t.text || '').trim());
+});
 
 const canSendMessage = computed(() => !!formattedPhone.value && messageTemplates.value.length > 0);
 
@@ -648,7 +700,7 @@ const buildSmsHref = (phone, body) => {
   return b ? `sms:${p}?body=${encodeURIComponent(b)}` : `sms:${p}`;
 };
 
-// ✅ старый “рабочий” способ, как ты просил
+// ✅ старый “рабочий” способ
 const buildTelegramHref = (phoneDigits, text) => {
   const p = String(phoneDigits || '').replace(/\D/g, '');
   if (!p) return '';
@@ -1196,17 +1248,11 @@ const onEdit = () => {
   emit('edit', props.order);
 };
 
-const confirmDelete = async () => {
+const confirmDelete = () => {
   hapticTap();
-
-  const ok = await confirmationStore.open(
-    'Удалить заказ?',
-    'Это действие нельзя отменить.',
-    { confirmText: 'Удалить', cancelText: 'Отмена', color: 'error' },
-  );
-
-  if (ok) emit('delete', props.order.id);
+  emit('delete', props.order.id);
 };
+
 </script>
 
 <style scoped>
