@@ -6,6 +6,7 @@ export class DetailModel {
     name = '',
     defaultPrice = 0,
     category = '',
+    isArchived = false,
     createdAt = null,
     updatedAt = null,
   } = {}) {
@@ -13,6 +14,7 @@ export class DetailModel {
     this.name = name;
     this.defaultPrice = Number(defaultPrice || 0);
     this.category = category;
+    this.isArchived = !!isArchived;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -27,6 +29,7 @@ export class DetailModel {
       name: this.name,
       defaultPrice: this.defaultPrice,
       category: this.category,
+      isArchived: this.isArchived,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

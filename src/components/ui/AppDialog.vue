@@ -1,6 +1,13 @@
 <!-- src/components/ui/AppDialog.vue -->
 <template>
-  <v-dialog v-model="open" :max-width="maxWidth" :persistent="persistent" scrollable>
+  <v-dialog
+    v-model="open"
+    :max-width="maxWidth"
+    :persistent="persistent"
+    scrollable
+    @click:outside="onClickOutside"
+    @keydown.esc="onEsc"
+  >
     <v-card
       class="app-card-pad app-dialog-card"
       :rounded="rounded"
@@ -8,6 +15,7 @@
       variant="flat"
       color="surface"
       :border="true"
+      @pointerdown.capture="onPointerDown"
     >
       <div class="app-stack" style="gap: var(--s-3);">
         <div v-if="hasTitle" style="display: flex; align-items: center; gap: var(--s-3);">
@@ -48,7 +56,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { useHapticFeedback } from '@/composables/useHapticFeedback';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -60,6 +69,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue']);
+const { triggerHapticFeedback } = useHapticFeedback();
 
 const open = computed({
   get: () => props.modelValue,
@@ -67,14 +77,59 @@ const open = computed({
 });
 
 const hasTitle = computed(() => !!props.title || !!props.subtitle);
+
+// intent закрытия, чтобы не вибрировать на "программное" закрытие (например, после сохранения)
+const closeIntent = ref(null); // 'cancel' | 'dismiss' | null
+
+const isCancelTarget = (target) => {
+  if (!target || typeof target.closest !== 'function') return false;
+
+  // явная маркировка (можно использовать в любых кнопках отмены)
+  if (target.closest('[data-app-cancel],[data-cancel],[data-role="cancel"]')) return true;
+
+  const btn = target.closest('button');
+  if (!btn) return false;
+
+  const txt = String(btn.textContent || '').trim().toLowerCase();
+  return txt === 'отмена' || txt.includes('отмена') || txt === 'cancel' || txt.includes('cancel');
+};
+
+const onPointerDown = (e) => {
+  closeIntent.value = isCancelTarget(e.target) ? 'cancel' : null;
+};
+
+const onClickOutside = () => {
+  if (props.persistent) {
+    closeIntent.value = null;
+    return;
+  }
+  closeIntent.value = 'dismiss';
+};
+
+const onEsc = () => {
+  if (props.persistent) {
+    closeIntent.value = null;
+    return;
+  }
+  closeIntent.value = 'dismiss';
+};
+
+watch(
+  () => open.value,
+  (val, prev) => {
+    if (prev === true && val === false) {
+      if (closeIntent.value === 'cancel' || closeIntent.value === 'dismiss') {
+        triggerHapticFeedback('tap');
+      }
+      closeIntent.value = null;
+    }
+  }
+);
 </script>
 
 <style scoped>
 .app-dialog-card {
   background: rgb(var(--v-theme-surface));
-  /* Добавляем внутренний отступ. 
-     Используем CSS-переменную var(--s-4) для сохранения единого стиля с остальным интерфейсом, 
-     как это сделано в SettingsView.vue */
-  padding: var(--s-4); 
+  padding: var(--s-4);
 }
 </style>

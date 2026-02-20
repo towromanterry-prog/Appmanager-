@@ -1,20 +1,25 @@
 // src/stores/detailsStore.js
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useAuthStore } from './authStore';
 import { detailsService } from '@/services/detailsService';
-import { useOrderStore } from './orderStore'; // как в старом detailStore 13
 
 export const useDetailsStore = defineStore('details', () => {
   const details = ref([]); // DetailModel[]
   const loading = ref(false);
-  let unsubscribe = null;
 
   const auth = useAuthStore();
 
-  async function subscribe() {
-    await auth.init();
-    const uid = auth.currentUserId;
+  let _uid = null;
+  let unsubscribe = null;
+
+  const getUid = () => _uid || auth.currentUserId || null;
+
+  const activeItems = computed(() => details.value.filter((d) => !d.isArchived));
+
+  function subscribe(uidOverride) {
+    const uid = uidOverride || auth.currentUserId || null;
+    _uid = uid;
 
     if (unsubscribe) unsubscribe();
     if (!uid) {
@@ -27,7 +32,12 @@ export const useDetailsStore = defineStore('details', () => {
     unsubscribe = detailsService.subscribe(
       uid,
       (rows) => {
-        details.value = rows;
+        // ВЫРЕЗАЕМ category из данных на входе, чтобы приложение её “не видело”
+        details.value = (rows || []).map((row) => {
+          if (!row || typeof row !== 'object') return row;
+          const { category, ...rest } = row;
+          return rest;
+        });
         loading.value = false;
       },
       (err) => {
@@ -38,50 +48,52 @@ export const useDetailsStore = defineStore('details', () => {
   }
 
   async function addDetail(detailData) {
-    await auth.init();
-    const uid = auth.currentUserId;
+    const uid = getUid();
     if (!uid) return;
 
     await detailsService.add(uid, {
-      name: detailData.name,
+      name: String(detailData.name || '').trim(),
       defaultPrice: Number(detailData.defaultPrice) || 0,
-      category: detailData.category || '',
+      isArchived: !!detailData.isArchived,
     });
   }
 
   async function updateDetail(id, detailData) {
-    await auth.init();
-    const uid = auth.currentUserId;
+    const uid = getUid();
     if (!uid || !id) return;
 
     await detailsService.update(uid, id, {
-      name: detailData.name,
+      name: String(detailData.name || '').trim(),
       defaultPrice: Number(detailData.defaultPrice) || 0,
-      category: detailData.category || '',
     });
+  }
 
-    // Сохранил “как было”: хук на обновление цен в активных заказах 14
-    // Если в новом orderStore появится метод — просто раскомментируешь:
-    // const orderStore = useOrderStore();
-    // orderStore.updateDetailPricesInActiveOrders?.(id, Number(detailData.defaultPrice) || 0);
+  async function archiveDetail(id) {
+    const uid = getUid();
+    if (!uid || !id) return;
+    await detailsService.update(uid, id, { isArchived: true });
+  }
+
+  async function unarchiveDetail(id) {
+    const uid = getUid();
+    if (!uid || !id) return;
+    await detailsService.update(uid, id, { isArchived: false });
   }
 
   async function deleteDetail(id) {
-    await auth.init();
-    const uid = auth.currentUserId;
+    const uid = getUid();
     if (!uid || !id) return;
-
     await detailsService.delete(uid, id);
   }
 
-  // 1-в-1 геттер из старого detailStore 15
   function getDetailById(id) {
     return details.value.find((d) => d.id === id);
   }
-  
+
   function stop() {
     if (unsubscribe) unsubscribe();
     unsubscribe = null;
+    _uid = null;
     details.value = [];
     loading.value = false;
   }
@@ -89,12 +101,17 @@ export const useDetailsStore = defineStore('details', () => {
   return {
     details,
     loading,
+    activeItems,
+
     subscribe,
     addDetail,
     updateDetail,
     deleteDetail,
     getDetailById,
-    
+
+    archiveDetail,
+    unarchiveDetail,
+
     stop,
   };
 });

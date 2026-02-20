@@ -51,7 +51,7 @@
                       <template #title>
                         <div class="of-status-row">
                           <span class="status-dot" :style="statusDotStyle(item?.raw?.value ?? item?.value)" />
-                          <span class="dynamic-text-body">{{ item?.title }}</span>
+                          <span :style="{ fontSize: currentFontSizePx }">{{ item?.title }}</span>
                         </div>
                       </template>
                     </v-list-item>
@@ -100,10 +100,10 @@
                 <template #item="{ props, item }">
                   <v-list-item v-bind="props" class="dynamic-list-item">
                     <template #title>
-                      <span class="dynamic-text-body">{{ item?.raw?.name }}</span>
+                      <span :style="{ fontSize: currentFontSizePx }">{{ item?.raw?.name }}</span>
                     </template>
                     <template #subtitle>
-                      <span class="dynamic-text-sub">{{ item?.raw?.phone }}</span>
+                      <span :style="{ fontSize: subFontSizePx, opacity: 0.7 }">{{ item?.raw?.phone }}</span>
                     </template>
                   </v-list-item>
                 </template>
@@ -217,17 +217,32 @@
                 density="comfortable"
                 :hide-details="'auto'"
                 :rules="rulesFor('services')"
-                prepend-inner-icon="mdi-plus"
                 :menu-props="menuProps"
                 class="dynamic-font-input"
                 @update:model-value="addService"
                 @update:menu="val => val && hapticTap()"
                 style="margin-top: var(--s-3);"
               >
+                <template #prepend-inner>
+                  <div class="d-flex align-center mr-1">
+                    <v-btn
+                      icon="mdi-plus"
+                      color="primary"
+                      variant="tonal"
+                      size="small"
+                      class="rounded-md"
+                      @click.stop="openServiceDialog"
+                    />
+                    <v-divider vertical class="ml-3" style="height: 24px; align-self: center; opacity: 0.4;" />
+                  </div>
+                </template>
                 <template #item="{ props, item }">
                   <v-list-item v-bind="props" class="dynamic-list-item">
+                    <template #title>
+                      <span :style="{ fontSize: currentFontSizePx }">{{ item?.title || item?.raw?.name }}</span>
+                    </template>
                     <template #subtitle>
-                      <span class="dynamic-text-sub">{{ formatPrice(item.raw.defaultPrice) }}</span>
+                      <span :style="{ fontSize: subFontSizePx, opacity: 0.7 }">{{ formatPrice(item.raw.defaultPrice) }}</span>
                     </template>
                   </v-list-item>
                 </template>
@@ -290,17 +305,32 @@
                 density="comfortable"
                 :hide-details="'auto'"
                 :rules="rulesFor('details')"
-                prepend-inner-icon="mdi-plus"
                 :menu-props="menuProps"
                 class="dynamic-font-input"
                 @update:model-value="addDetail"
                 @update:menu="val => val && hapticTap()"
                 style="margin-top: var(--s-3);"
               >
+                <template #prepend-inner>
+                  <div class="d-flex align-center mr-1">
+                    <v-btn
+                      icon="mdi-plus"
+                      color="primary"
+                      variant="tonal"
+                      size="small"
+                      class="rounded-md"
+                      @click.stop="openDetailDialog"
+                    />
+                    <v-divider vertical class="ml-3" style="height: 24px; align-self: center; opacity: 0.4;" />
+                  </div>
+                </template>
                 <template #item="{ props, item }">
                   <v-list-item v-bind="props" class="dynamic-list-item">
+                    <template #title>
+                      <span :style="{ fontSize: currentFontSizePx }">{{ item?.title || item?.raw?.name }}</span>
+                    </template>
                     <template #subtitle>
-                      <span class="dynamic-text-sub">{{ formatPrice(item.raw.defaultPrice) }}</span>
+                      <span :style="{ fontSize: subFontSizePx, opacity: 0.7 }">{{ formatPrice(item.raw.defaultPrice) }}</span>
                     </template>
                   </v-list-item>
                 </template>
@@ -334,6 +364,9 @@
         </div>
       </div>
     </v-footer>
+
+    <ServiceFormDialog v-model="showServiceDialog" />
+    <DetailFormDialog v-model="showDetailDialog" />
   </div>
 </template>
 
@@ -343,6 +376,8 @@ import { ref, computed, reactive, onMounted, watch, inject } from 'vue';
 import AppPage from '@/components/ui/AppPage.vue';
 import AppSection from '@/components/ui/AppSection.vue';
 import AppCard from '@/components/ui/AppCard.vue';
+import ServiceFormDialog from '@/components/ServiceFormDialog.vue';
+import DetailFormDialog from '@/components/DetailFormDialog.vue';
 import { useHapticFeedback } from '@/composables/useHapticFeedback';
 
 import { useOrderStore } from '@/stores/orderStore';
@@ -382,7 +417,7 @@ const isEditMode = computed(() => !!props.orderId);
 
 const clients = computed(() => clientsStore.clients || []);
 const activeServices = computed(() => servicesStore.activeItems || []);
-const details = computed(() => detailsStore.details || []);
+const details = computed(() => detailsStore.activeItems || []);
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 
@@ -405,6 +440,20 @@ const formData = reactive({
   services: [],
   details: [],
 });
+
+// Управление диалогами добавления
+const showServiceDialog = ref(false);
+const showDetailDialog = ref(false);
+
+const openServiceDialog = () => {
+  hapticTap();
+  showServiceDialog.value = true;
+};
+
+const openDetailDialog = () => {
+  hapticTap();
+  showDetailDialog.value = true;
+};
 
 // === Вычисляемые свойства для масштабирования шрифта ===
 const appSettings = computed(() => settingsStore.appSettings || settingsStore.settings?.appSettings || {});
@@ -516,7 +565,6 @@ const addService = (service) => {
     name: service.name,
     price: Number(service.defaultPrice) || 0,
     status: 'accepted',
-    tagIds: service.tagIds || [],
   });
   serviceToAdd.value = null;
 };

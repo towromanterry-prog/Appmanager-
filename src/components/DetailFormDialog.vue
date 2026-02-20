@@ -1,5 +1,5 @@
 <template>
-  <AppDialog v-model="open" :title="editingService ? 'Редактировать услугу' : 'Новая услуга'" max-width="520">
+  <AppDialog v-model="open" :title="editingDetail ? 'Редактировать деталь' : 'Новая деталь'" max-width="520">
     <v-form ref="formRef" @submit.prevent="save">
       <div class="app-stack" style="gap: var(--s-3);">
         <v-text-field
@@ -25,7 +25,7 @@
     <template #actions>
       <v-btn variant="text" :disabled="isSaving" @click="closeDialog">Отмена</v-btn>
       <v-btn color="primary" :loading="isSaving" @click="save">
-        {{ editingService ? 'Сохранить' : 'Добавить' }}
+        {{ editingDetail ? 'Сохранить' : 'Добавить' }}
       </v-btn>
     </template>
   </AppDialog>
@@ -33,20 +33,20 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue';
-import { useServicesStore } from '@/stores/servicesStore';
+import { useDetailsStore } from '@/stores/detailsStore';
 import { useHapticFeedback } from '@/composables/useHapticFeedback';
-
 import AppDialog from '@/components/ui/AppDialog.vue';
 
 const { triggerHapticFeedback } = useHapticFeedback();
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
-  service: { type: Object, default: null },
+  detail: { type: Object, default: null },
 });
+
 const emit = defineEmits(['update:modelValue', 'saved']);
 
-const servicesStore = useServicesStore();
+const detailsStore = useDetailsStore();
 
 const open = computed({
   get: () => props.modelValue,
@@ -54,7 +54,7 @@ const open = computed({
 });
 
 const formRef = ref(null);
-const editingService = ref(null);
+const editingDetail = ref(null);
 const form = ref({ name: '', defaultPrice: 0 });
 const isSaving = ref(false);
 
@@ -62,10 +62,10 @@ watch(
   () => open.value,
   (val) => {
     if (!val) return;
-    editingService.value = props.service || null;
+    editingDetail.value = props.detail || null;
     form.value = {
-      name: props.service?.name || '',
-      defaultPrice: Number(props.service?.defaultPrice || 0),
+      name: props.detail?.name || '',
+      defaultPrice: Number(props.detail?.defaultPrice || 0),
     };
   }
 );
@@ -87,10 +87,10 @@ const save = async () => {
 
   isSaving.value = true;
   try {
-    if (editingService.value) {
-      await servicesStore.updateService(editingService.value.id, payload);
+    if (editingDetail.value) {
+      await detailsStore.updateDetail(editingDetail.value.id, payload);
     } else {
-      await servicesStore.addService(payload);
+      await detailsStore.addDetail(payload);
     }
     triggerHapticFeedback('success');
     emit('saved');

@@ -142,7 +142,6 @@ import { useSearchStore } from '@/stores/searchStore';
 import { useClientsStore } from '@/stores/clientsStore';
 import { useServicesStore } from '@/stores/servicesStore';
 import { useDetailsStore } from '@/stores/detailsStore';
-import { useTagsStore } from '@/stores/tagsStore';
 
 // Components
 import ConfirmationDialog from '@/components/common/ConfirmationDialog.vue';
@@ -156,7 +155,6 @@ const searchStore = useSearchStore();
 const clientsStore = useClientsStore();
 const servicesStore = useServicesStore();
 const detailsStore = useDetailsStore();
-const tagsStore = useTagsStore();
 
 const route = useRoute();
 
@@ -273,7 +271,6 @@ async function startUserScopedData(uid) {
         clientsStore.subscribe(uid),
         servicesStore.subscribe(uid),
         detailsStore.subscribe(uid),
-        tagsStore.subscribe(uid),
       ]);
     } catch (e) {
       console.error('Ошибка инициализации данных:', e);
@@ -291,7 +288,6 @@ function stopUserScopedData() {
   clientsStore.stop?.();
   servicesStore.stop?.();
   detailsStore.stop?.();
-  tagsStore.stop?.();
 }
 
 watch(
