@@ -1,47 +1,34 @@
-// src/services/authService.js
-import { auth } from './firebase';
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
   signInWithPopup,
-  signInWithRedirect,
   signOut,
 } from 'firebase/auth';
+import { auth } from '@/services/firebase'; // Проверьте правильность пути к вашему firebase.js
 
-function normalizeUser(u) {
-  if (!u) return null;
-  return {
-    uid: u.uid,
-    email: u.email ?? null,
-    displayName: u.displayName ?? null,
-    photoURL: u.photoURL ?? null,
-  };
-}
+// Отслеживание состояния пользователя
+export const observeAuthState = (callback) => {
+  return onAuthStateChanged(auth, callback);
+};
 
-export async function loginWithGoogle() {
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
-
+// Обычный вход через Google (без календаря)
+export const loginWithGoogle = async () => {
   try {
-    const cred = await signInWithPopup(auth, provider);
-    return normalizeUser(cred.user);
-  } catch (e) {
-    const code = e?.code || '';
-
-    // fallback для окружений, где popup нестабилен
-    if (code === 'auth/popup-blocked' || code === 'auth/popup-closed-by-user') {
-      await signInWithRedirect(auth, provider);
-      return null; // дальше будет redirect, состояние поймаем через observer
-    }
-
-    throw e;
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
+  } catch (error) {
+    console.error("Ошибка авторизации Google:", error);
+    throw error;
   }
-}
+};
 
-export async function logout() {
-  await signOut(auth);
-}
-
-export function observeAuthState(cb) {
-  return onAuthStateChanged(auth, (u) => cb(normalizeUser(u)));
-}
+// Выход
+export const logout = async () => {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error("Ошибка при выходе:", error);
+    throw error;
+  }
+};
